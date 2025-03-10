@@ -66,17 +66,12 @@ export class Model<ModelType extends Document> {
     [Methods.BULK_WRITE]: () => {},
   };
 
-  static [kDatabase]: Database;
+  static [kDatabase]: Database | undefined;
 
   constructor(
     props: CreateModelProps,
     protected db?: Database
   ) {
-    if (db && !Model[kDatabase]) {
-      // TODO: review
-      Model[kDatabase] = db || new Database();
-    }
-
     const {
       allowedMethods,
       collectionName,
@@ -174,7 +169,7 @@ export class Model<ModelType extends Document> {
   }
 
   aggregate(pipeline: Document[], options: AggregateOptions = {}) {
-    const collection = Model[kDatabase].getCollection<ModelType>(
+    const collection = Model[kDatabase]?.getCollection<ModelType>(
       this.collectionName
     ) as Collection<ModelType>;
 
@@ -196,7 +191,7 @@ export class Model<ModelType extends Document> {
       ...options,
     });
 
-    const collection = Model[kDatabase].getCollection<ModelType>(
+    const collection = Model[kDatabase]?.getCollection<ModelType>(
       this.collectionName
     ) as Collection<ModelType>;
 
@@ -224,7 +219,7 @@ export class Model<ModelType extends Document> {
 
     await this.preMethod[Methods.UPDATE_MANY].bind(cleanedUpdate)(options);
 
-    const collection = Model[kDatabase].getCollection<ModelType>(
+    const collection = Model[kDatabase]?.getCollection<ModelType>(
       this.collectionName
     ) as Collection<ModelType>;
 
@@ -242,7 +237,7 @@ export class Model<ModelType extends Document> {
   }
 
   findMany(filter: Filter<ModelType> = {}, options: FindOptions = {}) {
-    const collection = Model[kDatabase].getCollection<ModelType>(
+    const collection = Model[kDatabase]?.getCollection<ModelType>(
       this.collectionName
     ) as Collection<ModelType>;
 
@@ -250,7 +245,7 @@ export class Model<ModelType extends Document> {
   }
 
   deleteMany(filter: Filter<ModelType>, options: DeleteOptions = {}) {
-    const collection = Model[kDatabase].getCollection<ModelType>(
+    const collection = Model[kDatabase]?.getCollection<ModelType>(
       this.collectionName
     ) as Collection<ModelType>;
 
@@ -258,7 +253,9 @@ export class Model<ModelType extends Document> {
   }
 
   async insert(
-    document: OptionalUnlessRequiredId<ModelType>,
+    document: OptionalUnlessRequiredId<
+      Omit<ModelType, '_id' | 'insertedAt' | 'updatedAt'>
+    >,
     options: InsertOneOptions = {}
   ) {
     const shallowCopy = { ...document };
@@ -269,7 +266,7 @@ export class Model<ModelType extends Document> {
       ...this.documentDefaults,
       ...deleteUndefinedData(shallowCopy),
     }) as OptionalUnlessRequiredId<ModelType>;
-    const collection = Model[kDatabase].getCollection<ModelType>(
+    const collection = Model[kDatabase]?.getCollection<ModelType>(
       this.collectionName
     ) as Collection<ModelType>;
 
@@ -287,7 +284,9 @@ export class Model<ModelType extends Document> {
   }
 
   async insertMany(
-    documents: OptionalUnlessRequiredId<ModelType>[],
+    documents: OptionalUnlessRequiredId<
+      Omit<ModelType, '_id' | 'insertedAt' | 'updatedAt'>
+    >[],
     options: BulkWriteOptions = {}
   ) {
     documents.forEach(async (doc) => {
@@ -299,7 +298,7 @@ export class Model<ModelType extends Document> {
       ...deleteUndefinedData(doc),
     }));
 
-    const collection = Model[kDatabase].getCollection<ModelType>(
+    const collection = Model[kDatabase]?.getCollection<ModelType>(
       this.collectionName
     ) as Collection<ModelType>;
     try {
@@ -317,7 +316,7 @@ export class Model<ModelType extends Document> {
     filter: Filter<ModelType> = {},
     options?: FindOptions
   ): Promise<WithId<ModelType> | null> | null {
-    const collection = Model[kDatabase].getCollection<ModelType>(
+    const collection = Model[kDatabase]?.getCollection<ModelType>(
       this.collectionName
     ) as Collection<ModelType>;
 
@@ -332,7 +331,7 @@ export class Model<ModelType extends Document> {
   }
 
   async delete(filter: Filter<ModelType>, options?: FindOneAndDeleteOptions) {
-    const collection = Model[kDatabase].getCollection<ModelType>(
+    const collection = Model[kDatabase]?.getCollection<ModelType>(
       this.collectionName
     ) as Collection<ModelType>;
 
@@ -341,8 +340,8 @@ export class Model<ModelType extends Document> {
     return result?.value;
   }
 
-  total(filter: Filter<ModelType>, options: CountDocumentsOptions = {}) {
-    const collection = Model[kDatabase].getCollection<ModelType>(
+  total(filter: Filter<ModelType> = {}, options: CountDocumentsOptions = {}) {
+    const collection = Model[kDatabase]?.getCollection<ModelType>(
       this.collectionName
     ) as Collection<ModelType>;
 
@@ -372,7 +371,7 @@ export class Model<ModelType extends Document> {
       return operation;
     });
     try {
-      const collection = Model[kDatabase].getCollection<ModelType>(
+      const collection = Model[kDatabase]?.getCollection<ModelType>(
         this.collectionName
       ) as Collection<ModelType>;
 
@@ -380,5 +379,13 @@ export class Model<ModelType extends Document> {
     } catch (err: any) {
       throw new MongoError(JSON.stringify(err, null, 2));
     }
+  }
+
+  static hasDatabase() {
+    return !!Model[kDatabase];
+  }
+
+  static setDatabase(database: Database) {
+    Model[kDatabase] = database;
   }
 }

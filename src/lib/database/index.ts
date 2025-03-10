@@ -28,9 +28,9 @@ export class Database {
   private static modelMap: Map<string, Model<Document>> = new Map();
 
   constructor(
+    protected config: DatabaseConfig = {},
     client?: MongoClient,
-    db?: Db,
-    protected config: DatabaseConfig = {}
+    db?: Db
   ) {
     this[kClient] = client;
     this[kDb] = db;
@@ -44,6 +44,20 @@ export class Database {
         .replace('<username>', username)
         .replace('<password>', password);
     }
+
+    if (!Model.hasDatabase()) Model.setDatabase(this);
+  }
+
+  static toObjectId(objectId?: string | ObjectId): ObjectId {
+    return new ObjectId(objectId);
+  }
+
+  static objectId(): ObjectId {
+    return new ObjectId();
+  }
+
+  static async loadModels(modelsPath: string) {
+    await import(modelsPath);
   }
 
   connect(): Promise<string> | void {
@@ -62,7 +76,22 @@ export class Database {
     });
   }
 
-  public defineModel<ModelType extends Document>({
+  async disconnect(): Promise<void> {
+    if (!this.isConnected() || !this[kClient]) {
+      return;
+    }
+
+    await this[kClient].close();
+
+    this[kDb] = undefined;
+    this[kClient] = undefined;
+  }
+
+  info() {
+    return this[kDb]?.stats();
+  }
+
+  defineModel<ModelType extends Document>({
     allowedMethods = [],
     indexes = [],
     schema,
@@ -79,13 +108,14 @@ export class Database {
 
     const _allowedMethods = validity
       ? [
-          Methods.UPDATE,
-          Methods.UPDATE_MANY,
-          Methods.INSERT,
-          Methods.FIND_MANY,
+          Methods.DELETE,
           Methods.FIND,
           Methods.FIND_BY_ID,
-          Methods.DELETE,
+          Methods.FIND_MANY,
+          Methods.INSERT,
+          Methods.TOTAL,
+          Methods.UPDATE,
+          Methods.UPDATE_MANY,
         ]
       : allowedMethods;
 
@@ -105,58 +135,8 @@ export class Database {
     return modelValue as Model<ModelType>;
   }
 
-  private modelProxyHandler() {
-    return {
-      get(target: Model<Document>, prop: Methods, receiver: unknown) {
-        if (
-          target.methods.includes(prop) &&
-          !target.allowedMethods.includes(prop)
-        ) {
-          throw new Error(
-            `The method "${prop}" is not allowed in "${target.collectionName}"`
-          );
-        }
-
-        const originalMethod = target[prop as unknown as keyof typeof target];
-
-        if (typeof originalMethod === 'function') {
-          Reflect.get(target, prop, receiver).bind(target);
-        }
-
-        return Reflect.get(target, prop, receiver);
-      },
-    };
-  }
-
-  public async disconnect(): Promise<void> {
-    if (!this.isConnected() || !this[kClient]) {
-      return;
-    }
-
-    await this[kClient].close();
-
-    this[kDb] = undefined;
-    this[kClient] = undefined;
-  }
-
-  private isConnected(): Boolean {
-    return Boolean(this[kDb]) && Boolean(this[kClient]);
-  }
-
-  public getCollection<T extends Document>(collectionName: string) {
+  getCollection<T extends Document>(collectionName: string) {
     return this[kDb]?.collection<T>(collectionName);
-  }
-
-  static toObjectId(objectId?: string | ObjectId): ObjectId {
-    return new ObjectId(objectId);
-  }
-
-  static objectId(): ObjectId {
-    return new ObjectId();
-  }
-
-  static async loadModels(modelsPath: string) {
-    await import(modelsPath);
   }
 
   async setupCollections(): Promise<void> {
@@ -179,44 +159,6 @@ export class Database {
     }
 
     await this.setupIndexes(model);
-  }
-
-  private async collectionExists(collectionName: string): Promise<boolean> {
-    const collectionNames = await this[kDb]
-      ?.listCollections()
-      .map((collInfo) => collInfo.name)
-      .toArray();
-
-    return Boolean(
-      collectionNames?.some((collName) => collName === collectionName)
-    );
-  }
-
-  private async setupValidators(model: Model<Document>) {
-    const validators = {
-      validator: model.validator,
-      validationAction: model.validationAction,
-      validationLevel: model.validationLevel,
-    };
-
-    await this[kDb]?.command({
-      collMod: model.collectionName,
-      ...validators,
-    });
-  }
-
-  private async setupIndexes(model: Model<Document>) {
-    const collection = this[kDb]?.collection(model.collectionName);
-
-    await collection?.dropIndexes();
-
-    const newIndexes = model.indexes;
-
-    for (const newIndex of newIndexes) {
-      const { key, ...options } = newIndex;
-
-      await collection?.createIndex(key, options);
-    }
   }
 
   async cleanCollections() {
@@ -262,6 +204,71 @@ export class Database {
     return result;
   }
 
+  private modelProxyHandler() {
+    return {
+      get(target: Model<Document>, prop: Methods, receiver: unknown) {
+        if (
+          target.methods.includes(prop) &&
+          !target.allowedMethods.includes(prop)
+        ) {
+          throw new Error(
+            `The method "${prop}" is not allowed in "${target.collectionName}"`
+          );
+        }
+
+        const originalMethod = target[prop as unknown as keyof typeof target];
+
+        if (typeof originalMethod === 'function') {
+          Reflect.get(target, prop, receiver).bind(target);
+        }
+
+        return Reflect.get(target, prop, receiver);
+      },
+    };
+  }
+
+  private isConnected(): Boolean {
+    return Boolean(this[kDb]) && Boolean(this[kClient]);
+  }
+
+  private async collectionExists(collectionName: string): Promise<boolean> {
+    const collectionNames = await this[kDb]
+      ?.listCollections()
+      .map((collInfo) => collInfo.name)
+      .toArray();
+
+    return Boolean(
+      collectionNames?.some((collName) => collName === collectionName)
+    );
+  }
+
+  private async setupValidators(model: Model<Document>) {
+    const validators = {
+      validator: model.validator,
+      validationAction: model.validationAction,
+      validationLevel: model.validationLevel,
+    };
+
+    await this[kDb]?.command({
+      collMod: model.collectionName,
+      ...validators,
+    });
+  }
+
+  private async setupIndexes(model: Model<Document>) {
+    const collection = this[kDb]?.collection(model.collectionName);
+
+    await collection?.dropIndexes();
+
+    const newIndexes = model.indexes;
+
+    for (const newIndex of newIndexes) {
+      const { key, ...options } = newIndex;
+
+      await collection?.createIndex(key, options);
+    }
+  }
+
   async [kCreateClientConnection](options?: DatabaseConfig): Promise<string> {
     const { mongoDbName, mongoUrl } = await this[kGetUrlAndDbName]();
 
@@ -282,12 +289,12 @@ export class Database {
   }
 
   [kGetDbName](): Promise<string> | string {
-    if (this.config.dbName) {
-      return this.config.dbName;
-    }
-
     if (process.env.MONGODB_DB_NAME) {
       return process.env.MONGODB_DB_NAME;
+    }
+
+    if (this.config.dbName) {
+      return this.config.dbName;
     }
 
     const isTestSingleFile = !process.env.PACKAGE;

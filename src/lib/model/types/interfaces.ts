@@ -41,10 +41,17 @@ export interface ModelSetup {
   validity?: boolean;
 }
 
-export interface ModelValidationSchema extends JSONSchema4 {
+export interface DefaultProperties {
+  updatedAt: Date;
+  insertedAt: Date;
+}
+
+export interface ModelValidationSchema<T extends DefaultProperties = any>
+  extends Omit<JSONSchema4, 'required'> {
   bsonType: string | string[];
   items?: ModelValidationSchema;
   properties?: {
-    [k: string]: ModelValidationSchema;
+    [k in keyof T]: ModelValidationSchema;
   };
+  required?: (keyof T)[];
 }
