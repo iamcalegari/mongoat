@@ -30,7 +30,6 @@ import {
 } from './types';
 
 import { Methods } from '../types';
-import { deleteUndefinedData } from './helpers';
 
 const kDatabase = Symbol('kDatabase');
 
@@ -49,7 +48,7 @@ export class Model<ModelType extends Document> {
 
   allowedMethods: Methods[];
 
-  documentDefaults: Record<string, any>;
+  documentDefaults: OptionalUnlessRequiredId<ModelType>;
 
   preMethod: Record<Methods, Function> = {
     [Methods.UPDATE]: () => {},
@@ -181,12 +180,9 @@ export class Model<ModelType extends Document> {
     update: UpdateFilter<ModelType>,
     options: FindOneAndUpdateOptions = {}
   ) {
-    const cleanedUpdate = {
-      ...update,
-      ...(update.$set && { $set: deleteUndefinedData(update.$set) }),
-    };
+    const _update = { ...update };
 
-    await this.preMethod[Methods.UPDATE].bind(cleanedUpdate)({
+    await this.preMethod[Methods.UPDATE].bind(_update)({
       ...filter,
       ...options,
     });
@@ -197,7 +193,7 @@ export class Model<ModelType extends Document> {
 
     const doc = (await collection.findOneAndUpdate(
       filter,
-      cleanedUpdate as UpdateFilter<ModelType>,
+      _update as UpdateFilter<ModelType>,
       {
         returnDocument: 'after',
         ...options,
@@ -212,12 +208,11 @@ export class Model<ModelType extends Document> {
     update: UpdateFilter<ModelType>,
     options: UpdateOptions = {}
   ) {
-    const cleanedUpdate = {
+    const _update = {
       ...update,
-      ...(update.$set && { $set: deleteUndefinedData(update.$set) }),
     };
 
-    await this.preMethod[Methods.UPDATE_MANY].bind(cleanedUpdate)(options);
+    await this.preMethod[Methods.UPDATE_MANY].bind(_update)(options);
 
     const collection = Model[kDatabase]?.getCollection<ModelType>(
       this.collectionName
@@ -225,7 +220,7 @@ export class Model<ModelType extends Document> {
 
     const updateResult = (await collection.updateMany(
       filter,
-      cleanedUpdate as UpdateFilter<ModelType>,
+      _update as UpdateFilter<ModelType>,
       {
         ...options,
       }
@@ -258,23 +253,19 @@ export class Model<ModelType extends Document> {
     >,
     options: InsertOneOptions = {}
   ) {
-    const shallowCopy = { ...document };
-
-    await this.preMethod[Methods.INSERT].bind(shallowCopy)(options);
-
-    const _document = deleteUndefinedData({
+    let _document = {
       ...this.documentDefaults,
-      ...deleteUndefinedData(shallowCopy),
-    }) as OptionalUnlessRequiredId<ModelType>;
+      ...document,
+    };
+
+    await this.preMethod[Methods.INSERT].bind(_document)(options);
+
     const collection = Model[kDatabase]?.getCollection<ModelType>(
       this.collectionName
     ) as Collection<ModelType>;
 
     try {
-      const { insertedId } = await collection.insertOne(
-        { ..._document },
-        options
-      );
+      const { insertedId } = await collection.insertOne(_document, options);
 
       return { _id: insertedId, ..._document } as WithId<ModelType>;
     } catch (err: any) {
@@ -295,17 +286,14 @@ export class Model<ModelType extends Document> {
 
     const _documents = documents.map((doc) => ({
       ...this.documentDefaults,
-      ...deleteUndefinedData(doc),
+      ...doc,
     }));
 
     const collection = Model[kDatabase]?.getCollection<ModelType>(
       this.collectionName
     ) as Collection<ModelType>;
     try {
-      return collection.insertMany(
-        _documents as OptionalUnlessRequiredId<ModelType>[],
-        options
-      );
+      return collection.insertMany(_documents, options);
     } catch (err: any) {
       // console.log(err);
       throw new MongoError(JSON.stringify(err, null, 2));
@@ -358,14 +346,8 @@ export class Model<ModelType extends Document> {
       if (anyOperarion.insertOne) {
         anyOperarion.insertOne.document = {
           ...this.documentDefaults,
-          ...deleteUndefinedData(anyOperarion.insertOne.document),
+          ...anyOperarion.insertOne.document,
         };
-      }
-
-      if (anyOperarion.updateOne && anyOperarion.updateOne.update.$set) {
-        anyOperarion.updateOne.update.$set = deleteUndefinedData(
-          anyOperarion.updateOne.update.$set ?? {}
-        );
       }
 
       return operation;

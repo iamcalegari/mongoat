@@ -66,6 +66,7 @@ export class Database {
     }
 
     return this[kCreateClientConnection]({
+      ignoreUndefined: true,
       ...(process.env.NODE_ENV === 'production' && {
         serverApi: {
           version: ServerApiVersion.v1,
