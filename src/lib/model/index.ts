@@ -24,6 +24,8 @@ import { Database } from '../database';
 import {
   CreateIndexProps,
   CreateModelProps,
+  DefaultProperties,
+  DocumentDefaults,
   ModelDbValidationProps,
   ModelValidationSchema,
   ValidationQueryExpressions,
@@ -33,7 +35,7 @@ import { Methods } from '../types';
 
 const kDatabase = Symbol('kDatabase');
 
-export class Model<ModelType extends Document> {
+export class Model<ModelType extends Document = Document> {
   collectionName: string;
 
   indexes: CreateIndexProps[];
@@ -48,7 +50,7 @@ export class Model<ModelType extends Document> {
 
   allowedMethods: Methods[];
 
-  documentDefaults: OptionalUnlessRequiredId<ModelType>;
+  documentDefaults: DocumentDefaults<ModelType>;
 
   preMethod: Record<Methods, Function> = {
     [Methods.UPDATE]: () => {},
@@ -68,7 +70,7 @@ export class Model<ModelType extends Document> {
   static [kDatabase]: Database | undefined;
 
   constructor(
-    props: CreateModelProps,
+    props: CreateModelProps<ModelType>,
     protected db?: Database
   ) {
     const {
@@ -98,7 +100,7 @@ export class Model<ModelType extends Document> {
     this.methods = Object.values(Methods);
   }
   static create<ModelType extends Document>(
-    props: CreateModelProps
+    props: CreateModelProps<ModelType>
   ): Model<ModelType> {
     return new Model(props);
   }
@@ -248,9 +250,7 @@ export class Model<ModelType extends Document> {
   }
 
   async insert(
-    document: OptionalUnlessRequiredId<
-      Omit<ModelType, '_id' | 'insertedAt' | 'updatedAt'>
-    >,
+    document: OptionalUnlessRequiredId<ModelType>,
     options: InsertOneOptions = {}
   ) {
     let _document = {
@@ -267,7 +267,8 @@ export class Model<ModelType extends Document> {
     try {
       const { insertedId } = await collection.insertOne(_document, options);
 
-      return { _id: insertedId, ..._document } as WithId<ModelType>;
+      return { _id: insertedId, ..._document } as unknown as WithId<ModelType> &
+        DefaultProperties;
     } catch (err: any) {
       // console.log(JSON.stringify(err, null, 2));
       throw new MongoError(JSON.stringify(err, null, 2));
@@ -275,9 +276,7 @@ export class Model<ModelType extends Document> {
   }
 
   async insertMany(
-    documents: OptionalUnlessRequiredId<
-      Omit<ModelType, '_id' | 'insertedAt' | 'updatedAt'>
-    >[],
+    documents: OptionalUnlessRequiredId<ModelType>[],
     options: BulkWriteOptions = {}
   ) {
     documents.forEach(async (doc) => {

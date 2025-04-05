@@ -5,6 +5,7 @@ import {
   Document,
   Filter,
   IndexSpecification,
+  OptionalUnlessRequiredId,
 } from 'mongodb';
 
 export type CreateIndexProps = {
@@ -19,12 +20,14 @@ export interface ModelDbValidationProps {
   };
 }
 
-export interface CreateModelProps {
+export type DocumentDefaults<T extends Document> = OptionalUnlessRequiredId<T>;
+
+export interface CreateModelProps<ModelType extends Document> {
   collectionName: string;
   schema: ModelValidationSchema;
   indexes: CreateIndexProps[];
   allowedMethods: Methods[];
-  documentDefaults: Record<string, any>;
+  documentDefaults: DocumentDefaults<ModelType>;
   validationQueryExpressions?: ValidationQueryExpressions;
   validity?: boolean;
 }
@@ -36,7 +39,7 @@ export interface ModelSetup {
   indexes?: CreateIndexProps[];
   schema: ModelValidationSchema;
   collectionName: string;
-  documentDefaults?: Record<string, any>;
+  documentDefaults?: DocumentDefaults<any>;
   validationQueryExpressions?: ValidationQueryExpressions;
   validity?: boolean;
 }
@@ -45,6 +48,8 @@ export interface DefaultProperties {
   updatedAt: Date;
   insertedAt: Date;
 }
+
+export type SchemaWithDefaults<S> = S & DefaultProperties;
 
 export interface ModelValidationSchema<T extends DefaultProperties = any>
   extends Omit<JSONSchema4, 'required'> {

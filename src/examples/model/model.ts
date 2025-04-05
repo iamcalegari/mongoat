@@ -6,15 +6,16 @@
 import {
   CreateIndexProps,
   Database,
-  DefaultProperties,
+  Methods,
   ModelValidationSchema,
+  SchemaWithDefaults,
 } from '@src/index';
 
 export const database = new Database({
   dbName: 'mongoat-example',
 });
 
-interface UserSchema extends DefaultProperties {
+interface UserSchema {
   username: string;
   password: string;
   mail: string;
@@ -22,7 +23,7 @@ interface UserSchema extends DefaultProperties {
   lastName: string;
 }
 
-const schema: ModelValidationSchema<UserSchema> = {
+const schema: ModelValidationSchema<SchemaWithDefaults<UserSchema>> = {
   bsonType: 'object',
   properties: {
     username: { bsonType: 'string', description: 'Username of the user' },
@@ -59,4 +60,8 @@ export const User = database.defineModel<UserSchema>({
   documentDefaults: {
     insertedAt: new Date(),
   },
+});
+
+User.pre<UserSchema>(Methods.INSERT, (document) => {
+  document.password = 'hashedPassword';
 });

@@ -25,7 +25,7 @@ export class Database {
   protected [kDb]: Db | undefined;
   protected [kConnectionUrl]: string = 'mongodb://127.0.0.1:27017/';
 
-  private static modelMap: Map<string, Model<Document>> = new Map();
+  private static modelMap = new Map();
 
   constructor(
     protected config: DatabaseConfig = {},
@@ -101,9 +101,9 @@ export class Database {
     validationQueryExpressions,
     validity = false,
   }: ModelSetup): Model<ModelType> {
-    const model = Database.modelMap.get(collectionName) as Model<ModelType>;
+    const model = Database.modelMap.get(collectionName);
 
-    if (model !== undefined) {
+    if (!!model) {
       return model;
     }
 
