@@ -1,6 +1,6 @@
 {
   "name": "mongoat",
-  "version": "1.0.0",
+  "version": "1.0.0-alpha",
   "description": "Back-end Development Repository for Abastos Engineering Report Management",
   "repository": "git@github.com:Abastos-App/main.git",
   "author": "iamcalegari <iamcalegari20@gmail.com>",
