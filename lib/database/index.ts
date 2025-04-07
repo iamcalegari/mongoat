@@ -8,10 +8,9 @@ import {
   ServerApiVersion,
 } from 'mongodb';
 
-import { Model } from '../model';
-import { ModelSetup } from '../model/types';
-import { Methods } from '../types';
-import { DatabaseConfig } from './types';
+import { Model } from '@/model';
+import { DatabaseConfig, ModelSetup } from '@/types';
+import { Methods } from '@utils/enums';
 
 const kClient = Symbol('kClient');
 const kDb = Symbol('kDb');
@@ -19,6 +18,8 @@ const kConnectionUrl = Symbol('kConnectionUrl');
 const kCreateClientConnection = Symbol('kCreateClientConnection');
 const kGetUrlAndDbName = Symbol('kGetUrlAndDbName');
 const kGetDbName = Symbol('kGetDbName');
+
+export type ObjectID = ObjectId;
 
 export class Database {
   protected [kClient]: MongoClient | undefined;

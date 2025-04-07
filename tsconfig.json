@@ -1,37 +1,42 @@
 {
   "ts-node": {
-    // Do not forget to `npm i -D tsconfig-paths`
     "require": ["tsconfig-paths/register"]
   },
   "compilerOptions": {
-    "target": "esnext",
+    "target": "es2019",
     "moduleResolution": "node",
     "module": "CommonJS",
-    "lib": ["ESNext"],
+    "lib": ["es2019"],
     "skipLibCheck": true,
-    "sourceMap": true,
-    "outDir": "dist",
-    "strict": true,
-    "noImplicitAny": true,
-    "strictNullChecks": true,
-    "strictFunctionTypes": true,
-    "noImplicitThis": true,
-    "resolveJsonModule": true,
-    "alwaysStrict": true,
-    "removeComments": true,
-    "noImplicitReturns": true,
-    "esModuleInterop": true,
+    "composite": true,
+
+    "sourceMap": false,
     "allowSyntheticDefaultImports": true,
+    "alwaysStrict": true,
+    "emitDecoratorMetadata": true,
+    "esModuleInterop": true,
+    "experimentalDecorators": true,
+    "noImplicitAny": true,
+    "noImplicitReturns": true,
+    "noImplicitThis": true,
+    "removeComments": true,
+    "resolveJsonModule": true,
+    "strict": true,
+    "strictFunctionTypes": true,
+    "strictNullChecks": true,
     "strictPropertyInitialization": false,
+
+    "outDir": "dist",
     "baseUrl": ".",
     "paths": {
-      "@src/*": ["./src/*"],
-      "@test/*": ["./test/*"]
+      "@/*": ["lib/*"],
+      "@examples/*": ["examples/*"],
+      "@types/*": ["lib/types/*"],
+      "@test/*": ["test/*"],
+      "@utils/*": ["utils/*"]
     },
-    "typeRoots": ["./**/types", "./node_modules/@types"],
-    "experimentalDecorators": true,
-    "emitDecoratorMetadata": true
+    "typeRoots": ["./node_modules/@types"]
   },
-  "include": ["./src/**/*"],
+  "include": ["utils", "examples", "index.ts", "lib"],
   "exclude": ["./node_modules/*", "./dist"]
 }

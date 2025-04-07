@@ -1,4 +1,4 @@
-import { Methods } from '@src/lib/types';
+import { Methods } from '../../../utils/enums';
 import { JSONSchema4 } from 'json-schema';
 import {
   CreateIndexesOptions,

@@ -19,8 +19,6 @@ import {
   WithId,
 } from 'mongodb';
 
-import { Database } from '../database';
-
 import {
   CreateIndexProps,
   CreateModelProps,
@@ -29,9 +27,9 @@ import {
   ModelDbValidationProps,
   ModelValidationSchema,
   ValidationQueryExpressions,
-} from './types';
-
-import { Methods } from '../types';
+} from '@/types/model';
+import { Methods } from '@utils/enums';
+import { Database } from '@/database';
 
 const kDatabase = Symbol('kDatabase');
 

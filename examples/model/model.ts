@@ -3,13 +3,13 @@
  * @see https://github.com/iamcalegari/mongoat
  */
 
+import { Database } from '@/database';
 import {
   CreateIndexProps,
-  Database,
-  Methods,
   ModelValidationSchema,
   SchemaWithDefaults,
-} from '@src/index';
+} from '@/types/model';
+import { Methods } from '@utils/enums';
 
 export const database = new Database({
   dbName: 'mongoat-example',
