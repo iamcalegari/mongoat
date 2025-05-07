@@ -10,7 +10,7 @@ import {
 
 import { Model } from '@/model';
 import { DatabaseConfig, ModelSetup } from '@/types';
-import { Methods } from '@utils/enums';
+import { METHODS } from '@/utils/enums';
 
 const kClient = Symbol('kClient');
 const kDb = Symbol('kDb');
@@ -18,6 +18,8 @@ const kConnectionUrl = Symbol('kConnectionUrl');
 const kCreateClientConnection = Symbol('kCreateClientConnection');
 const kGetUrlAndDbName = Symbol('kGetUrlAndDbName');
 const kGetDbName = Symbol('kGetDbName');
+const KModelProxyHandler = Symbol('KModelProxyHandler');
+const KModelMap = Symbol('KModelMap');
 
 export type ObjectID = ObjectId;
 
@@ -26,7 +28,7 @@ export class Database {
   protected [kDb]: Db | undefined;
   protected [kConnectionUrl]: string = 'mongodb://127.0.0.1:27017/';
 
-  private static modelMap = new Map();
+  private static [KModelMap] = new Map();
 
   constructor(
     protected config: DatabaseConfig = {},
@@ -93,7 +95,7 @@ export class Database {
     return this[kDb]?.stats();
   }
 
-  defineModel<ModelType extends Document>({
+  static defineModel<ModelType extends Document>({
     allowedMethods = [],
     indexes = [],
     schema,
@@ -102,7 +104,7 @@ export class Database {
     validationQueryExpressions,
     validity = false,
   }: ModelSetup): Model<ModelType> {
-    const model = Database.modelMap.get(collectionName);
+    const model = Database[KModelMap].get(collectionName);
 
     if (!!model) {
       return model;
@@ -110,14 +112,14 @@ export class Database {
 
     const _allowedMethods = validity
       ? [
-          Methods.DELETE,
-          Methods.FIND,
-          Methods.FIND_BY_ID,
-          Methods.FIND_MANY,
-          Methods.INSERT,
-          Methods.TOTAL,
-          Methods.UPDATE,
-          Methods.UPDATE_MANY,
+          METHODS.DELETE,
+          METHODS.FIND,
+          METHODS.FIND_BY_ID,
+          METHODS.FIND_MANY,
+          METHODS.INSERT,
+          METHODS.TOTAL,
+          METHODS.UPDATE,
+          METHODS.UPDATE_MANY,
         ]
       : allowedMethods;
 
@@ -130,9 +132,10 @@ export class Database {
       validationQueryExpressions,
       validity,
     });
-    const modelValue = new Proxy(newModel, this.modelProxyHandler());
 
-    Database.modelMap.set(collectionName, modelValue);
+    const modelValue = new Proxy(newModel, this[KModelProxyHandler]());
+
+    Database[KModelMap].set(collectionName, modelValue);
 
     return modelValue as Model<ModelType>;
   }
@@ -142,7 +145,7 @@ export class Database {
   }
 
   async setupCollections(): Promise<void> {
-    const modelArray = Database.modelMap.values();
+    const modelArray = Database[KModelMap].values();
 
     for (const model of modelArray) {
       await this.setupCollection(model);
@@ -206,9 +209,9 @@ export class Database {
     return result;
   }
 
-  private modelProxyHandler() {
+  static [KModelProxyHandler]() {
     return {
-      get(target: Model<Document>, prop: Methods, receiver: unknown) {
+      get(target: Model<Document>, prop: METHODS, receiver: unknown) {
         if (
           target.methods.includes(prop) &&
           !target.allowedMethods.includes(prop)
@@ -260,9 +263,11 @@ export class Database {
   private async setupIndexes(model: Model<Document>) {
     const collection = this[kDb]?.collection(model.collectionName);
 
-    await collection?.dropIndexes();
-
     const newIndexes = model.indexes;
+
+    if (!newIndexes.length) return;
+
+    await collection?.dropIndexes();
 
     for (const newIndex of newIndexes) {
       const { key, ...options } = newIndex;

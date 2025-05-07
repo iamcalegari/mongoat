@@ -28,7 +28,7 @@ import {
   ModelValidationSchema,
   ValidationQueryExpressions,
 } from '@/types/model';
-import { Methods } from '@utils/enums';
+import { METHODS } from '@/utils/enums';
 import { Database } from '@/database';
 
 const kDatabase = Symbol('kDatabase');
@@ -46,23 +46,23 @@ export class Model<ModelType extends Document = Document> {
 
   methods: string[];
 
-  allowedMethods: Methods[];
+  allowedMethods: METHODS[];
 
   documentDefaults: DocumentDefaults<ModelType>;
 
-  preMethod: Record<Methods, Function> = {
-    [Methods.UPDATE]: () => {},
-    [Methods.UPDATE_MANY]: () => {},
-    [Methods.INSERT]: () => {},
-    [Methods.FIND_MANY]: () => {},
-    [Methods.FIND]: () => {},
-    [Methods.TOTAL]: () => {},
-    [Methods.FIND_BY_ID]: () => {},
-    [Methods.DELETE]: () => {},
-    [Methods.AGGREGATE]: () => {},
-    [Methods.INSERT_MANY]: () => {},
-    [Methods.DELETE_MANY]: () => {},
-    [Methods.BULK_WRITE]: () => {},
+  preMethod: Record<METHODS, Function> = {
+    [METHODS.UPDATE]: () => {},
+    [METHODS.UPDATE_MANY]: () => {},
+    [METHODS.INSERT]: () => {},
+    [METHODS.FIND_MANY]: () => {},
+    [METHODS.FIND]: () => {},
+    [METHODS.TOTAL]: () => {},
+    [METHODS.FIND_BY_ID]: () => {},
+    [METHODS.DELETE]: () => {},
+    [METHODS.AGGREGATE]: () => {},
+    [METHODS.INSERT_MANY]: () => {},
+    [METHODS.DELETE_MANY]: () => {},
+    [METHODS.BULK_WRITE]: () => {},
   };
 
   static [kDatabase]: Database | undefined;
@@ -72,10 +72,10 @@ export class Model<ModelType extends Document = Document> {
     protected db?: Database
   ) {
     const {
-      allowedMethods,
+      allowedMethods = [],
       collectionName,
-      documentDefaults,
-      indexes,
+      documentDefaults = {} as DocumentDefaults<ModelType>,
+      indexes = [],
       schema,
       validationQueryExpressions,
     } = props;
@@ -95,7 +95,7 @@ export class Model<ModelType extends Document = Document> {
     this.validationAction = validationAction;
     this.validationLevel = validationLevel;
 
-    this.methods = Object.values(Methods);
+    this.methods = Object.values(METHODS);
   }
   static create<ModelType extends Document>(
     props: CreateModelProps<ModelType>
@@ -153,7 +153,7 @@ export class Model<ModelType extends Document = Document> {
   }
 
   pre<T extends ModelType>(
-    methodName: Methods,
+    methodName: METHODS,
     transformer: (
       this: UpdateFilter<T> & T,
       args: FindOneAndUpdateOptions &
@@ -182,7 +182,7 @@ export class Model<ModelType extends Document = Document> {
   ) {
     const _update = { ...update };
 
-    await this.preMethod[Methods.UPDATE].bind(_update)({
+    await this.preMethod[METHODS.UPDATE].bind(_update)({
       ...filter,
       ...options,
     });
@@ -212,7 +212,7 @@ export class Model<ModelType extends Document = Document> {
       ...update,
     };
 
-    await this.preMethod[Methods.UPDATE_MANY].bind(_update)(options);
+    await this.preMethod[METHODS.UPDATE_MANY].bind(_update)(options);
 
     const collection = Model[kDatabase]?.getCollection<ModelType>(
       this.collectionName
@@ -225,8 +225,6 @@ export class Model<ModelType extends Document = Document> {
         ...options,
       }
     ))!;
-
-    // console.log('Update Result: ', updateResult);
 
     return updateResult;
   }
@@ -256,7 +254,7 @@ export class Model<ModelType extends Document = Document> {
       ...document,
     };
 
-    await this.preMethod[Methods.INSERT].bind(_document)(options);
+    await this.preMethod[METHODS.INSERT].bind(_document)(options);
 
     const collection = Model[kDatabase]?.getCollection<ModelType>(
       this.collectionName
@@ -268,7 +266,6 @@ export class Model<ModelType extends Document = Document> {
       return { _id: insertedId, ..._document } as unknown as WithId<ModelType> &
         DefaultProperties;
     } catch (err: any) {
-      // console.log(JSON.stringify(err, null, 2));
       throw new MongoError(JSON.stringify(err, null, 2));
     }
   }
@@ -278,7 +275,7 @@ export class Model<ModelType extends Document = Document> {
     options: BulkWriteOptions = {}
   ) {
     documents.forEach(async (doc) => {
-      await this.preMethod[Methods.INSERT_MANY].bind(doc)(options);
+      await this.preMethod[METHODS.INSERT_MANY].bind(doc)(options);
     });
 
     const _documents = documents.map((doc) => ({
@@ -292,7 +289,6 @@ export class Model<ModelType extends Document = Document> {
     try {
       return collection.insertMany(_documents, options);
     } catch (err: any) {
-      // console.log(err);
       throw new MongoError(JSON.stringify(err, null, 2));
     }
   }

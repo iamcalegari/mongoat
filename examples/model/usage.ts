@@ -8,6 +8,8 @@ import { database, User } from './model';
 const main = async () => {
   await database.connect();
 
+  await database.cleanCollections();
+
   const document = await User.insert({
     username: 'foobar',
     mail: 'foo@bar.com',

@@ -1,6 +1,6 @@
 import { MongoClientOptions } from 'mongodb';
 
-export interface DatabaseConfig extends MongoClientOptions {
+export interface DatabaseConfig extends Partial<MongoClientOptions> {
   uri?: string;
   dbName?: string;
   username?: string;

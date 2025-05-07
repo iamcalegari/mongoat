@@ -62,6 +62,7 @@ typings/
 
 # typescript compiled code
 dist/
+lib/
 
 # lock files
 yarn.lock

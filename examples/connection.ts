@@ -3,7 +3,7 @@
  * @see https://github.com/iamcalegari/mongoat
  */
 
-import { Database } from 'index';
+import { Database } from '@/database';
 
 /*
   If you want to connect to a remote database or a custom local database,

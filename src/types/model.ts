@@ -1,4 +1,4 @@
-import { Methods } from '../../../utils/enums';
+import { METHODS } from '@/utils/enums';
 import { JSONSchema4 } from 'json-schema';
 import {
   CreateIndexesOptions,
@@ -25,9 +25,9 @@ export type DocumentDefaults<T extends Document> = OptionalUnlessRequiredId<T>;
 export interface CreateModelProps<ModelType extends Document> {
   collectionName: string;
   schema: ModelValidationSchema;
-  indexes: CreateIndexProps[];
-  allowedMethods: Methods[];
-  documentDefaults: DocumentDefaults<ModelType>;
+  indexes?: CreateIndexProps[];
+  allowedMethods?: METHODS[];
+  documentDefaults?: DocumentDefaults<ModelType>;
   validationQueryExpressions?: ValidationQueryExpressions;
   validity?: boolean;
 }
@@ -35,7 +35,7 @@ export interface CreateModelProps<ModelType extends Document> {
 export interface ValidationQueryExpressions extends Filter<Document> {}
 
 export interface ModelSetup {
-  allowedMethods?: Methods[];
+  allowedMethods?: METHODS[];
   indexes?: CreateIndexProps[];
   schema: ModelValidationSchema;
   collectionName: string;

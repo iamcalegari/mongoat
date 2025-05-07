@@ -1,4 +1,4 @@
-export enum Methods {
+export enum METHODS {
   AGGREGATE = 'aggregate',
   UPDATE = 'update',
   UPDATE_MANY = 'updateMany',

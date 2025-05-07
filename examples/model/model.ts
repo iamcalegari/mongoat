@@ -8,8 +8,9 @@ import {
   CreateIndexProps,
   ModelValidationSchema,
   SchemaWithDefaults,
-} from '@/types/model';
-import { Methods } from '@utils/enums';
+} from '@/types';
+
+import { METHODS } from '@/utils/enums';
 
 export const database = new Database({
   dbName: 'mongoat-example',
@@ -52,7 +53,7 @@ const indexes: CreateIndexProps[] = [
   },
 ];
 
-export const User = database.defineModel<UserSchema>({
+export const User = Database.defineModel<UserSchema>({
   collectionName: 'users',
   schema,
   indexes,
@@ -62,6 +63,6 @@ export const User = database.defineModel<UserSchema>({
   },
 });
 
-User.pre<UserSchema>(Methods.INSERT, (document) => {
-  document.password = 'hashedPassword';
+User.pre<UserSchema>(METHODS.INSERT, function () {
+  this.password = 'hashedPassword';
 });

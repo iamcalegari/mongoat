@@ -1,42 +1,58 @@
 {
-  "ts-node": {
-    "require": ["tsconfig-paths/register"]
-  },
   "compilerOptions": {
-    "target": "es2019",
-    "moduleResolution": "node",
-    "module": "CommonJS",
-    "lib": ["es2019"],
-    "skipLibCheck": true,
-    "composite": true,
-
-    "sourceMap": false,
-    "allowSyntheticDefaultImports": true,
-    "alwaysStrict": true,
-    "emitDecoratorMetadata": true,
-    "esModuleInterop": true,
-    "experimentalDecorators": true,
-    "noImplicitAny": true,
-    "noImplicitReturns": true,
-    "noImplicitThis": true,
-    "removeComments": true,
-    "resolveJsonModule": true,
+    "allowJs": true,
+    "checkJs": false,
     "strict": true,
-    "strictFunctionTypes": true,
-    "strictNullChecks": true,
-    "strictPropertyInitialization": false,
+    "alwaysStrict": true,
+    "target": "ES2022",
+    "skipLibCheck": true,
+    "lib": ["es2021", "ES2022.Error", "ES2022.Object"],
 
-    "outDir": "dist",
+    // We don't make use of tslib helpers, all syntax used is supported by target engine
+    "importHelpers": false,
+    "noEmitHelpers": true,
+
+    // Never emit error filled code
+    "noEmitOnError": true,
+
+    // We want the sourcemaps in a separate file
+    "inlineSourceMap": false,
+    "module": "NodeNext",
+    "moduleResolution": "nodenext",
+    "outDir": "lib",
+    "sourceMap": true,
+
+    // API-Extractor uses declaration maps to report problems in source, no need to distribute
+    "declaration": true,
+    // "declarationMap": true,
+
+    // we include sources in the release
+    "inlineSources": false,
+
+    // Prevents web types from being suggested by vscode.
+    "types": ["node"],
+    "forceConsistentCasingInFileNames": true,
+    "noImplicitOverride": true,
+    "noImplicitReturns": true,
+
+    // TODO(NODE-3659): Enable useUnknownInCatchVariables and add type assertions or remove unnecessary catch blocks
+    "useUnknownInCatchVariables": false,
+
     "baseUrl": ".",
     "paths": {
-      "@/*": ["lib/*"],
+      "@/*": ["src/*"],
       "@examples/*": ["examples/*"],
-      "@types/*": ["lib/types/*"],
       "@test/*": ["test/*"],
-      "@utils/*": ["utils/*"]
+      "@types/*": ["src/types/*"],
+      "@utils/*": ["src/utils/*"]
     },
     "typeRoots": ["./node_modules/@types"]
   },
-  "include": ["utils", "examples", "index.ts", "lib"],
-  "exclude": ["./node_modules/*", "./dist"]
+  "ts-node": {
+    "transpileOnly": true,
+    "compiler": "typescript-cached-transpile",
+    "require": ["tsconfig-paths/register"]
+  },
+  "include": ["src/utils", "examples", "src/**/*"],
+  "exclude": ["./node_modules/*", "./lib"]
 }
