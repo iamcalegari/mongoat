@@ -23,11 +23,11 @@ export interface ModelDbValidationProps {
 export type DocumentDefaults<T extends Document> = OptionalUnlessRequiredId<T>;
 
 export interface CreateModelProps<ModelType extends Document> {
-  collectionName: string;
-  schema: ModelValidationSchema;
-  indexes?: CreateIndexProps[];
   allowedMethods?: METHODS[];
+  collectionName: string;
   documentDefaults?: DocumentDefaults<ModelType>;
+  indexes?: CreateIndexProps[];
+  schema: ModelValidationSchema;
   validationQueryExpressions?: ValidationQueryExpressions;
   validity?: boolean;
 }
@@ -36,10 +36,10 @@ export interface ValidationQueryExpressions extends Filter<Document> {}
 
 export interface ModelSetup {
   allowedMethods?: METHODS[];
-  indexes?: CreateIndexProps[];
-  schema: ModelValidationSchema;
   collectionName: string;
   documentDefaults?: DocumentDefaults<any>;
+  indexes?: CreateIndexProps[];
+  schema: ModelValidationSchema;
   validationQueryExpressions?: ValidationQueryExpressions;
   validity?: boolean;
 }

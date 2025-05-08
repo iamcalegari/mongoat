@@ -67,10 +67,13 @@ export class Model<ModelType extends Document = Document> {
 
   static [kDatabase]: Database | undefined;
 
-  constructor(
-    props: CreateModelProps<ModelType>,
-    protected db?: Database
-  ) {
+  constructor(props: CreateModelProps<ModelType>) {
+    let model = Model[kDatabase]?.getModel(props.collectionName);
+
+    if (!!model) {
+      return model;
+    }
+
     const {
       allowedMethods = [],
       collectionName,
@@ -78,11 +81,25 @@ export class Model<ModelType extends Document = Document> {
       indexes = [],
       schema,
       validationQueryExpressions,
+      validity,
     } = props;
+
+    const _allowedMethods = validity
+      ? [
+          METHODS.DELETE,
+          METHODS.FIND,
+          METHODS.FIND_BY_ID,
+          METHODS.FIND_MANY,
+          METHODS.INSERT,
+          METHODS.TOTAL,
+          METHODS.UPDATE,
+          METHODS.UPDATE_MANY,
+        ]
+      : allowedMethods;
 
     this.collectionName = collectionName;
     this.indexes = indexes;
-    this.allowedMethods = allowedMethods;
+    this.allowedMethods = _allowedMethods;
     this.documentDefaults = documentDefaults;
 
     const { validationAction, validationLevel, validator } =
@@ -96,7 +113,11 @@ export class Model<ModelType extends Document = Document> {
     this.validationLevel = validationLevel;
 
     this.methods = Object.values(METHODS);
+
+    return Model[kDatabase]?.registerModel(this);
   }
+
+  /** @deprecated */
   static create<ModelType extends Document>(
     props: CreateModelProps<ModelType>
   ): Model<ModelType> {
