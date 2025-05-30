@@ -30,25 +30,26 @@ import {
 } from '@/types/model';
 import { METHODS } from '@/utils/enums';
 import { Database } from '@/database';
+import { toObjectId } from '@/utils';
 
 const kDatabase = Symbol('kDatabase');
 
 export class Model<ModelType extends Document = Document> {
-  collectionName: string;
+  collectionName!: string;
 
-  indexes: CreateIndexProps[];
+  indexes!: CreateIndexProps[];
 
-  validator: { $jsonSchema: ModelValidationSchema };
+  validator!: { $jsonSchema: ModelValidationSchema };
 
-  validationAction: string;
+  validationAction!: string;
 
-  validationLevel: string;
+  validationLevel!: string;
 
-  methods: string[];
+  methods!: string[];
 
-  allowedMethods: METHODS[];
+  allowedMethods!: METHODS[];
 
-  documentDefaults: DocumentDefaults<ModelType>;
+  documentDefaults!: DocumentDefaults<ModelType>;
 
   preMethod: Record<METHODS, Function> = {
     [METHODS.UPDATE]: () => {},
@@ -68,7 +69,11 @@ export class Model<ModelType extends Document = Document> {
   static [kDatabase]: Database | undefined;
 
   constructor(props: CreateModelProps<ModelType>) {
-    let model = Model[kDatabase]?.getModel(props.collectionName);
+    if (!Model[kDatabase]) {
+      throw new Error('Database not found');
+    }
+
+    let model = Model[kDatabase].getModel(props.collectionName);
 
     if (!!model) {
       return model;
@@ -114,7 +119,7 @@ export class Model<ModelType extends Document = Document> {
 
     this.methods = Object.values(METHODS);
 
-    return Model[kDatabase]?.registerModel(this);
+    Model[kDatabase].registerModel(this as unknown as Model<Document>);
   }
 
   /** @deprecated */
@@ -327,7 +332,7 @@ export class Model<ModelType extends Document = Document> {
 
   findById(documentId: ObjectId | string, options?: FindOptions) {
     return this.find(
-      { _id: Database.toObjectId(documentId) } as unknown as Filter<ModelType>,
+      { _id: toObjectId(documentId) } as unknown as Filter<ModelType>,
       options
     );
   }

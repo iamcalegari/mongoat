@@ -16,7 +16,6 @@
     "build": "tsc --project tsconfig.build.json && tsc-alias",
     "example": "ts-node --",
     "prebuild": "rimraf ./lib",
-    "prepublish": "npm run build",
     "publish": "npm publish --access public"
   },
   "dependencies": {
