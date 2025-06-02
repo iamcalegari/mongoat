@@ -7,7 +7,7 @@
 
 <p align="center">
   <a href="https://www.npmjs.com/package/@iamcalegari/mongoat">
-    <img src="https://img.shields.io/npm/v/mongoat.svg" alt="NPM Version"/>
+    <img src="https://img.shields.io/npm/v/@iamcalegari/mongoat.svg" alt="NPM Version"/>
   </a>
 </p>
 
