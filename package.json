@@ -18,8 +18,7 @@
   "scripts": {
     "build": "tsc --project tsconfig.build.json && tsc-alias",
     "example": "ts-node --",
-    "prebuild": "rimraf ./lib",
-    "publish": "npm publish --access public"
+    "prebuild": "rimraf ./lib"
   },
   "dependencies": {
     "bson": "6.10.3",
