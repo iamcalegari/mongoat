@@ -2,7 +2,10 @@
   "name": "@iamcalegari/mongoat",
   "version": "1.0.32-alpha",
   "description": "A ligthweight ODM library for MongoDB",
-  "repository": "git@github.com:iamcalegari/mongoat.git",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/iamcalegari/mongoat.git"
+  },
   "author": "iamcalegari <iamcalegari20@gmail.com>",
   "license": "MIT",
   "private": false,
