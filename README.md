@@ -6,9 +6,6 @@
 <p align="center"><b>Fast MongoDB ODM</b></p>
 
 <p align="center">
-  <a href="https://github.com/iamcalegari/mongoat/actions/workflows/ci.yml">
-    <img src="https://github.com/iamcalegari/mongoat/actions/workflows/ci.yml/badge.svg" alt="Build Status"/>
-  </a>
   <a href="https://www.npmjs.com/package/@iamcalegari/mongoat">
     <img src="https://img.shields.io/npm/v/mongoat.svg" alt="NPM Version"/>
   </a>
