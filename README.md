@@ -11,6 +11,8 @@
   </a>
 </p>
 
+### _🚧 This documentation is a work in progress so it may be incomplete or incorrect. If you find any errors or have suggestions, please [open an issue](https://github.com/iamcalegari/mongoat/issues/new)._
+
 ---
 
 Mongoat is a fast, extensible, and type-safe ODM (Object Document Mapper) for MongoDB, designed for Node.js environments. It focuses on high performance and flexibility, providing a modern API and advanced extensibility compared to existing solutions.

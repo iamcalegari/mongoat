@@ -1,6 +1,6 @@
 {
   "name": "@iamcalegari/mongoat",
-  "version": "1.0.33-alpha",
+  "version": "1.0.34-alpha",
   "description": "A ligthweight ODM library for MongoDB",
   "repository": {
     "type": "git",
