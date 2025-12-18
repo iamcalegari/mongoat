@@ -52,18 +52,18 @@ export class Model<ModelType extends Document = Document> {
   documentDefaults!: DocumentDefaults<ModelType>;
 
   preMethod: Record<METHODS, Function> = {
-    [METHODS.UPDATE]: () => {},
-    [METHODS.UPDATE_MANY]: () => {},
-    [METHODS.INSERT]: () => {},
-    [METHODS.FIND_MANY]: () => {},
-    [METHODS.FIND]: () => {},
-    [METHODS.TOTAL]: () => {},
-    [METHODS.FIND_BY_ID]: () => {},
-    [METHODS.DELETE]: () => {},
-    [METHODS.AGGREGATE]: () => {},
-    [METHODS.INSERT_MANY]: () => {},
-    [METHODS.DELETE_MANY]: () => {},
-    [METHODS.BULK_WRITE]: () => {},
+    [METHODS.UPDATE]: () => { },
+    [METHODS.UPDATE_MANY]: () => { },
+    [METHODS.INSERT]: () => { },
+    [METHODS.FIND_MANY]: () => { },
+    [METHODS.FIND]: () => { },
+    [METHODS.TOTAL]: () => { },
+    [METHODS.FIND_BY_ID]: () => { },
+    [METHODS.DELETE]: () => { },
+    [METHODS.AGGREGATE]: () => { },
+    [METHODS.INSERT_MANY]: () => { },
+    [METHODS.DELETE_MANY]: () => { },
+    [METHODS.BULK_WRITE]: () => { },
   };
 
   static [kDatabase]: Database | undefined;
@@ -91,15 +91,15 @@ export class Model<ModelType extends Document = Document> {
 
     const _allowedMethods = validity
       ? [
-          METHODS.DELETE,
-          METHODS.FIND,
-          METHODS.FIND_BY_ID,
-          METHODS.FIND_MANY,
-          METHODS.INSERT,
-          METHODS.TOTAL,
-          METHODS.UPDATE,
-          METHODS.UPDATE_MANY,
-        ]
+        METHODS.DELETE,
+        METHODS.FIND,
+        METHODS.FIND_BY_ID,
+        METHODS.FIND_MANY,
+        METHODS.INSERT,
+        METHODS.TOTAL,
+        METHODS.UPDATE,
+        METHODS.UPDATE_MANY,
+      ]
       : allowedMethods;
 
     this.collectionName = collectionName;
@@ -147,7 +147,7 @@ export class Model<ModelType extends Document = Document> {
           properties: {
             _id: {
               bsonType: 'objectId',
-              description: 'Identificador único do registro na base de dados',
+              description: 'Id of the document in the database',
             },
             ...this.includeAdditionalPropertiesFalse(schema).properties,
           },

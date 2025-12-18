@@ -6,8 +6,11 @@
 import { database, User } from './model';
 
 const main = async () => {
+  console.log('🔌 Connecting to database...');
   await database.connect();
 
+  console.log('⚙️  Setting up collections...');
+  await database.setupCollections();
   await database.cleanCollections();
 
   const document = await User.insert({

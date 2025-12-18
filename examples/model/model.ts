@@ -11,6 +11,7 @@ import {
 } from '@/types';
 
 import { METHODS } from '@/utils/enums';
+import { Model } from '@/model';
 
 export const database = new Database({
   dbName: 'mongoat-example',
@@ -53,7 +54,7 @@ const indexes: CreateIndexProps[] = [
   },
 ];
 
-export const User = Database.defineModel<UserSchema>({
+export const User = new Model<UserSchema>({
   collectionName: 'users',
   schema,
   indexes,
@@ -62,6 +63,7 @@ export const User = Database.defineModel<UserSchema>({
     insertedAt: new Date(),
   },
 });
+
 
 User.pre<UserSchema>(METHODS.INSERT, function () {
   this.password = 'hashedPassword';

@@ -20,7 +20,7 @@ export interface ModelDbValidationProps {
   };
 }
 
-export type DocumentDefaults<T extends Document> = OptionalUnlessRequiredId<T>;
+export type DocumentDefaults<T extends Document> = Partial<OptionalUnlessRequiredId<T>> | Partial<SchemaWithDefaults<OptionalUnlessRequiredId<T>>>;
 
 export interface CreateModelProps<ModelType extends Document> {
   allowedMethods?: METHODS[];
@@ -32,7 +32,7 @@ export interface CreateModelProps<ModelType extends Document> {
   validity?: boolean;
 }
 
-export interface ValidationQueryExpressions extends Filter<Document> {}
+export interface ValidationQueryExpressions extends Filter<Document> { }
 
 export interface ModelSetup {
   allowedMethods?: METHODS[];

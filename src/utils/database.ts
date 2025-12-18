@@ -9,7 +9,7 @@ import { ObjectId } from 'mongodb';
  */
 
 export function toObjectId(
-  inputId?: string | number | ObjectId | ObjectIdLike | Uint8Array
+  inputId?: string | ObjectId | ObjectIdLike | Uint8Array<ArrayBufferLike> | undefined
 ): ObjectId {
   return new ObjectId(inputId);
 }
