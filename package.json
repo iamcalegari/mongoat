@@ -23,7 +23,8 @@
   "dependencies": {
     "bson": "7.0.0",
     "json-schema": "0.4.0",
-    "mongodb": "7.0.0"
+    "mongodb": "7.0.0",
+    "reflect-metadata": "^0.2.2"
   },
   "devDependencies": {
     "@typescript-eslint/eslint-plugin": "8.50.0",
