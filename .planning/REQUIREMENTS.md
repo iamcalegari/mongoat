@@ -87,7 +87,40 @@
 
 | REQ-ID | Phase | Status |
 |--------|-------|--------|
-| (preenchido pelo roadmap) | | |
+| HOOK-01 | Phase 2 | Pending |
+| HOOK-02 | Phase 2 | Pending |
+| HOOK-03 | Phase 2 | Pending |
+| HOOK-04 | Phase 2 | Pending |
+| HOOK-05 | Phase 2 | Pending |
+| API-01 | Phase 2 | Pending |
+| API-02 | Phase 2 | Pending |
+| API-03 | Phase 2 | Pending |
+| API-04 | Phase 2 | Pending |
+| QUAL-01 | Phase 1 | Pending |
+| QUAL-02 | Phase 3 | Pending |
+| QUAL-03 | Phase 3 | Pending |
+| QUAL-04 | Phase 1 | Pending |
+| SEC-01 | Phase 3 | Pending |
+| SEC-02 | Phase 3 | Pending |
+| SEC-03 | Phase 3 | Pending |
+| SEC-04 | Phase 3 | Pending |
+| REL-01 | Phase 4 | Pending |
+| REL-02 | Phase 1 | Pending |
+| REL-03 | Phase 4 | Pending |
+| REL-04 | Phase 4 | Pending |
+| DECO-01 | Phase 5 | Pending |
+| DECO-02 | Phase 5 | Pending |
+| DECO-03 | Phase 5 | Pending |
+| DECO-04 | Phase 5 | Pending |
+| PLUG-01 | Phase 6 | Pending |
+| PLUG-02 | Phase 6 | Pending |
+| PLUG-03 | Phase 6 | Pending |
+| DOCS-01 | Phase 7 | Pending |
+| DOCS-02 | Phase 7 | Pending |
+| DOCS-03 | Phase 7 | Pending |
+| DOCS-04 | Phase 7 | Pending |
+
+**Coverage:** 32/32 requisitos v1 mapeados — cada um para exatamente uma fase, sem órfãos nem duplicatas.
 
 ---
-*Requirements defined: 2026-07-03 — 30 requisitos v1 em 8 categorias*
+*Requirements defined: 2026-07-03 — 32 requisitos v1 em 8 categorias*
