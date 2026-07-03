@@ -1,0 +1,94 @@
+# Mongoat
+
+## What This Is
+
+Mongoat é um ODM (Object Document Mapper) leve, rápido e type-safe para MongoDB em Node.js/TypeScript, publicado no npm como `@iamcalegari/mongoat`. Oferece uma API moderna sobre o driver oficial sem escondê-lo: models com CRUD completo, validação server-side por JSON Schema, hooks de transformação e controle de métodos permitidos via Proxy — para desenvolvedores que querem produtividade de ODM mantendo controle total do MongoDB nativo.
+
+## Core Value
+
+Ser um ODM fino e extensível: produtividade de ODM sem abrir mão do controle e do acesso direto ao driver nativo do MongoDB.
+
+## Requirements
+
+### Validated
+
+<!-- Capacidades existentes, inferidas do código e do mapa em .planning/codebase/ -->
+
+- ✓ Conexão gerenciada com MongoDB (config via objeto ou env vars; `serverApi` v1 strict em produção) — existing
+- ✓ CRUD completo no Model: insert/insertMany, find/findById/findMany, update/updateMany, delete/deleteMany, total, aggregate, bulkWrite — existing
+- ✓ Hooks `pre` por método para transformação de documentos — existing
+- ✓ Validação server-side via `$jsonSchema` (collMod) com `additionalProperties: false` recursivo — existing
+- ✓ Setup automático de collections, validators e índices (`setupCollections`) — existing
+- ✓ Transações via `withTransaction` — existing
+- ✓ Gating de métodos permitidos por model via Proxy — existing
+- ✓ Registro global de models com reuso (singleton por collection) — existing
+- ✓ Defaults de documento aplicados em inserções (`documentDefaults`) — existing
+
+### Active
+
+<!-- Escopo atual. Hipóteses até serem entregues e validadas. -->
+
+- [ ] Publicar v1.0.0 estável (sair do alpha; API estabilizada com semver disciplinado)
+- [ ] API de definição de schema ergonômica e type-safe — decorators `@Schema`/`@Description`/`@Pre`/`@Pattern`/`@Optional` (rascunho em `src/schema/index.ts`); substituir vs. coexistir com a API de objetos: **decidir na pesquisa**
+- [ ] Escape hatch nativo: expor `Collection`/`Db`/`MongoClient` para uso direto do driver
+- [ ] Options nativas do driver aceitas e repassadas em todos os métodos do Model
+- [ ] Sistema de plugins/middleware para estender Models (métodos customizados, hooks reutilizáveis)
+- [ ] Hooks pre/post completos em todos os métodos (hoje só `pre`, um handler por método)
+- [ ] Suíte de testes (unitários + integração) com CI
+- [ ] Pipeline de CI/CD com publicação automatizada no npm
+- [ ] Site de documentação dedicado com guias e referência de API
+- [ ] Corrigir bugs conhecidos mapeados em `.planning/codebase/CONCERNS.md` (pre-hooks não aguardados em `insertMany`, binding perdido no proxy handler, tipo de retorno inconsistente em `find()`)
+
+### Out of Scope
+
+<!-- Limites explícitos. Inclui razão para evitar re-adição. -->
+
+- Suporte a outros bancos além do MongoDB — o foco é ser um ODM Mongo-first, fino sobre o driver oficial
+- Recursos de aplicação (auth, cache, filas, HTTP) — é uma biblioteca de dados, não um framework
+- (demais exclusões serão definidas na etapa de requisitos)
+
+## Context
+
+- Brownfield: codebase pequeno (~1k linhas em `src/`), mapeado em `.planning/codebase/` (7 documentos, 2026-07-03)
+- `src/schema/index.ts` contém apenas um rascunho comentado da API de decorators — é a direção desejada pelo autor
+- Zero testes hoje (ts-jest nas devDeps, sem arquivos nem script de teste); README marcado como work in progress
+- Publicado no npm como `@iamcalegari/mongoat@1.0.34-alpha` (acesso público)
+- `CONCERNS.md` lista bugs conhecidos, riscos de segurança (`toObjectId` sem validação, stringify de erros expondo detalhes, filtros sem sanitização), áreas frágeis (registry estático sem thread-safety, casts sem null-check, mutação de schema em `includeAdditionalPropertiesFalse`) e lacunas (`CUSTOM_VALIDATION.UNIQUE` nunca implementado)
+- Dependências de runtime mínimas: `bson`, `json-schema` (0.4.0, antigo — avaliar remoção/substituição na pesquisa), `mongodb` v7
+
+## Constraints
+
+- **Arquitetura**: manter a arquitetura atual baseada em Proxy (gating de métodos e registro de models) — decisão do autor
+- **Dependências**: mínimo possível de dependências de runtime; preferir recursos nativos do driver oficial
+- **Segurança**: seguir as boas práticas de segurança e desenvolvimento recomendadas pelo MongoDB (validação server-side, credenciais via env vars, `serverApi` strict em produção, queries injection-safe)
+- **Compatibilidade**: Node >= 16.20.1; driver `mongodb` v7; TypeScript 5.x
+- **Distribuição**: pacote npm público — mudanças de API exigem versionamento semântico disciplinado
+
+## Key Decisions
+
+| Decision | Rationale | Outcome |
+|----------|-----------|---------|
+| Decorators: substituir ou coexistir com a API de objetos | Definir com base na pesquisa (TS 5 standard decorators vs experimental, experiência de typegoose/papr) | — Pending |
+| Documentação em site dedicado (VitePress/Docusaurus ou similar) | Profissionalizar a lib para a v1.0 | — Pending |
+| Manter arquitetura de Proxy | Já validada no uso atual; base do gating e da extensibilidade | ✓ Good |
+| Mínimo de dependências de runtime | Lib leve, menos superfície de risco e de manutenção | ✓ Good |
+
+## Evolution
+
+This document evolves at phase transitions and milestone boundaries.
+
+**After each phase transition** (via `/gsd-transition`):
+1. Requirements invalidated? → Move to Out of Scope with reason
+2. Requirements validated? → Move to Validated with phase reference
+3. New requirements emerged? → Add to Active
+4. Decisions to log? → Add to Key Decisions
+5. "What This Is" still accurate? → Update if drifted
+
+**After each milestone** (via `/gsd-complete-milestone`):
+1. Full review of all sections
+2. Core Value check — still the right priority?
+3. Audit Out of Scope — reasons still valid?
+4. Update Context with current state
+
+---
+*Last updated: 2026-07-03 after initialization*
