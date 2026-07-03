@@ -1,0 +1,93 @@
+# Requirements — Mongoat v1.0
+
+**Defined:** 2026-07-03
+**Milestone:** v1.0 estável + diferenciais (decorators, plugins, docs site)
+
+"Dev" = desenvolvedor que consome a lib.
+
+## v1 Requirements
+
+### Hooks & Extensibilidade
+
+- [ ] **HOOK-01**: Dev pode registrar múltiplos handlers `pre` por método; executam em ordem de registro, aguardados sequencialmente em todos os caminhos (incluindo `insertMany`)
+- [ ] **HOOK-02**: Dev pode registrar hooks `post` em todos os métodos CRUD, com acesso ao resultado da operação via contexto do hook
+- [ ] **HOOK-03**: Erro lançado em pre-hook aborta a operação antes da chamada ao driver; erro em post-hook propaga ao caller por padrão
+- [ ] **HOOK-04**: Dev pode registrar post-hook `fireAndForget` (opt-in explícito) cujos erros não propagam
+- [ ] **HOOK-05**: Executor de hooks tem guard contra recursão infinita quando um hook chama métodos do próprio model
+
+### API Thin (controle nativo)
+
+- [ ] **API-01**: Todos os métodos do Model aceitam e repassam as options nativas do driver, com tipos do driver (`FindOptions`, `AggregateOptions`, `BulkWriteOptions`, etc.)
+- [ ] **API-02**: Dev pode acessar a `Collection` nativa via `model.getCollection()` (bypass de hooks/gating, documentado como tal)
+- [ ] **API-03**: Dev pode acessar `MongoClient` e `Db` nativos via `database.getClient()` / `database.getDb()`
+- [ ] **API-04**: Todos os métodos públicos têm tipos de retorno TS precisos e consistentes (ex.: `find()` retorna `Promise<WithId<T> | null>`, sem união com `null` síncrono)
+
+### Qualidade
+
+- [ ] **QUAL-01**: Bugs conhecidos de `.planning/codebase/CONCERNS.md` corrigidos: pre-hooks não aguardados em `insertMany`, binding perdido no proxy handler, tipo de retorno de `find()`, race condition do registry estático, mutação de schema em `includeAdditionalPropertiesFalse`
+- [ ] **QUAL-02**: Suíte de testes unitários + integração (vitest + mongodb-memory-server) cobrindo todos os métodos públicos, incluindo cenários de erro e concorrência
+- [ ] **QUAL-03**: CI (GitHub Actions) executa testes, lint e build em todo push/PR
+- [ ] **QUAL-04**: Dependência `json-schema` 0.4.0 removida do runtime (validação é server-side via `$jsonSchema`)
+
+### Segurança
+
+- [ ] **SEC-01**: Filtros fornecidos pelo usuário podem ser sanitizados (utilitário `sanitizeFilter`); `$where` é rejeitado incondicionalmente pela lib
+- [ ] **SEC-02**: Conversão de ObjectId valida com `ObjectId.isValid` e lança erro tipado e documentado em entrada inválida
+- [ ] **SEC-03**: Erros re-lançados não expõem stack traces nem detalhes internos (mensagens sanitizadas; sem `JSON.stringify` do erro inteiro)
+- [ ] **SEC-04**: `setupIndexes` compara índices existentes vs desejados e só recria o que mudou (sem drop-recreate incondicional)
+
+### Release Engineering
+
+- [ ] **REL-01**: Pipeline de release com changesets: CHANGELOG gerado, versionamento via PR, publicação npm automatizada no merge
+- [ ] **REL-02**: Build dual CJS/ESM (tsdown) com `exports` map correto, validado por `are-the-types-wrong` como gate de CI
+- [ ] **REL-03**: `v1.0.0-rc` publicado com auditoria de API (diff alpha→v1) antes da tag final
+- [ ] **REL-04**: `v1.0.0` estável publicada no npm com política semver documentada e versões alpha deprecadas (`npm deprecate`)
+
+### Schema Decorators (TC39)
+
+- [ ] **DECO-01**: Dev pode definir schema via decorators TC39 padrão (`@Schema`, `@Prop`/`@BsonType`, `@Description`, `@Optional`, `@Pattern`) sem `reflect-metadata` e sem flags experimentais no tsconfig
+- [ ] **DECO-02**: Dev pode registrar hooks no nível da classe via `@Pre`
+- [ ] **DECO-03**: Classes decoradas compilam (`Schema.compile`) para o mesmo `ModelValidationSchema` da API de objetos; as duas APIs coexistem como cidadãs de primeira classe
+- [ ] **DECO-04**: Construtor do Model aceita classe decorada ou objeto plano de forma transparente
+
+### Plugins
+
+- [ ] **PLUG-01**: Dev pode aplicar plugins por model via `plugins[]` no construtor (aplicados antes do wrap do Proxy)
+- [ ] **PLUG-02**: Dev pode registrar plugin global via `Model.plugin()`, com enforcement de ordem (erro claro se chamado após a construção do primeiro model)
+- [ ] **PLUG-03**: Plugins recebem contexto tipado e selado (`PluginContext`): podem registrar hooks e statics; não podem mutar schema/validator/allowedMethods
+
+### Documentação
+
+- [ ] **DOCS-01**: Site VitePress publicado com quick start e guias (hooks, plugins, decorators, segurança, escape hatch)
+- [ ] **DOCS-02**: Referência de API gerada por TypeDoc (typedoc-plugin-markdown) integrada ao site
+- [ ] **DOCS-03**: Guia de migração alpha→v1.0 documentando todas as mudanças de API
+- [ ] **DOCS-04**: README renovado com quick start funcional, apontando para o site
+
+## v2 Requirements (deferred)
+
+- **Hooks em transações**: contexto de hook carrega a `session` de `withTransaction` — threading complexo, casos de uso incertos até haver adoção
+- **Projection types estritos** (estilo papr v11): alta complexidade de tipos, escopo de major
+- **`unregisterModel()` / eviction do registry**: só relevante para apps com centenas de models dinâmicos
+- **Connection pooling exposto/documentado** em `DatabaseConfig` (maxPoolSize/minPoolSize com defaults sensatos)
+
+## Out of Scope
+
+- **Populate / referências de documento (`.populate()`, sugar de `$lookup`)** — incentiva padrões relacionais em document DB e N+1 queries; usar `aggregate()` com `$lookup` (já exposto); documentar o padrão
+- **Virtual fields / propriedades computadas** — concern da camada de aplicação, não do ODM
+- **Query builder chainable (`.where().gt()`)** — DSL paralela que precisa acompanhar o driver; o filtro nativo já é composável e tipado
+- **Tooling de schema migration** — domínio separado (recomendar `migrate-mongo`)
+- **Gerência multi-database/multi-tenant** — instanciar `Database` separados; fora do escopo declarado
+- **Validação client-side (class-validator etc.)** — `$jsonSchema` server-side é o caminho MongoDB-native; duplicaria lógica e adicionaria dependência
+- **Discriminators / herança de models** — mapeia mal para o modelo de documentos; documentar alternativas
+- **Wrapper de change streams** — `collection.watch()` nativo via escape hatch já é ergonômico
+- **Suporte a outros bancos** — ODM Mongo-first por definição
+- **Features de aplicação (auth, cache, filas, HTTP)** — é uma biblioteca de dados, não um framework
+
+## Traceability
+
+| REQ-ID | Phase | Status |
+|--------|-------|--------|
+| (preenchido pelo roadmap) | | |
+
+---
+*Requirements defined: 2026-07-03 — 30 requisitos v1 em 8 categorias*
