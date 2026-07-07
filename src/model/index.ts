@@ -397,7 +397,10 @@ export class Model<ModelType extends Document = Document> {
 
     const collection = this.getCollectionOrThrow();
     try {
-      return collection.insertMany(_documents, options);
+      // WR-01: sem o `await`, a Promise rejeitada do driver escapava do
+      // try/catch (código morto) — mesma classe do bug de hooks não
+      // aguardados. `return await` garante que rejeições passem pelo catch.
+      return await collection.insertMany(_documents, options);
     } catch (err: any) {
       throw new MongoError(JSON.stringify(err, null, 2));
     }
@@ -436,7 +439,7 @@ export class Model<ModelType extends Document = Document> {
     return collection.countDocuments(filter, options);
   }
 
-  bulkWrite(
+  async bulkWrite(
     operations: AnyBulkWriteOperation<ModelType>[],
     options?: BulkWriteOptions
   ) {
@@ -459,7 +462,8 @@ export class Model<ModelType extends Document = Document> {
     const collection = this.getCollectionOrThrow();
 
     try {
-      return collection.bulkWrite(_operations, options ?? {});
+      // WR-01: `return await` — ver comentário equivalente em insertMany.
+      return await collection.bulkWrite(_operations, options ?? {});
     } catch (err: any) {
       throw new MongoError(JSON.stringify(err, null, 2));
     }
