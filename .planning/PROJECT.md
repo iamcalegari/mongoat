@@ -23,6 +23,9 @@ Ser um ODM fino e extensível: produtividade de ODM sem abrir mão do controle e
 - ✓ Gating de métodos permitidos por model via Proxy — existing
 - ✓ Registro global de models com reuso (singleton por collection) — existing
 - ✓ Defaults de documento aplicados em inserções (`documentDefaults`) — existing
+- ✓ Bugs conhecidos de `.planning/codebase/CONCERNS.md` corrigidos (pre-hooks aguardados em `insertMany`, Proxy binding, tipo de `find()`, registro atômico, schema sem mutação) + 2 bugs extras descobertos e corrigidos — Validated in Phase 1
+- ✓ Build dual CJS/ESM via tsdown com `exports` map validado por are-the-types-wrong + publint; `json-schema` removida do runtime — Validated in Phase 1
+- ✓ Infra de testes vitest + testcontainers (MongoDB real em Docker), 20 testes de regressão/smoke — Validated in Phase 1
 
 ### Active
 
@@ -37,7 +40,6 @@ Ser um ODM fino e extensível: produtividade de ODM sem abrir mão do controle e
 - [ ] Suíte de testes (unitários + integração) com CI
 - [ ] Pipeline de CI/CD com publicação automatizada no npm
 - [ ] Site de documentação dedicado com guias e referência de API
-- [ ] Corrigir bugs conhecidos mapeados em `.planning/codebase/CONCERNS.md` (pre-hooks não aguardados em `insertMany`, binding perdido no proxy handler, tipo de retorno inconsistente em `find()`)
 
 ### Out of Scope
 
@@ -51,7 +53,8 @@ Ser um ODM fino e extensível: produtividade de ODM sem abrir mão do controle e
 
 - Brownfield: codebase pequeno (~1k linhas em `src/`), mapeado em `.planning/codebase/` (7 documentos, 2026-07-03)
 - `src/schema/index.ts` contém apenas um rascunho comentado da API de decorators — é a direção desejada pelo autor
-- Zero testes hoje (ts-jest nas devDeps, sem arquivos nem script de teste); README marcado como work in progress
+- Fase 1 completa (2026-07-07): base sem bugs conhecidos, build dual CJS/ESM (tsdown) e infra de testes vitest+testcontainers (20 testes verdes contra MongoDB real); code review advisory registrou 2 críticos + 11 warnings novos em `01-REVIEW.md` (backlog)
+- README marcado como work in progress
 - Publicado no npm como `@iamcalegari/mongoat@1.0.34-alpha` (acesso público)
 - `CONCERNS.md` lista bugs conhecidos, riscos de segurança (`toObjectId` sem validação, stringify de erros expondo detalhes, filtros sem sanitização), áreas frágeis (registry estático sem thread-safety, casts sem null-check, mutação de schema em `includeAdditionalPropertiesFalse`) e lacunas (`CUSTOM_VALIDATION.UNIQUE` nunca implementado)
 - Dependências de runtime mínimas: `bson`, `json-schema` (0.4.0, antigo — avaliar remoção/substituição na pesquisa), `mongodb` v7
@@ -91,4 +94,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-07-03 after initialization*
+*Last updated: 2026-07-07 after Phase 1 completion*
