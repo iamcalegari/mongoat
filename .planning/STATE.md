@@ -2,18 +2,18 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: "**Goal**: A API do alpha é auditada e estabilizada deliberadamente, e então publicada como v1.0.0 com semver disciplinado e um pipeline de release automatizado."
-current_phase: 2
-current_phase_name: Sistema de hooks completo e API thin nativa
+current_phase: 02
+current_phase_name: sistema-de-hooks-completo-e-api-thin-nativa
 status: executing
 stopped_at: Phase 2 context gathered
-last_updated: "2026-07-07T17:39:03.467Z"
+last_updated: "2026-07-07T18:04:21.934Z"
 last_activity: 2026-07-07
-last_activity_desc: Phase 01 complete, transitioned to Phase 2
+last_activity_desc: Phase 02 execution started
 progress:
   total_phases: 7
   completed_phases: 1
-  total_plans: 5
-  completed_plans: 5
+  total_plans: 8
+  completed_plans: 6
   percent: 14
 ---
 
@@ -24,14 +24,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-03)
 
 **Core value:** Ser um ODM fino e extensível — produtividade de ODM sem abrir mão do controle e do acesso direto ao driver nativo do MongoDB.
-**Current focus:** Phase 01 — funda-o-core-sem-bugs-e-build-moderno
+**Current focus:** Phase 02 — sistema-de-hooks-completo-e-api-thin-nativa
 
 ## Current Position
 
-Phase: 2 — Sistema de hooks completo e API thin nativa
-Plan: Not started
+Phase: 02 (sistema-de-hooks-completo-e-api-thin-nativa) — EXECUTING
+Plan: 2 of 3
 Status: Ready to execute
-Last activity: 2026-07-07 — Phase 01 complete, transitioned to Phase 2
+Last activity: 2026-07-07 — Phase 02 execution started
 
 Progress: [░░░░░░░░░░] 0%
 
@@ -60,6 +60,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 01 P03 | 20min | 2 tasks | 4 files |
 | Phase 01 P04 | 12min | 2 tasks | 5 files |
 | Phase 01 P05 | 35min | 3 tasks | 7 files |
+| Phase 02 P01 | 20min | 3 tasks | 14 files |
 
 ## Accumulated Context
 
@@ -83,6 +84,9 @@ Recent decisions affecting current work:
 - [Phase 01-05]: isSameConfig compara allowedMethods e o validator ja construido via JSON.stringify (sem lib de deep-equal) para detectar config divergente no registro de model (D-06)
 - [Phase 01-05]: validator e construido no constructor ANTES do early-return de config existente, mantendo o constructor sincrono (D-07) enquanto isSameConfig ja tem os dados prontos para comparar
 - [Phase 01-05]: delete() corrigido (Rule 1): mongodb@7 findOneAndDelete resolve o documento diretamente, sem o wrapper {value} de versoes antigas do driver — result?.value sempre retornava undefined
+- [Phase 02-01]: INSERT_MANY ctx usa document (singular, por-doc) alem de documents (batch) - pre hooks rodam por documento, post hooks rodam uma vez para o batch inteiro
+- [Phase 02-01]: Todos os 12 metodos CRUD agora passam pelo pipeline assincrono de hooks - metodos de leitura deixam de lancar MongoatError sincronamente quando desconectados, agora rejeitam a Promise
+- [Phase 02-01]: pre()/post() acumulam (push) em vez de sobrescrever (D-01) - breaking change intencional em alpha, quebra o padrao antigo de resetar hooks com pre() no-op
 
 ### Pending Todos
 
@@ -107,6 +111,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-07T15:44:02.730Z
+Last session: 2026-07-07T18:03:22.655Z
 Stopped at: Phase 2 context gathered
 Resume file: .planning/phases/02-sistema-de-hooks-completo-e-api-thin-nativa/02-CONTEXT.md
