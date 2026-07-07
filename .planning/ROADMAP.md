@@ -13,7 +13,7 @@ Mongoat é uma lib brownfield publicada como `@iamcalegari/mongoat@1.0.34-alpha`
 
 Decimal phases appear between their surrounding integers in numeric order.
 
-- [ ] **Phase 1: Fundação — Core sem bugs e build moderno** - Corrige bugs conhecidos, remove `json-schema` e configura build dual CJS/ESM
+- [x] **Phase 1: Fundação — Core sem bugs e build moderno** - Corrige bugs conhecidos, remove `json-schema` e configura build dual CJS/ESM (completed 2026-07-07)
 - [ ] **Phase 2: Sistema de hooks completo e API thin nativa** - Hooks pre/post completos, options nativas em todos os métodos e escape hatch
 - [ ] **Phase 3: Blindagem — testes, CI e segurança** - Suíte unit+integração, GitHub Actions e hardening contra injeção
 - [ ] **Phase 4: Estabilização de API e release v1.0** - Auditoria alpha→v1.0, changesets, RC e publicação estável
@@ -37,7 +37,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   4. O registro de models é livre de race condition e o setup de schema não muta objetos de schema compartilhados (`includeAdditionalPropertiesFalse`).
   5. A lib não carrega mais a dependência de runtime `json-schema`.
 
-**Plans**: 4/5 plans executed
+**Plans**: 5/5 plans complete
 **Wave 1**
 
 - [x] 01-01-PLAN.md — Fundação: tooling install, package manifest dual + MongoatError (Wave 1)
@@ -53,7 +53,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
-- [ ] 01-05-PLAN.md — Correções da camada Model (insertMany hooks, find typing, schema clone, D-06/D-10) (Wave 4)
+- [x] 01-05-PLAN.md — Correções da camada Model (insertMany hooks, find typing, schema clone, D-06/D-10) (Wave 4)
 
 ### Phase 2: Sistema de hooks completo e API thin nativa
 
@@ -152,7 +152,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Fundação — Core sem bugs e build moderno | 4/5 | In Progress|  |
+| 1. Fundação — Core sem bugs e build moderno | 5/5 | Complete   | 2026-07-07 |
 | 2. Sistema de hooks completo e API thin nativa | 0/TBD | Not started | - |
 | 3. Blindagem — testes, CI e segurança | 0/TBD | Not started | - |
 | 4. Estabilização de API e release v1.0 | 0/TBD | Not started | - |

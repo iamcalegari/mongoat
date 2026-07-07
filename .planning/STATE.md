@@ -4,17 +4,17 @@ milestone: v1.0
 milestone_name: "**Goal**: A API do alpha é auditada e estabilizada deliberadamente, e então publicada como v1.0.0 com semver disciplinado e um pipeline de release automatizado."
 current_phase: 01
 current_phase_name: funda-o-core-sem-bugs-e-build-moderno
-status: executing
-stopped_at: Completed 01-02-PLAN.md
-last_updated: "2026-07-07T05:03:12.750Z"
+status: verifying
+stopped_at: Completed 01-05-PLAN.md
+last_updated: "2026-07-07T05:22:40.023Z"
 last_activity: 2026-07-07
 last_activity_desc: Phase 01 execution started
 progress:
   total_phases: 7
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 5
-  completed_plans: 4
-  percent: 0
+  completed_plans: 5
+  percent: 14
 ---
 
 # Project State
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-07-03)
 
 Phase: 01 (funda-o-core-sem-bugs-e-build-moderno) — EXECUTING
 Plan: 5 of 5
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-07-07 — Phase 01 execution started
 
 Progress: [░░░░░░░░░░] 0%
@@ -59,6 +59,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 01 P02 | 30min | 3 tasks | 5 files |
 | Phase 01 P03 | 20min | 2 tasks | 4 files |
 | Phase 01 P04 | 12min | 2 tasks | 5 files |
+| Phase 01 P05 | 35min | 3 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -79,6 +80,9 @@ Recent decisions affecting current work:
 - [Phase 01]: [Phase 01-04]: defineModel() teve o duplo-Proxy corrigido (nao apenas documentado) — reaproveita a instancia ja registrada em Database[KModelMap]
 - [Phase 01]: [Phase 01-04]: Model constructor agora retorna a instancia registrada/proxied por registerModel() — bug de binding descoberto na Task 1 (new Model() na 1a chamada devolvia this cru sem guard)
 - [Phase 01]: [Phase 01-04]: kGetUrlAndDbName deixou de ser async — sem await interno apos kGetDbName virar sincrono
+- [Phase 01-05]: isSameConfig compara allowedMethods e o validator ja construido via JSON.stringify (sem lib de deep-equal) para detectar config divergente no registro de model (D-06)
+- [Phase 01-05]: validator e construido no constructor ANTES do early-return de config existente, mantendo o constructor sincrono (D-07) enquanto isSameConfig ja tem os dados prontos para comparar
+- [Phase 01-05]: delete() corrigido (Rule 1): mongodb@7 findOneAndDelete resolve o documento diretamente, sem o wrapper {value} de versoes antigas do driver — result?.value sempre retornava undefined
 
 ### Pending Todos
 
@@ -103,6 +107,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-07T05:02:12.123Z
-Stopped at: Completed 01-02-PLAN.md
+Last session: 2026-07-07T05:22:40.015Z
+Stopped at: Completed 01-05-PLAN.md
 Resume file: None
