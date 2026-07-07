@@ -2,18 +2,18 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: "**Goal**: A API do alpha é auditada e estabilizada deliberadamente, e então publicada como v1.0.0 com semver disciplinado e um pipeline de release automatizado."
-current_phase: 02
-current_phase_name: sistema-de-hooks-completo-e-api-thin-nativa
-status: complete
-stopped_at: Phase 3 context gathered
-last_updated: "2026-07-07T19:43:17.220Z"
+current_phase: 3
+current_phase_name: blindagem-testes-ci-e-seguran-a
+status: executing
+stopped_at: Completed 03-01-PLAN.md
+last_updated: "2026-07-07T23:27:34.883Z"
 last_activity: 2026-07-07
-last_activity_desc: "Fase 2 re-verificada: passed 5/5"
+last_activity_desc: Phase 3 execution started
 progress:
   total_phases: 7
   completed_phases: 2
-  total_plans: 8
-  completed_plans: 8
+  total_plans: 13
+  completed_plans: 9
   percent: 29
 ---
 
@@ -24,14 +24,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-03)
 
 **Core value:** Ser um ODM fino e extensível — produtividade de ODM sem abrir mão do controle e do acesso direto ao driver nativo do MongoDB.
-**Current focus:** Phase 02 — sistema-de-hooks-completo-e-api-thin-nativa
+**Current focus:** Phase 3 — blindagem-testes-ci-e-seguran-a
 
 ## Current Position
 
-Phase: 02 (sistema-de-hooks-completo-e-api-thin-nativa) — COMPLETE (verified 5/5)
-Plan: 3 of 3
-Status: Verificação passed 5/5 — CR-01/API-01 fechado (quick 260707-mfp). Próximo: iniciar Phase 3 (Blindagem — testes, CI e segurança)
-Last activity: 2026-07-07 — Fase 2 re-verificada: passed 5/5
+Phase: 3 (blindagem-testes-ci-e-seguran-a) — EXECUTING
+Plan: 2 of 5
+Status: Ready to execute
+Last activity: 2026-07-07 — Phase 3 execution started
 
 Progress: [░░░░░░░░░░] 0%
 
@@ -63,6 +63,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 02 P01 | 20min | 3 tasks | 14 files |
 | Phase 02 P02 | 10min | 3 tasks | 7 files |
 | Phase 02 P03 | 15min | 3 tasks | 5 files |
+| Phase 03 P01 | 20min | 3 tasks | 13 files |
 
 ## Accumulated Context
 
@@ -94,6 +95,10 @@ Recent decisions affecting current work:
 - [Phase 02-03]: escape hatch honesto (getCollection/getClient/getDb) fora do enum METHODS — bypass total e deliberado de hooks e gating (D-08)
 - [Phase 02-03]: insertMany era o único dos 12 métodos lendo o parâmetro options original em vez de ctx.options na chamada ao driver — fix de Pitfall 4 (D-09)
 - [Phase 02-03]: os 12 métodos públicos já tinham retorno TS explícito e preciso desde a Wave 1 — Task 3 (API-04) confirmada sem necessidade de mudança de código
+- [Phase ?]: [Phase 03-01]: @eslint/js instalado em ^9.39.4 (nao ^10.0.1 do RESEARCH) - @eslint/js@10 exige eslint ^10 como peer, incompativel com eslint@9.39.2 pinado
+- [Phase ?]: [Phase 03-01]: eslint.config.js virou eslint.config.mjs (ESM) - evita globals extras (require/module/__dirname) so para o proprio arquivo de config
+- [Phase ?]: [Phase 03-01]: ModelValidationSchema<T = any> manteve o any documentado - never/Record<string,unknown>&DefaultProperties quebram o mapped type homomorfico {[k in keyof T]}, mudanca estrutural fora do escopo do lint gate
+- [Phase ?]: [Phase 03-01]: KModelProxyHandler 'method not allowed' permanece MongoatError base (nao subclasse) com code METHOD_NOT_ALLOWED - gating de Proxy nao e validacao/conexao/driver
 
 ### Pending Todos
 
@@ -124,6 +129,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-07T19:43:17.201Z
-Stopped at: Phase 3 context gathered
-Resume file: .planning/phases/03-blindagem-testes-ci-e-seguran-a/03-CONTEXT.md
+Last session: 2026-07-07T23:27:34.872Z
+Stopped at: Completed 03-01-PLAN.md
+Resume file: None

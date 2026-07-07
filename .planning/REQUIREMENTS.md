@@ -33,7 +33,7 @@
 
 - [ ] **SEC-01**: Filtros fornecidos pelo usuário podem ser sanitizados (utilitário `sanitizeFilter`); `$where` é rejeitado incondicionalmente pela lib
 - [ ] **SEC-02**: Conversão de ObjectId valida com `ObjectId.isValid` e lança erro tipado e documentado em entrada inválida
-- [ ] **SEC-03**: Erros re-lançados não expõem stack traces nem detalhes internos (mensagens sanitizadas; sem `JSON.stringify` do erro inteiro)
+- [x] **SEC-03**: Erros re-lançados não expõem stack traces nem detalhes internos (mensagens sanitizadas; sem `JSON.stringify` do erro inteiro)
 - [ ] **SEC-04**: `setupIndexes` compara índices existentes vs desejados e só recria o que mudou (sem drop-recreate incondicional)
 
 ### Release Engineering
@@ -102,7 +102,7 @@
 | QUAL-04 | Phase 1 | Complete |
 | SEC-01 | Phase 3 | Pending |
 | SEC-02 | Phase 3 | Pending |
-| SEC-03 | Phase 3 | Pending |
+| SEC-03 | Phase 3 | Complete |
 | SEC-04 | Phase 3 | Pending |
 | REL-01 | Phase 4 | Pending |
 | REL-02 | Phase 1 | Complete |
