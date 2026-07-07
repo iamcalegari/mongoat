@@ -30,6 +30,7 @@ import {
 } from '@/types/model';
 import { METHODS } from '@/utils/enums';
 import { Database } from '@/database';
+import { MongoatError } from '@/errors';
 import { toObjectId } from '@/utils';
 
 const kDatabase = Symbol('kDatabase');
@@ -70,7 +71,7 @@ export class Model<ModelType extends Document = Document> {
 
   constructor(props: CreateModelProps<ModelType>) {
     if (!Model[kDatabase]) {
-      throw new Error('Database not found');
+      throw new MongoatError('Database not connected — call db.connect() first');
     }
 
     let model = Model[kDatabase].getModel(props.collectionName);
@@ -147,6 +148,15 @@ export class Model<ModelType extends Document = Document> {
     validationQueryExpressions?: ValidationQueryExpressions;
     validity?: boolean;
   }): ModelDbValidationProps {
+    // Clonar antes de mutar — `includeAdditionalPropertiesFalse` mutates
+    // its argument in-place; sem o clone, um objeto de schema reusado
+    // (por referência) em dois models vazaria a mutação de volta para o
+    // objeto do usuário (QUAL-01). `structuredClone` é global desde Node
+    // 17 (sem import) e cobre o shape de `ModelValidationSchema` (plain
+    // objects/arrays/strings/booleans — sem funções nem tipos
+    // não-cloneáveis).
+    const clonedSchema = structuredClone(schema);
+
     return {
       validationAction: 'error',
       validationLevel: 'strict',
@@ -159,9 +169,9 @@ export class Model<ModelType extends Document = Document> {
               bsonType: 'objectId',
               description: 'Id of the document in the database',
             },
-            ...this.includeAdditionalPropertiesFalse(schema).properties,
+            ...this.includeAdditionalPropertiesFalse(clonedSchema).properties,
           },
-          required: [...((schema.required as string[]) ?? []), '_id'],
+          required: [...((clonedSchema.required as string[]) ?? []), '_id'],
         },
         ...validationQueryExpressions,
       },
@@ -188,6 +198,30 @@ export class Model<ModelType extends Document = Document> {
     return schema;
   }
 
+  /**
+   * @private
+   *
+   * Retrieves the collection for this model, throwing a typed
+   * `MongoatError` instead of handing callers an `undefined` collection
+   * (D-10). Without this guard, calling a CRUD method before
+   * `db.connect()` let the unchecked `as Collection<ModelType>` cast
+   * through, and the driver threw a cryptic `TypeError` on the first
+   * property access on `undefined`.
+   */
+  private getCollectionOrThrow(): Collection<ModelType> {
+    const collection = Model[kDatabase]?.getCollection<ModelType>(
+      this.collectionName
+    );
+
+    if (!collection) {
+      throw new MongoatError(
+        'Database not connected — call db.connect() first'
+      );
+    }
+
+    return collection;
+  }
+
   pre<T extends ModelType>(
     methodName: METHODS,
     transformer: (
@@ -204,9 +238,7 @@ export class Model<ModelType extends Document = Document> {
   }
 
   aggregate(pipeline: Document[], options: AggregateOptions = {}) {
-    const collection = Model[kDatabase]?.getCollection<ModelType>(
-      this.collectionName
-    ) as Collection<ModelType>;
+    const collection = this.getCollectionOrThrow();
 
     return collection.aggregate(pipeline, options).toArray();
   }
@@ -223,9 +255,7 @@ export class Model<ModelType extends Document = Document> {
       ...options,
     });
 
-    const collection = Model[kDatabase]?.getCollection<ModelType>(
-      this.collectionName
-    ) as Collection<ModelType>;
+    const collection = this.getCollectionOrThrow();
 
     const doc = (await collection.findOneAndUpdate(
       filter,
@@ -250,9 +280,7 @@ export class Model<ModelType extends Document = Document> {
 
     await this.preMethod[METHODS.UPDATE_MANY].bind(_update)(options);
 
-    const collection = Model[kDatabase]?.getCollection<ModelType>(
-      this.collectionName
-    ) as Collection<ModelType>;
+    const collection = this.getCollectionOrThrow();
 
     const updateResult = (await collection.updateMany(
       filter,
@@ -266,17 +294,13 @@ export class Model<ModelType extends Document = Document> {
   }
 
   findMany(filter: Filter<ModelType> = {}, options: FindOptions = {}) {
-    const collection = Model[kDatabase]?.getCollection<ModelType>(
-      this.collectionName
-    ) as Collection<ModelType>;
+    const collection = this.getCollectionOrThrow();
 
     return collection.find(filter, options).toArray() ?? [];
   }
 
   deleteMany(filter: Filter<ModelType>, options: DeleteOptions = {}) {
-    const collection = Model[kDatabase]?.getCollection<ModelType>(
-      this.collectionName
-    ) as Collection<ModelType>;
+    const collection = this.getCollectionOrThrow();
 
     return collection.deleteMany(filter, options);
   }
@@ -292,9 +316,7 @@ export class Model<ModelType extends Document = Document> {
 
     await this.preMethod[METHODS.INSERT].bind(_document)(options);
 
-    const collection = Model[kDatabase]?.getCollection<ModelType>(
-      this.collectionName
-    ) as Collection<ModelType>;
+    const collection = this.getCollectionOrThrow();
 
     try {
       const { insertedId } = await collection.insertOne(_document, options);
@@ -321,9 +343,7 @@ export class Model<ModelType extends Document = Document> {
       ...doc,
     }));
 
-    const collection = Model[kDatabase]?.getCollection<ModelType>(
-      this.collectionName
-    ) as Collection<ModelType>;
+    const collection = this.getCollectionOrThrow();
     try {
       return collection.insertMany(_documents, options);
     } catch (err: any) {
@@ -335,9 +355,7 @@ export class Model<ModelType extends Document = Document> {
     filter: Filter<ModelType> = {},
     options?: FindOptions
   ): Promise<WithId<ModelType> | null> {
-    const collection = Model[kDatabase]?.getCollection<ModelType>(
-      this.collectionName
-    ) as Collection<ModelType>;
+    const collection = this.getCollectionOrThrow();
 
     return collection.findOne(filter, options);
   }
@@ -350,19 +368,18 @@ export class Model<ModelType extends Document = Document> {
   }
 
   async delete(filter: Filter<ModelType>, options?: FindOneAndDeleteOptions) {
-    const collection = Model[kDatabase]?.getCollection<ModelType>(
-      this.collectionName
-    ) as Collection<ModelType>;
+    const collection = this.getCollectionOrThrow();
 
-    const result = (await collection.findOneAndDelete(filter, options ?? {}))!;
-
-    return result?.value;
+    // mongodb@7 `findOneAndDelete` resolves the matched document directly
+    // (`WithId<ModelType> | null`) — the driver's pre-v5 `{ value }`
+    // wrapper no longer exists. Returning `result?.value` here always
+    // resolved to `undefined`, silently swallowing every deleted document
+    // (Rule 1 fix — found exercising D-12 happy-path CRUD for `delete`).
+    return collection.findOneAndDelete(filter, options ?? {});
   }
 
   total(filter: Filter<ModelType> = {}, options: CountDocumentsOptions = {}) {
-    const collection = Model[kDatabase]?.getCollection<ModelType>(
-      this.collectionName
-    ) as Collection<ModelType>;
+    const collection = this.getCollectionOrThrow();
 
     return collection.countDocuments(filter, options);
   }
@@ -383,11 +400,13 @@ export class Model<ModelType extends Document = Document> {
 
       return operation;
     });
-    try {
-      const collection = Model[kDatabase]?.getCollection<ModelType>(
-        this.collectionName
-      ) as Collection<ModelType>;
 
+    // Retrieved outside the try block: a MongoatError thrown here (D-10 —
+    // no connection) must propagate as-is, not get caught and re-wrapped
+    // into a MongoError by the catch below (D-11 scope boundary).
+    const collection = this.getCollectionOrThrow();
+
+    try {
       return collection.bulkWrite(_operations, options ?? {});
     } catch (err: any) {
       throw new MongoError(JSON.stringify(err, null, 2));
