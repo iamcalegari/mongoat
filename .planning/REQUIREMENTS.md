@@ -17,10 +17,10 @@
 
 ### API Thin (controle nativo)
 
-- [ ] **API-01**: Todos os métodos do Model aceitam e repassam as options nativas do driver, com tipos do driver (`FindOptions`, `AggregateOptions`, `BulkWriteOptions`, etc.)
-- [ ] **API-02**: Dev pode acessar a `Collection` nativa via `model.getCollection()` (bypass de hooks/gating, documentado como tal)
-- [ ] **API-03**: Dev pode acessar `MongoClient` e `Db` nativos via `database.getClient()` / `database.getDb()`
-- [ ] **API-04**: Todos os métodos públicos têm tipos de retorno TS precisos e consistentes (ex.: `find()` retorna `Promise<WithId<T> | null>`, sem união com `null` síncrono)
+- [x] **API-01**: Todos os métodos do Model aceitam e repassam as options nativas do driver, com tipos do driver (`FindOptions`, `AggregateOptions`, `BulkWriteOptions`, etc.)
+- [x] **API-02**: Dev pode acessar a `Collection` nativa via `model.getCollection()` (bypass de hooks/gating, documentado como tal)
+- [x] **API-03**: Dev pode acessar `MongoClient` e `Db` nativos via `database.getClient()` / `database.getDb()`
+- [x] **API-04**: Todos os métodos públicos têm tipos de retorno TS precisos e consistentes (ex.: `find()` retorna `Promise<WithId<T> | null>`, sem união com `null` síncrono)
 
 ### Qualidade
 
@@ -92,10 +92,10 @@
 | HOOK-03 | Phase 2 | Complete |
 | HOOK-04 | Phase 2 | Complete |
 | HOOK-05 | Phase 2 | Complete |
-| API-01 | Phase 2 | Pending |
-| API-02 | Phase 2 | Pending |
-| API-03 | Phase 2 | Pending |
-| API-04 | Phase 2 | Pending |
+| API-01 | Phase 2 | Complete |
+| API-02 | Phase 2 | Complete |
+| API-03 | Phase 2 | Complete |
+| API-04 | Phase 2 | Complete |
 | QUAL-01 | Phase 1 | In Progress (01-01 lançou MongoatError; fixes em 01-03/04/05) |
 | QUAL-02 | Phase 3 | Pending |
 | QUAL-03 | Phase 3 | Pending |

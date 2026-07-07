@@ -14,7 +14,7 @@ Mongoat é uma lib brownfield publicada como `@iamcalegari/mongoat@1.0.34-alpha`
 Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Fundação — Core sem bugs e build moderno** - Corrige bugs conhecidos, remove `json-schema` e configura build dual CJS/ESM (completed 2026-07-07)
-- [ ] **Phase 2: Sistema de hooks completo e API thin nativa** - Hooks pre/post completos, options nativas em todos os métodos e escape hatch
+- [x] **Phase 2: Sistema de hooks completo e API thin nativa** - Hooks pre/post completos, options nativas em todos os métodos e escape hatch (completed 2026-07-07)
 - [ ] **Phase 3: Blindagem — testes, CI e segurança** - Suíte unit+integração, GitHub Actions e hardening contra injeção
 - [ ] **Phase 4: Estabilização de API e release v1.0** - Auditoria alpha→v1.0, changesets, RC e publicação estável
 - [ ] **Phase 5: API de schema com decorators (TC39)** - `@Schema`/`@Pre`/etc. coexistindo com a API de objetos
@@ -69,7 +69,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   4. Todo método do Model aceita e repassa options nativas com os tipos do driver (`FindOptions`, `AggregateOptions`, etc.) e retorna resultados precisa e consistentemente tipados.
   5. Dev acessa a `Collection` nativa via `model.getCollection()` e o `MongoClient`/`Db` nativos via `database.getClient()`/`getDb()`, com bypass documentado de hooks/gating.
 
-**Plans**: 2/3 plans executed
+**Plans**: 3/3 plans complete
 
 **Wave 1**
 
@@ -81,7 +81,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 **Wave 3** *(blocked on Wave 2)*
 
-- [ ] 02-03-PLAN.md — API thin nativa: escape hatch + options passthrough + retornos tipados (API-01, API-02, API-03, API-04)
+- [x] 02-03-PLAN.md — API thin nativa: escape hatch + options passthrough + retornos tipados (API-01, API-02, API-03, API-04)
 
 ### Phase 3: Blindagem — testes, CI e segurança
 
@@ -165,7 +165,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Fundação — Core sem bugs e build moderno | 5/5 | Complete    | 2026-07-07 |
-| 2. Sistema de hooks completo e API thin nativa | 2/3 | In Progress|  |
+| 2. Sistema de hooks completo e API thin nativa | 3/3 | Complete   | 2026-07-07 |
 | 3. Blindagem — testes, CI e segurança | 0/TBD | Not started | - |
 | 4. Estabilização de API e release v1.0 | 0/TBD | Not started | - |
 | 5. API de schema com decorators (TC39) | 0/TBD | Not started | - |

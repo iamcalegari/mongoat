@@ -4,17 +4,17 @@ milestone: v1.0
 milestone_name: "**Goal**: A API do alpha é auditada e estabilizada deliberadamente, e então publicada como v1.0.0 com semver disciplinado e um pipeline de release automatizado."
 current_phase: 02
 current_phase_name: sistema-de-hooks-completo-e-api-thin-nativa
-status: executing
+status: verifying
 stopped_at: Phase 2 context gathered
-last_updated: "2026-07-07T18:13:56.539Z"
+last_updated: "2026-07-07T18:25:28.533Z"
 last_activity: 2026-07-07
 last_activity_desc: Phase 02 execution started
 progress:
   total_phases: 7
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 8
-  completed_plans: 7
-  percent: 14
+  completed_plans: 8
+  percent: 29
 ---
 
 # Project State
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-07-03)
 
 Phase: 02 (sistema-de-hooks-completo-e-api-thin-nativa) — EXECUTING
 Plan: 3 of 3
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-07-07 — Phase 02 execution started
 
 Progress: [░░░░░░░░░░] 0%
@@ -62,6 +62,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 01 P05 | 35min | 3 tasks | 7 files |
 | Phase 02 P01 | 20min | 3 tasks | 14 files |
 | Phase 02 P02 | 10min | 3 tasks | 7 files |
+| Phase 02 P03 | 15min | 3 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -90,6 +91,9 @@ Recent decisions affecting current work:
 - [Phase 02-01]: pre()/post() acumulam (push) em vez de sobrescrever (D-01) - breaking change intencional em alpha, quebra o padrao antigo de resetar hooks com pre() no-op
 - [Phase ?]: [Phase 02-02]: fireAndForget post-hook dispatch é Promise.resolve().then().catch(onHookError) + continue no loop — verdadeiramente não-aguardado, resolve Open Question 1/A2 do RESEARCH.md
 - [Phase ?]: [Phase 02-02]: defaultOnHookError loga apenas err via console.error, nunca o ctx inteiro (T-02-02 — evita vazar document/filter em logs ingênuos)
+- [Phase 02-03]: escape hatch honesto (getCollection/getClient/getDb) fora do enum METHODS — bypass total e deliberado de hooks e gating (D-08)
+- [Phase 02-03]: insertMany era o único dos 12 métodos lendo o parâmetro options original em vez de ctx.options na chamada ao driver — fix de Pitfall 4 (D-09)
+- [Phase 02-03]: os 12 métodos públicos já tinham retorno TS explícito e preciso desde a Wave 1 — Task 3 (API-04) confirmada sem necessidade de mudança de código
 
 ### Pending Todos
 
@@ -114,6 +118,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-07T18:13:09.566Z
+Last session: 2026-07-07T18:24:35.859Z
 Stopped at: Phase 2 context gathered
 Resume file: .planning/phases/02-sistema-de-hooks-completo-e-api-thin-nativa/02-CONTEXT.md
