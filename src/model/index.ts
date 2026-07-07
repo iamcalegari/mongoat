@@ -730,7 +730,16 @@ export class Model<ModelType extends Document = Document> {
         options,
       });
 
-      postCtx.result = await this.rawInsertMany(_documents, options);
+      // Pitfall 4: ler de `postCtx.options` (não do parâmetro `options`
+      // original) — consistente com os outros 11 métodos, todos que lêem
+      // `c.options` na chamada ao driver dentro do `rawFn` passado a
+      // `runHooked`. Como cada `preCtx` por documento compartilha a MESMA
+      // referência de `options` (Pattern 3), uma mutação in-place feita
+      // por um pre-hook (`ctx.options.campo = x`) já é visível aqui
+      // independentemente de qual variável é lida — mas ler explicitamente
+      // de `postCtx.options` documenta a intenção e fecha o pitfall por
+      // completo, não só "por coincidência de referência compartilhada".
+      postCtx.result = await this.rawInsertMany(_documents, postCtx.options);
 
       await runPostHooks(
         this.hooks[METHODS.INSERT_MANY].post,
