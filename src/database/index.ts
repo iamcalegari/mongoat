@@ -15,6 +15,7 @@ import { METHODS } from '@/utils/enums';
 
 const kClient = Symbol('kClient');
 const kDb = Symbol('kDb');
+const kConnecting = Symbol('kConnecting');
 const kConnectionUrl = Symbol('kConnectionUrl');
 const kCreateClientConnection = Symbol('kCreateClientConnection');
 const kGetUrlAndDbName = Symbol('kGetUrlAndDbName');
@@ -29,6 +30,8 @@ export class Database {
   protected [kClient]: MongoClient | undefined;
   /** @private */
   protected [kDb]: Db | undefined;
+  /** @private */
+  protected [kConnecting]: Promise<string> | undefined;
   /** @private */
   protected [kConnectionUrl]: string = 'mongodb://127.0.0.1:27017/';
   /** @private */
@@ -108,7 +111,16 @@ export class Database {
       return;
     }
 
-    return this[kCreateClientConnection]({
+    // WR-08: duas chamadas concorrentes a connect() passavam ambas pelo
+    // guard acima (isConnected() só vira true DEPOIS que kClient/kDb são
+    // atribuídos) e criavam DOIS MongoClient — o primeiro era sobrescrito
+    // sem close(), vazando o pool de conexões. Reusar a Promise em
+    // andamento garante um único client por instância.
+    if (this[kConnecting]) {
+      return this[kConnecting];
+    }
+
+    this[kConnecting] = this[kCreateClientConnection]({
       ignoreUndefined: true,
       ...(process.env.NODE_ENV === 'production' && {
         serverApi: {
@@ -117,7 +129,11 @@ export class Database {
           deprecationErrors: true,
         },
       }),
+    }).finally(() => {
+      this[kConnecting] = undefined;
     });
+
+    return this[kConnecting];
   }
 
   /**
