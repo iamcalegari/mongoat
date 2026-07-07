@@ -37,10 +37,10 @@ Decimal phases appear between their surrounding integers in numeric order.
   4. O registro de models é livre de race condition e o setup de schema não muta objetos de schema compartilhados (`includeAdditionalPropertiesFalse`).
   5. A lib não carrega mais a dependência de runtime `json-schema`.
 
-**Plans**: 5 plans
+**Plans**: 1/5 plans executed
 **Wave 1**
 
-- [ ] 01-01-PLAN.md — Fundação: tooling install, package manifest dual + MongoatError (Wave 1)
+- [x] 01-01-PLAN.md — Fundação: tooling install, package manifest dual + MongoatError (Wave 1)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
@@ -152,7 +152,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Fundação — Core sem bugs e build moderno | 0/5 | Not started | - |
+| 1. Fundação — Core sem bugs e build moderno | 1/5 | In Progress|  |
 | 2. Sistema de hooks completo e API thin nativa | 0/TBD | Not started | - |
 | 3. Blindagem — testes, CI e segurança | 0/TBD | Not started | - |
 | 4. Estabilização de API e release v1.0 | 0/TBD | Not started | - |

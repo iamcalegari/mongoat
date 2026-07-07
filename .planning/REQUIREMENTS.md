@@ -27,7 +27,7 @@
 - [ ] **QUAL-01**: Bugs conhecidos de `.planning/codebase/CONCERNS.md` corrigidos: pre-hooks não aguardados em `insertMany`, binding perdido no proxy handler, tipo de retorno de `find()`, race condition do registry estático, mutação de schema em `includeAdditionalPropertiesFalse`
 - [ ] **QUAL-02**: Suíte de testes unitários + integração (vitest + mongodb-memory-server) cobrindo todos os métodos públicos, incluindo cenários de erro e concorrência
 - [ ] **QUAL-03**: CI (GitHub Actions) executa testes, lint e build em todo push/PR
-- [ ] **QUAL-04**: Dependência `json-schema` 0.4.0 removida do runtime (validação é server-side via `$jsonSchema`)
+- [x] **QUAL-04**: Dependência `json-schema` 0.4.0 removida do runtime (validação é server-side via `$jsonSchema`)
 
 ### Segurança
 
@@ -39,7 +39,7 @@
 ### Release Engineering
 
 - [ ] **REL-01**: Pipeline de release com changesets: CHANGELOG gerado, versionamento via PR, publicação npm automatizada no merge
-- [ ] **REL-02**: Build dual CJS/ESM (tsdown) com `exports` map correto, validado por `are-the-types-wrong` como gate de CI
+- [x] **REL-02**: Build dual CJS/ESM (tsdown) com `exports` map correto, validado por `are-the-types-wrong` como gate de CI
 - [ ] **REL-03**: `v1.0.0-rc` publicado com auditoria de API (diff alpha→v1) antes da tag final
 - [ ] **REL-04**: `v1.0.0` estável publicada no npm com política semver documentada e versões alpha deprecadas (`npm deprecate`)
 
@@ -96,16 +96,16 @@
 | API-02 | Phase 2 | Pending |
 | API-03 | Phase 2 | Pending |
 | API-04 | Phase 2 | Pending |
-| QUAL-01 | Phase 1 | Pending |
+| QUAL-01 | Phase 1 | In Progress (01-01 lançou MongoatError; fixes em 01-03/04/05) |
 | QUAL-02 | Phase 3 | Pending |
 | QUAL-03 | Phase 3 | Pending |
-| QUAL-04 | Phase 1 | Pending |
+| QUAL-04 | Phase 1 | Complete |
 | SEC-01 | Phase 3 | Pending |
 | SEC-02 | Phase 3 | Pending |
 | SEC-03 | Phase 3 | Pending |
 | SEC-04 | Phase 3 | Pending |
 | REL-01 | Phase 4 | Pending |
-| REL-02 | Phase 1 | Pending |
+| REL-02 | Phase 1 | Complete |
 | REL-03 | Phase 4 | Pending |
 | REL-04 | Phase 4 | Pending |
 | DECO-01 | Phase 5 | Pending |
