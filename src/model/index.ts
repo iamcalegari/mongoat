@@ -48,7 +48,11 @@ import {
 } from '@/types/hooks';
 import { METHODS } from '@/utils/enums';
 import { Database } from '@/database';
-import { MongoatError } from '@/errors';
+import {
+  MongoatConnectionError,
+  MongoatError,
+  MongoatValidationError,
+} from '@/errors';
 import { toObjectId } from '@/utils';
 
 const kDatabase = Symbol('kDatabase');
@@ -231,7 +235,7 @@ export class Model<ModelType extends Document = Document> {
 
   constructor(props: CreateModelProps<ModelType>) {
     if (!Model[kDatabase]) {
-      throw new MongoatError(
+      throw new MongoatConnectionError(
         'Database not connected — call db.connect() first'
       );
     }
@@ -292,8 +296,9 @@ export class Model<ModelType extends Document = Document> {
 
       // Only the collectionName + the fact of divergence — never the
       // schema content itself (Information Disclosure, T-01-05-01).
-      throw new MongoatError(
-        `Model "${collectionName}" already registered with a different configuration`
+      throw new MongoatValidationError(
+        `Model "${collectionName}" already registered with a different configuration`,
+        { code: 'MODEL_CONFIG_CONFLICT' }
       );
     }
 
@@ -425,7 +430,7 @@ export class Model<ModelType extends Document = Document> {
     );
 
     if (!collection) {
-      throw new MongoatError(
+      throw new MongoatConnectionError(
         'Database not connected — call db.connect() first'
       );
     }

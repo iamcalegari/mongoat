@@ -8,14 +8,92 @@
  * (the original error, if any) so consumers can inspect the root cause
  * without losing the original stack trace.
  *
- * Errors re-thrown from the underlying MongoDB driver (e.g. the
- * `JSON.stringify`-wrapped driver errors) are out of scope for this
- * class — see Phase 3 (SEC-04) for the driver error hierarchy.
+ * D-04: every `MongoatError` (and subclass) carries a stable `code` string
+ * — the dev programs against `.code`, independent of `.message` (which can
+ * change without breaking semver). Defaults to `'MONGOAT_ERROR'` for the
+ * base class; each subclass below overrides its own default.
+ *
+ * Subclasses (D-01) let the dev discriminate the error kind via
+ * `instanceof`:
+ * - `MongoatValidationError` — schema/ObjectId/filtro inválido.
+ * - `MongoatConnectionError` — sem conexão / dbName ausente.
+ * - `MongoatDriverError` — wrap sanitizado de um erro do driver (SEC-03).
  */
 export class MongoatError extends Error {
-  constructor(message: string, options?: { cause?: unknown }) {
-    super(message, options);
+  readonly code: string;
+
+  constructor(message: string, options?: { cause?: unknown; code?: string }) {
+    super(message, { cause: options?.cause });
     this.name = 'MongoatError';
+    this.code = options?.code ?? 'MONGOAT_ERROR';
+    // Necessário mesmo com target ES2022+: consumidores da lib publicada
+    // podem transpilar/bundlar para um target mais baixo (ES5/CommonJS
+    // antigo) fora do controle do Mongoat — sem isto, `instanceof` quebra
+    // no bundle do CONSUMIDOR, não no nosso próprio build.
     Object.setPrototypeOf(this, MongoatError.prototype);
+  }
+}
+
+/**
+ * @public
+ *
+ * Erro de validação: schema/ObjectId inválido, filtro proibido
+ * (`$where`/operadores de execução de código), configuração de model
+ * divergente no registro (D-01).
+ *
+ * `code` default: `'VALIDATION_FAILED'` — override pontual disponível
+ * (ex.: `INVALID_OBJECT_ID`, `FORBIDDEN_OPERATOR`, `MODEL_CONFIG_CONFLICT`).
+ */
+export class MongoatValidationError extends MongoatError {
+  constructor(message: string, options?: { cause?: unknown; code?: string }) {
+    super(message, {
+      cause: options?.cause,
+      code: options?.code ?? 'VALIDATION_FAILED',
+    });
+    this.name = 'MongoatValidationError';
+    Object.setPrototypeOf(this, MongoatValidationError.prototype);
+  }
+}
+
+/**
+ * @public
+ *
+ * Erro de conexão: `Database` não conectada, `dbName` ausente, sessão de
+ * transação indisponível (D-01).
+ *
+ * `code` default: `'NOT_CONNECTED'` — override pontual disponível (ex.:
+ * `MISSING_DB_NAME`).
+ */
+export class MongoatConnectionError extends MongoatError {
+  constructor(message: string, options?: { cause?: unknown; code?: string }) {
+    super(message, {
+      cause: options?.cause,
+      code: options?.code ?? 'NOT_CONNECTED',
+    });
+    this.name = 'MongoatConnectionError';
+    Object.setPrototypeOf(this, MongoatConnectionError.prototype);
+  }
+}
+
+/**
+ * @public
+ *
+ * Wrap sanitizado de um erro re-lançado pelo driver `mongodb` (D-01/D-03).
+ * `.message` é estável e nunca inclui stack trace/detalhes internos; o
+ * erro original do driver fica preservado em `.cause` para quem quiser
+ * inspecionar. Nunca construído a partir de `JSON.stringify(err)`.
+ *
+ * `code` default: `'DRIVER_ERROR'` — `wrapDriverError` (src/model/index.ts)
+ * mapeia códigos numéricos conhecidos do driver (ex.: `11000` →
+ * `'DUPLICATE_KEY'`).
+ */
+export class MongoatDriverError extends MongoatError {
+  constructor(message: string, options?: { cause?: unknown; code?: string }) {
+    super(message, {
+      cause: options?.cause,
+      code: options?.code ?? 'DRIVER_ERROR',
+    });
+    this.name = 'MongoatDriverError';
+    Object.setPrototypeOf(this, MongoatDriverError.prototype);
   }
 }

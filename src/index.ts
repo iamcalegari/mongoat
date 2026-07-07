@@ -1,5 +1,10 @@
 export { Database, type ObjectID } from './database';
-export { MongoatError } from './errors';
+export {
+  MongoatConnectionError,
+  MongoatDriverError,
+  MongoatError,
+  MongoatValidationError,
+} from './errors';
 export { Model } from './model';
 export type {
   CreateIndexProps,

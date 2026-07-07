@@ -8,7 +8,7 @@ import {
   ServerApiVersion,
 } from 'mongodb';
 
-import { MongoatError } from '@/errors';
+import { MongoatConnectionError, MongoatError } from '@/errors';
 import { Model } from '@/model';
 import { DatabaseConfig, ModelSetup } from '@/types';
 import { METHODS } from '@/utils/enums';
@@ -379,7 +379,7 @@ export class Database {
     // `undefined` SEM nunca invocar `fn` — perda de escrita silenciosa.
     // Mesmo padrão D-10 de `getCollectionOrThrow`: falhar alto pré-conexão.
     if (!this[kClient]) {
-      throw new MongoatError(
+      throw new MongoatConnectionError(
         'Database not connected — call db.connect() first'
       );
     }
@@ -406,7 +406,8 @@ export class Database {
           !target.allowedMethods.includes(prop)
         ) {
           throw new MongoatError(
-            `The method "${prop}" is not allowed in "${target.collectionName}"`
+            `The method "${prop}" is not allowed in "${target.collectionName}"`,
+            { code: 'METHOD_NOT_ALLOWED' }
           );
         }
 
@@ -515,8 +516,8 @@ export class Database {
    *
    * Resolves the database name to connect to: `MONGODB_DB_NAME` env var
    * first, then `config.dbName`. No implicit fallback — if neither is
-   * configured, throws a `MongoatError` instead of silently connecting to
-   * a hardcoded test database name (D-08).
+   * configured, throws a `MongoatConnectionError` instead of silently
+   * connecting to a hardcoded test database name (D-08).
    */
   [kGetDbName](): string {
     if (process.env.MONGODB_DB_NAME) {
@@ -527,8 +528,9 @@ export class Database {
       return this.config.dbName;
     }
 
-    throw new MongoatError(
-      'No database name configured — set the MONGODB_DB_NAME env var or pass config.dbName'
+    throw new MongoatConnectionError(
+      'No database name configured — set the MONGODB_DB_NAME env var or pass config.dbName',
+      { code: 'MISSING_DB_NAME' }
     );
   }
 }
