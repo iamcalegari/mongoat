@@ -13,6 +13,7 @@ export type {
   ModelDbValidationProps,
   ModelSetup,
   ModelValidationSchema,
+  OnHookError,
   PostHookEntry,
   SchemaWithDefaults,
   ValidationQueryExpressions,

@@ -24,7 +24,12 @@ import {
   WithId,
 } from 'mongodb';
 
-import { buildContext, runPostHooks, runPreHooks } from '@/model/hooks';
+import {
+  buildContext,
+  defaultOnHookError,
+  runPostHooks,
+  runPreHooks,
+} from '@/model/hooks';
 import {
   CreateIndexProps,
   CreateModelProps,
@@ -39,6 +44,7 @@ import {
   HookContextMap,
   HookFn,
   HookRegistry,
+  OnHookError,
 } from '@/types/hooks';
 import { METHODS } from '@/utils/enums';
 import { Database } from '@/database';
@@ -197,6 +203,17 @@ export class Model<ModelType extends Document = Document> {
     Object.values(METHODS).map((method) => [method, { pre: [], post: [] }])
   ) as unknown as HookRegistry<ModelType>;
 
+  /**
+   * Fallback destination for `fireAndForget` post-hook rejections
+   * (D-06/HOOK-04) — resolved once in the constructor from
+   * `props.onHookError`, falling back to `defaultOnHookError`
+   * (`console.error`) so an error never disappears in total silence.
+   * Threaded through a single point (`executeHooked` → `runPostHooks`),
+   * not touched by any of the 12 CRUD methods individually.
+   */
+  onHookError: OnHookError<HookContextMap<ModelType>[METHODS]> =
+    defaultOnHookError;
+
   static [kDatabase]: Database | undefined;
 
   /**
@@ -290,6 +307,7 @@ export class Model<ModelType extends Document = Document> {
     this.validationAction = validationAction;
     this.validationLevel = validationLevel;
     this.methods = Object.values(METHODS);
+    this.onHookError = props.onHookError ?? defaultOnHookError;
 
     // D-01/D-02: hooks declarados no construtor populam a registry ANTES
     // de qualquer `.pre()`/`.post()` encadeável chamado depois (que só
@@ -456,7 +474,11 @@ export class Model<ModelType extends Document = Document> {
     const result = await rawFn();
     (ctx as unknown as { result?: unknown }).result = result;
 
-    await runPostHooks(this.hooks[method].post, ctx);
+    await runPostHooks(
+      this.hooks[method].post,
+      ctx,
+      this.onHookError as OnHookError<HookContextMap<ModelType>[M]>
+    );
 
     return (ctx as unknown as { result?: unknown }).result;
   }
@@ -686,7 +708,13 @@ export class Model<ModelType extends Document = Document> {
 
       postCtx.result = await this.rawInsertMany(_documents, options);
 
-      await runPostHooks(this.hooks[METHODS.INSERT_MANY].post, postCtx);
+      await runPostHooks(
+        this.hooks[METHODS.INSERT_MANY].post,
+        postCtx,
+        this.onHookError as OnHookError<
+          HookContextMap<ModelType>[METHODS.INSERT_MANY]
+        >
+      );
 
       return postCtx.result as InsertManyResult<ModelType>;
     });

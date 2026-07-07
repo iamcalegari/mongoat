@@ -38,15 +38,25 @@ export type HookFn<Ctx> = (
 ) => void | unknown | Promise<void | unknown>;
 
 /**
- * Post-hook registration entry. `fireAndForget` is part of the shape
- * from this plan onward, but it is NOT consumed yet by `runPostHooks` —
- * Plan 02 (HOOK-04/D-06) is the single point that adds the
- * fire-and-forget dispatch branch and `onHookError` handling.
+ * Post-hook registration entry. `fireAndForget` (opt-in, D-06/HOOK-04) is
+ * consumed by `runPostHooks` — when set, the hook dispatch is truly
+ * non-awaited (does not delay the caller's return) and any rejection is
+ * routed to `onHookError` instead of propagating to the caller.
  */
 export interface PostHookEntry<Ctx> {
   fn: HookFn<Ctx>;
   fireAndForget?: boolean;
 }
+
+/**
+ * Callback invoked when a `fireAndForget` post-hook rejects (D-06/HOOK-04).
+ * `err` is typed `unknown` — third-party hooks can throw anything, not
+ * necessarily a `MongoatError`/`Error`. Receives the SAME `ctx` the hook
+ * itself received (result/document/filter included) — the consumer of
+ * `onHookError` is responsible for not logging sensitive fields without
+ * redaction (T-02-02; full sanitization is SEC-03, Fase 3).
+ */
+export type OnHookError<Ctx> = (err: unknown, ctx: Ctx) => void;
 
 /**
  * Declarative per-method hook configuration accepted by

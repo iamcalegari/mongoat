@@ -7,7 +7,7 @@ import {
   OptionalUnlessRequiredId,
 } from 'mongodb';
 
-import type { HookConfig, HookContextMap } from '@/types/hooks';
+import type { HookConfig, HookContextMap, OnHookError } from '@/types/hooks';
 
 /**
  * Vendored subset of the JSON Schema Draft 4 `JSONSchema4` interface
@@ -52,6 +52,13 @@ export interface CreateModelProps<ModelType extends Document> {
    */
   hooks?: { [M in METHODS]?: HookConfig<HookContextMap<ModelType>[M]> };
   indexes?: CreateIndexProps[];
+  /**
+   * Fallback for `fireAndForget` post-hook rejections (D-06/HOOK-04) — a
+   * `fireAndForget` hook's error never propagates to the caller, so it is
+   * routed here instead. When omitted, the model falls back to
+   * `console.error` (never swallowed in total silence).
+   */
+  onHookError?: OnHookError<HookContextMap<ModelType>[METHODS]>;
   schema: ModelValidationSchema;
   validationQueryExpressions?: ValidationQueryExpressions;
   validity?: boolean;

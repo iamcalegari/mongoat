@@ -85,12 +85,12 @@ describe('Model — semântica de erro pre aborta / post propaga (HOOK-03, D-05)
       throw new MongoatError('efeito colateral obrigatório falhou');
     });
 
-    await expect(model.insert({ name: 'persistido-mesmo-assim' })).rejects.toThrow(
-      MongoatError
-    );
-    await expect(model.insert({ name: 'persistido-mesmo-assim-2' })).rejects.toThrow(
-      'efeito colateral obrigatório falhou'
-    );
+    await expect(
+      model.insert({ name: 'persistido-mesmo-assim' })
+    ).rejects.toThrow(MongoatError);
+    await expect(
+      model.insert({ name: 'persistido-mesmo-assim-2' })
+    ).rejects.toThrow('efeito colateral obrigatório falhou');
   });
 
   it('post-hook lançando ainda ocorre DEPOIS do insert no driver — o documento já existe', async () => {

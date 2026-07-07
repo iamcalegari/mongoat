@@ -3,6 +3,7 @@ export type {
   HookConfig,
   HookContextMap,
   HookFn,
+  OnHookError,
   PostHookEntry,
 } from './hooks';
 export type {
