@@ -48,6 +48,6 @@
     },
     "typeRoots": ["./node_modules/@types"]
   },
-  "include": ["src/utils", "examples", "src/**/*"],
+  "include": ["src/utils", "examples", "src/**/*", "test/**/*"],
   "exclude": ["./node_modules/*", "./lib"]
 }
