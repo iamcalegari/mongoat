@@ -5,15 +5,15 @@ milestone_name: "**Goal**: A API do alpha é auditada e estabilizada deliberadam
 current_phase: 01
 current_phase_name: funda-o-core-sem-bugs-e-build-moderno
 status: executing
-stopped_at: Phase 1 context gathered
-last_updated: "2026-07-07T04:19:12.127Z"
+stopped_at: Completed 01-02-PLAN.md
+last_updated: "2026-07-07T04:32:52.000Z"
 last_activity: 2026-07-07
 last_activity_desc: Phase 01 execution started
 progress:
   total_phases: 7
   completed_phases: 0
   total_plans: 5
-  completed_plans: 1
+  completed_plans: 2
   percent: 0
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-07-03)
 ## Current Position
 
 Phase: 01 (funda-o-core-sem-bugs-e-build-moderno) — EXECUTING
-Plan: 2 of 5
+Plan: 3 of 5
 Status: Ready to execute
 Last activity: 2026-07-07 — Phase 01 execution started
 
@@ -56,6 +56,7 @@ Progress: [░░░░░░░░░░] 0%
 
 *Updated after each plan completion*
 | Phase 01 P01 | 25min | 3 tasks | 4 files |
+| Phase 01 P02 | 30min | 3 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -68,6 +69,8 @@ Recent decisions affecting current work:
 - [Roadmap]: Bugs conhecidos (QUAL-01) e build tooling precedem a expansão de hooks; v1.0 (Phase 4) gateia em blindagem (testes + segurança, Phase 3).
 - [Phase 01]: Checkpoint de supply-chain (T-01-01-SC) aprovado: 7 pacotes [SUS] instalados com as versoes exatas verificadas no npm registry (tsdown 0.22.3, vitest 4.1.10, @testcontainers/mongodb 12.0.4, testcontainers 12.0.4, @arethetypeswrong/cli 0.18.4, tsx 4.23.0, @vitest/coverage-v8 4.1.10).
 - [Phase 01]: Subpath exports (./database, ./model, ./utils, ./types) removidos do package.json — barrel raiz ja cobre tudo, evita quadruplicar o exports map dual.
+- [Phase 01-02]: tsdown resolve aliases nativamente sem config extra de alias — Confirma Open Question 1 do RESEARCH.md; nenhum alias explicito necessario no tsdown.config.ts
+- [Phase 01-02]: json-schema vendorizado como JSONSchema4Subset em vez de mantido como devDependency — attw nao detectava o vazamento localmente, mas grep no .d.ts revelava import externo; vendorizar fecha QUAL-04 por completo
 
 ### Pending Todos
 
@@ -92,6 +95,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-07T04:18:42.648Z
-Stopped at: Phase 1 context gathered
-Resume file: .planning/phases/01-funda-o-core-sem-bugs-e-build-moderno/01-CONTEXT.md
+Last session: 2026-07-07T04:32:51.984Z
+Stopped at: Completed 01-02-PLAN.md
+Resume file: None

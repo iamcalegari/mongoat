@@ -169,3 +169,14 @@ None - nenhuma configuração de serviço externo necessária.
 ---
 *Phase: 01-funda-o-core-sem-bugs-e-build-moderno*
 *Completed: 2026-07-07*
+
+## Self-Check: PASSED
+
+- FOUND: tsdown.config.ts
+- FOUND: src/index.ts
+- FOUND: src/types/index.ts
+- FOUND: src/types/model.ts
+- CONFIRMED REMOVED: tsconfig.build.json
+- FOUND commit: af9eb47
+- FOUND commit: 8885a45
+- FOUND commit: 53e9316
