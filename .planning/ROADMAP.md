@@ -152,7 +152,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Fundação — Core sem bugs e build moderno | 5/5 | Complete   | 2026-07-07 |
+| 1. Fundação — Core sem bugs e build moderno | 5/5 | Complete    | 2026-07-07 |
 | 2. Sistema de hooks completo e API thin nativa | 0/TBD | Not started | - |
 | 3. Blindagem — testes, CI e segurança | 0/TBD | Not started | - |
 | 4. Estabilização de API e release v1.0 | 0/TBD | Not started | - |
