@@ -1,5 +1,5 @@
-export { DatabaseConfig } from './database';
-export {
+export type { DatabaseConfig } from './database';
+export type {
   CreateIndexProps,
   CreateModelProps,
   DefaultProperties,
