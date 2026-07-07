@@ -1,5 +1,4 @@
 import { METHODS } from '@/utils/enums';
-import { JSONSchema4 } from 'json-schema';
 import {
   CreateIndexesOptions,
   Document,
@@ -7,6 +6,23 @@ import {
   IndexSpecification,
   OptionalUnlessRequiredId,
 } from 'mongodb';
+
+/**
+ * Vendored subset of the JSON Schema Draft 4 `JSONSchema4` interface
+ * (from the `json-schema` npm package), limited to the fields actually
+ * used by Mongoat's `$jsonSchema` validators (`description`, `pattern`,
+ * `enum`, `additionalProperties`).
+ *
+ * Vendoring avoids re-exporting a third-party type in the published
+ * `.d.ts`/`.d.mts` — `json-schema` is not a runtime dependency (QUAL-04).
+ * @see https://www.npmjs.com/package/json-schema
+ */
+export interface JSONSchema4Subset {
+  additionalProperties?: boolean | JSONSchema4Subset;
+  description?: string;
+  enum?: unknown[];
+  pattern?: string;
+}
 
 export type CreateIndexProps = {
   key: IndexSpecification;
@@ -52,7 +68,7 @@ export interface DefaultProperties {
 export type SchemaWithDefaults<S> = S & DefaultProperties;
 
 export interface ModelValidationSchema<T extends DefaultProperties = any>
-  extends Omit<JSONSchema4, 'required'> {
+  extends JSONSchema4Subset {
   bsonType: string | string[];
   items?: ModelValidationSchema;
   properties?: {
