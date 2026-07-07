@@ -1,0 +1,113 @@
+import { Document } from 'mongodb';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+
+import { Database } from '@/database';
+import { Model } from '@/model';
+import { ModelValidationSchema } from '@/types';
+import { METHODS } from '@/utils/enums';
+
+/**
+ * Regressão de WR-02 (Code Review da Fase 01).
+ *
+ * Bugs originais (divergências de `insertMany`/`bulkWrite` em relação a
+ * `insert()`):
+ * 1. O pre-hook de `insertMany` era vinculado ao objeto CRU do chamador
+ *    (`.bind(doc)`) — mutações do hook vazavam para o array de entrada.
+ * 2. O hook rodava ANTES do merge com `documentDefaults`, então `this`
+ *    dentro do hook não enxergava os defaults (em `insert()`, enxerga).
+ * 3. `bulkWrite` reatribuía `insertOne.document` DENTRO do objeto de
+ *    operação do chamador, mutando o array de entrada.
+ */
+interface Doc extends Document {
+  name: string;
+  status?: string;
+  seenStatus?: string;
+}
+
+const schema: ModelValidationSchema = {
+  bsonType: 'object',
+  properties: {
+    name: { bsonType: 'string' },
+    status: { bsonType: 'string' },
+    seenStatus: { bsonType: 'string' },
+  },
+  required: ['name'],
+};
+
+describe('Model — insertMany/bulkWrite não mutam o input e hooks enxergam defaults (WR-02)', () => {
+  let db: Database;
+  let model: Model<Doc>;
+
+  beforeAll(async () => {
+    db = new Database({
+      uri: process.env.MONGODB_URI,
+      dbName: process.env.MONGODB_DB_NAME,
+    });
+
+    await db.connect();
+
+    model = new Model<Doc>({
+      collectionName: 'insert_input_isolation',
+      allowedMethods: [
+        METHODS.INSERT_MANY,
+        METHODS.BULK_WRITE,
+        METHODS.FIND_MANY,
+      ],
+      documentDefaults: { status: 'default-status' },
+      schema,
+    });
+
+    await db.setupCollection(model as unknown as Model);
+  });
+
+  afterAll(async () => {
+    Database.resetRegistry();
+    await db.disconnect();
+  });
+
+  it('insertMany: hook enxerga documentDefaults via this e mutações não vazam para o array do chamador', async () => {
+    model.pre(METHODS.INSERT_MANY, function (this: Doc) {
+      // `this` deve ser a cópia já mesclada com os defaults (como em insert()).
+      this.seenStatus = this.status;
+      this.name = `${this.name}-hooked`;
+    });
+
+    const input: Doc[] = [{ name: 'a' }, { name: 'b' }];
+
+    await model.insertMany(input);
+
+    // Input do chamador intacto — sem defaults nem mutações do hook.
+    expect(input).toEqual([{ name: 'a' }, { name: 'b' }]);
+
+    const persisted = await model.findMany({}, { sort: { name: 1 } });
+
+    expect(persisted.map((doc) => doc.name)).toEqual(['a-hooked', 'b-hooked']);
+    expect(
+      persisted.every((doc) => doc.seenStatus === 'default-status')
+    ).toBe(true);
+
+    model.pre(METHODS.INSERT_MANY, () => {});
+  });
+
+  it('bulkWrite: operações do chamador não são mutadas ao aplicar documentDefaults', async () => {
+    const operations = [
+      { insertOne: { document: { name: 'bulk-a' } } },
+      { insertOne: { document: { name: 'bulk-b' } } },
+    ];
+
+    await model.bulkWrite(operations as any);
+
+    // Objetos de operação do chamador intactos — sem defaults injetados.
+    expect(operations).toEqual([
+      { insertOne: { document: { name: 'bulk-a' } } },
+      { insertOne: { document: { name: 'bulk-b' } } },
+    ]);
+
+    const persisted = await model.findMany({ name: /^bulk-/ } as any);
+
+    expect(persisted).toHaveLength(2);
+    expect(persisted.every((doc) => doc.status === 'default-status')).toBe(
+      true
+    );
+  });
+});

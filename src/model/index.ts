@@ -384,16 +384,20 @@ export class Model<ModelType extends Document = Document> {
     documents: OptionalUnlessRequiredId<ModelType>[],
     options: BulkWriteOptions = {}
   ) {
-    await Promise.all(
-      documents.map((doc) =>
-        this.preMethod[METHODS.INSERT_MANY].bind(doc)(options)
-      )
-    );
-
+    // WR-02: merge dos defaults ANTES dos hooks, e hooks vinculados às
+    // CÓPIAS — mesmo comportamento de insert(): o hook enxerga os
+    // documentDefaults via `this` e as mutações do hook não vazam para o
+    // array de entrada do chamador.
     const _documents = documents.map((doc) => ({
       ...this.documentDefaults,
       ...doc,
     }));
+
+    await Promise.all(
+      _documents.map((doc) =>
+        this.preMethod[METHODS.INSERT_MANY].bind(doc)(options)
+      )
+    );
 
     const collection = this.getCollectionOrThrow();
     try {
@@ -443,14 +447,23 @@ export class Model<ModelType extends Document = Document> {
     operations: AnyBulkWriteOperation<ModelType>[],
     options?: BulkWriteOptions
   ) {
+    // WR-02: clonar a operação em vez de reatribuir `insertOne.document`
+    // in-place — a versão anterior mutava os objetos de operação do
+    // próprio chamador (o map retornava as mesmas referências).
     const _operations = operations.map((operation) => {
-      const anyOperarion = operation as any;
+      const anyOperation = operation as any;
 
-      if (anyOperarion.insertOne) {
-        anyOperarion.insertOne.document = {
-          ...this.documentDefaults,
-          ...anyOperarion.insertOne.document,
-        };
+      if (anyOperation.insertOne) {
+        return {
+          ...anyOperation,
+          insertOne: {
+            ...anyOperation.insertOne,
+            document: {
+              ...this.documentDefaults,
+              ...anyOperation.insertOne.document,
+            },
+          },
+        } as AnyBulkWriteOperation<ModelType>;
       }
 
       return operation;
