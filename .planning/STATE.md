@@ -4,11 +4,11 @@ milestone: v1.0
 milestone_name: "**Goal**: A API do alpha é auditada e estabilizada deliberadamente, e então publicada como v1.0.0 com semver disciplinado e um pipeline de release automatizado."
 current_phase: 02
 current_phase_name: sistema-de-hooks-completo-e-api-thin-nativa
-status: verifying
-stopped_at: Phase 2 context gathered
-last_updated: "2026-07-07T18:25:28.533Z"
+status: complete
+stopped_at: Phase 2 verified — passed 5/5, ready for Phase 3
+last_updated: "2026-07-07T19:25:00.000Z"
 last_activity: 2026-07-07
-last_activity_desc: Phase 02 execution started
+last_activity_desc: Phase 02 re-verified — passed 5/5 (CR-01/API-01 fechado)
 progress:
   total_phases: 7
   completed_phases: 2
@@ -28,10 +28,10 @@ See: .planning/PROJECT.md (updated 2026-07-03)
 
 ## Current Position
 
-Phase: 02 (sistema-de-hooks-completo-e-api-thin-nativa) — EXECUTING
+Phase: 02 (sistema-de-hooks-completo-e-api-thin-nativa) — COMPLETE (verified 5/5)
 Plan: 3 of 3
-Status: Phase complete — ready for re-verification (CR-01/Gap #1 fechado via quick 260707-mfp)
-Last activity: 2026-07-07 — Completed quick task 260707-mfp: fix CR-01/API-01 options passthrough
+Status: Verificação passed 5/5 — CR-01/API-01 fechado (quick 260707-mfp). Próximo: iniciar Phase 3 (Blindagem — testes, CI e segurança)
+Last activity: 2026-07-07 — Fase 2 re-verificada: passed 5/5
 
 Progress: [░░░░░░░░░░] 0%
 
