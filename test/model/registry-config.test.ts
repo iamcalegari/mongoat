@@ -98,6 +98,48 @@ describe('Model — registro atômico com detecção de config divergente (D-06)
     );
   });
 
+  // Regressão de WR-04 (Code Review da Fase 01): `isSameConfig` comparava
+  // apenas allowedMethods + validator — re-registração com mesmo schema mas
+  // documentDefaults ou indexes diferentes retornava a primeira instância
+  // silenciosamente, descartando os novos defaults/índices sem aviso.
+  it('new Model() com mesmos schema/métodos mas documentDefaults DIVERGENTES lança MongoatError', () => {
+    new Model<Doc>({
+      collectionName: 'registry_config_defaults_divergent',
+      allowedMethods: [METHODS.FIND],
+      documentDefaults: { name: 'active' },
+      schema,
+    });
+
+    expect(
+      () =>
+        new Model<Doc>({
+          collectionName: 'registry_config_defaults_divergent',
+          allowedMethods: [METHODS.FIND],
+          documentDefaults: { name: 'draft' },
+          schema,
+        })
+    ).toThrow(MongoatError);
+  });
+
+  it('new Model() com mesmos schema/métodos mas indexes DIVERGENTES lança MongoatError', () => {
+    new Model<Doc>({
+      collectionName: 'registry_config_indexes_divergent',
+      allowedMethods: [METHODS.FIND],
+      indexes: [{ key: { name: 1 } }],
+      schema,
+    });
+
+    expect(
+      () =>
+        new Model<Doc>({
+          collectionName: 'registry_config_indexes_divergent',
+          allowedMethods: [METHODS.FIND],
+          indexes: [{ key: { name: 1 }, unique: true }],
+          schema,
+        })
+    ).toThrow(MongoatError);
+  });
+
   // Regressão de WR-03 (Code Review da Fase 01): o caminho deprecated
   // `Database.defineModel()` tinha um early-return (`if (!!model) return
   // model;`) ANTES de qualquer comparação de config — o bug D-06 original

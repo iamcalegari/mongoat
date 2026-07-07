@@ -38,18 +38,21 @@ const kDatabase = Symbol('kDatabase');
 /**
  * Lightweight structural comparison used by the `Model` constructor to
  * detect a divergent re-registration of an already-registered
- * `collectionName` (D-06). Compares only the fields that define a model's
- * identity — `allowedMethods` (order-independent) and the fully-built
- * `validator` (which already embeds the schema + validationQueryExpressions)
- * — via `JSON.stringify`. Deliberately hand-rolled instead of pulling in a
- * deep-equal dependency (`lodash.isequal`/`fast-deep-equal`): the surface
- * being compared is small and known, and a generic deep-equal lib would
- * violate the project's "minimum runtime dependencies" constraint.
+ * `collectionName` (D-06). Compares the fields that define a model's
+ * behavior — `allowedMethods` (order-independent), the fully-built
+ * `validator` (which already embeds the schema + validationQueryExpressions),
+ * `documentDefaults` and `indexes` (WR-04) — via `JSON.stringify`.
+ * Deliberately hand-rolled instead of pulling in a deep-equal dependency
+ * (`lodash.isequal`/`fast-deep-equal`): the surface being compared is small
+ * and known, and a generic deep-equal lib would violate the project's
+ * "minimum runtime dependencies" constraint.
  */
 function isSameConfig(
   existing: Model<Document>,
   candidate: {
     allowedMethods: METHODS[];
+    documentDefaults: DocumentDefaults<Document>;
+    indexes: CreateIndexProps[];
     validator: { $jsonSchema: ModelValidationSchema };
   }
 ): boolean {
@@ -60,7 +63,20 @@ function isSameConfig(
   const sameValidator =
     JSON.stringify(existing.validator) === JSON.stringify(candidate.validator);
 
-  return sameAllowedMethods && sameValidator;
+  // WR-04: `documentDefaults` e `indexes` afetam materialmente o
+  // comportamento do model — uma re-registração com defaults/índices
+  // diferentes também deve falhar alto em vez de ser descartada em
+  // silêncio (mesma classe de mascaramento que D-06 eliminou).
+  const sameDocumentDefaults =
+    JSON.stringify(existing.documentDefaults) ===
+    JSON.stringify(candidate.documentDefaults);
+
+  const sameIndexes =
+    JSON.stringify(existing.indexes) === JSON.stringify(candidate.indexes);
+
+  return (
+    sameAllowedMethods && sameValidator && sameDocumentDefaults && sameIndexes
+  );
 }
 
 export class Model<ModelType extends Document = Document> {
@@ -150,6 +166,8 @@ export class Model<ModelType extends Document = Document> {
       if (
         isSameConfig(existing as unknown as Model<Document>, {
           allowedMethods: _allowedMethods,
+          documentDefaults: documentDefaults as DocumentDefaults<Document>,
+          indexes,
           validator,
         })
       ) {
