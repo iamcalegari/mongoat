@@ -316,17 +316,25 @@ export class Database {
     fn: (session: ClientSession) => Promise<any> | undefined,
     options?: ClientSessionOptions
   ) {
-    const clientSession = this[kClient]?.startSession({ ...options });
+    // CR-02: sem este guard, `this[kClient]?.startSession(...)` retornava
+    // `undefined` com o banco desconectado e o método resolvia com
+    // `undefined` SEM nunca invocar `fn` — perda de escrita silenciosa.
+    // Mesmo padrão D-10 de `getCollectionOrThrow`: falhar alto pré-conexão.
+    if (!this[kClient]) {
+      throw new MongoatError(
+        'Database not connected — call db.connect() first'
+      );
+    }
+
+    const clientSession = this[kClient].startSession({ ...options });
     let result: any;
 
     try {
-      await clientSession?.withTransaction(async (session) => {
+      await clientSession.withTransaction(async (session) => {
         result = await fn(session);
       });
-      clientSession?.endSession();
-    } catch (err) {
-      clientSession?.endSession();
-      throw err;
+    } finally {
+      await clientSession.endSession();
     }
 
     return result;
