@@ -7,9 +7,13 @@ export type {
   DatabaseConfig,
   DefaultProperties,
   DocumentDefaults,
+  HookConfig,
+  HookContextMap,
+  HookFn,
   ModelDbValidationProps,
   ModelSetup,
   ModelValidationSchema,
+  PostHookEntry,
   SchemaWithDefaults,
   ValidationQueryExpressions,
 } from './types';

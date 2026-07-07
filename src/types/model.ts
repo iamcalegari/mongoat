@@ -7,6 +7,8 @@ import {
   OptionalUnlessRequiredId,
 } from 'mongodb';
 
+import type { HookConfig, HookContextMap } from '@/types/hooks';
+
 /**
  * Vendored subset of the JSON Schema Draft 4 `JSONSchema4` interface
  * (from the `json-schema` npm package), limited to the fields actually
@@ -42,6 +44,11 @@ export interface CreateModelProps<ModelType extends Document> {
   allowedMethods?: METHODS[];
   collectionName: string;
   documentDefaults?: DocumentDefaults<ModelType>;
+  /**
+   * Declarative pre/post hook registration (D-01) — merged BEFORE any
+   * later `.pre()`/`.post()` chainable calls (D-02: construtor primeiro).
+   */
+  hooks?: { [M in METHODS]?: HookConfig<HookContextMap<ModelType>[M]> };
   indexes?: CreateIndexProps[];
   schema: ModelValidationSchema;
   validationQueryExpressions?: ValidationQueryExpressions;
