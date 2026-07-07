@@ -78,9 +78,15 @@ export class Database {
       const username = process.env.MONGODB_USERNAME || this.config.username;
       const password = process.env.MONGODB_PASSWORD || this.config.password;
 
+      // WR-09: percent-encoding obrigatório — senhas com caracteres
+      // reservados de URI (`@`, `/`, `:`, `%`, `?`, `#`) quebrariam o parse
+      // da connection string ou deslocariam sua semântica (tudo após `@`
+      // vira host; `?` permitiria injetar opções de conexão).
       this[kConnectionUrl] =
         username && password
-          ? uri.replace('<username>', username).replace('<password>', password)
+          ? uri
+              .replace('<username>', encodeURIComponent(username))
+              .replace('<password>', encodeURIComponent(password))
           : uri;
     }
 

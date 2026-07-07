@@ -91,4 +91,22 @@ describe('Database — precedência de URI e credenciais opcionais (CR-01)', () 
 
     expect(getConnectionUrl(db)).toBe('mongodb://user:pass@some-host:27017/');
   });
+
+  // Regressão de WR-09 (Code Review da Fase 01): credenciais eram
+  // interpoladas cruas na connection string — senhas com caracteres
+  // reservados de URI (`@`, `/`, `:`, `?`, `#`) quebravam o parse ou
+  // permitiam injetar opções de conexão via query string.
+  it('credenciais com caracteres reservados de URI são percent-encoded (WR-09)', () => {
+    delete process.env.MONGODB_URI;
+
+    const db = new Database({
+      uri: 'mongodb://<username>:<password>@some-host:27017/',
+      username: 'user@corp',
+      password: 'p@ss/w:rd?#',
+    });
+
+    expect(getConnectionUrl(db)).toBe(
+      `mongodb://${encodeURIComponent('user@corp')}:${encodeURIComponent('p@ss/w:rd?#')}@some-host:27017/`
+    );
+  });
 });
