@@ -68,6 +68,9 @@ lib/
 # dependency pins for dev/CI installs; npm never publishes it to consumers)
 yarn.lock
 
+# GSD research web-fetch cache (not versioned)
+.planning/research/.cache/
+
 # secrets
 .config
 
