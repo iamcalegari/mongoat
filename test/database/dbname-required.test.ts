@@ -35,8 +35,6 @@ describe('Database — kGetDbName sem fallback de teste (D-08)', () => {
   it('usa MONGODB_DB_NAME do ambiente quando presente', async () => {
     const db = new Database({
       uri: process.env.MONGODB_URI,
-      username: 'mongoat',
-      password: 'mongoat',
     });
     openDatabases.push(db);
 
@@ -51,8 +49,6 @@ describe('Database — kGetDbName sem fallback de teste (D-08)', () => {
     const db = new Database({
       uri: process.env.MONGODB_URI,
       dbName: 'mongoat_dbname_config_test',
-      username: 'mongoat',
-      password: 'mongoat',
     });
     openDatabases.push(db);
 
@@ -66,8 +62,6 @@ describe('Database — kGetDbName sem fallback de teste (D-08)', () => {
 
     const db = new Database({
       uri: process.env.MONGODB_URI,
-      username: 'mongoat',
-      password: 'mongoat',
     });
     openDatabases.push(db);
 

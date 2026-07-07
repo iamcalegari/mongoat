@@ -15,8 +15,6 @@ describe('Database — resetRegistry (@internal, D-09)', () => {
     const db = new Database({
       uri: process.env.MONGODB_URI,
       dbName: process.env.MONGODB_DB_NAME,
-      username: 'mongoat',
-      password: 'mongoat',
     });
 
     const schema: ModelValidationSchema = {

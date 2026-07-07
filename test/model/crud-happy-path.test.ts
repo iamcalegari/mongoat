@@ -39,8 +39,6 @@ describe('Model — happy-path CRUD por método público (D-12)', () => {
     db = new Database({
       uri: process.env.MONGODB_URI,
       dbName: process.env.MONGODB_DB_NAME,
-      username: 'mongoat',
-      password: 'mongoat',
     });
 
     await db.connect();

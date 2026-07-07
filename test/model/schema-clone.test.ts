@@ -26,8 +26,6 @@ describe('Model — schema compartilhado não é mutado entre models (QUAL-01)',
     new Database({
       uri: process.env.MONGODB_URI,
       dbName: process.env.MONGODB_DB_NAME,
-      username: 'mongoat',
-      password: 'mongoat',
     });
 
     const sharedSchema: ModelValidationSchema = {

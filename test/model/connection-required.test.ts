@@ -33,8 +33,6 @@ describe('Model — getCollectionOrThrow lança MongoatError sem conexão (D-10)
     const db = new Database({
       uri: process.env.MONGODB_URI,
       dbName: process.env.MONGODB_DB_NAME,
-      username: 'mongoat',
-      password: 'mongoat',
     });
     // Apenas para satisfazer Model.hasDatabase() — NÃO chama db.connect().
     void db;

@@ -19,8 +19,6 @@ describe('infra de teste (smoke)', () => {
     const db = new Database({
       uri: process.env.MONGODB_URI,
       dbName: process.env.MONGODB_DB_NAME,
-      username: 'mongoat',
-      password: 'mongoat',
     });
 
     await db.connect();

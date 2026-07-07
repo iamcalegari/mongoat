@@ -42,12 +42,16 @@ export class Database {
    * @param client An instance of the MongoClient class.
    * @param db An instance of the Db class.
    *
-   * If the config object has the uri, username and password properties, the
-   * connection url will be created by replacing the placeholders in the uri
-   * with the given values.
+   * The connection url is resolved from the `MONGODB_URI` env var first,
+   * then from `config.uri`. Credentials (`MONGODB_USERNAME`/`MONGODB_PASSWORD`
+   * env vars, then `config.username`/`config.password`) are optional: when
+   * both are present, the `<username>`/`<password>` placeholders in the uri
+   * are replaced with them; when absent, the uri is used as-is (e.g. a uri
+   * with embedded credentials, an Atlas SRV string, or a local instance
+   * without auth).
    *
-   * If the config object does not have the uri property, the connection url
-   * will be set to the default value of 'mongodb://127.0.0.1:27017/'.
+   * Only when neither `MONGODB_URI` nor `config.uri` is provided does the
+   * connection url fall back to the default 'mongodb://127.0.0.1:27017/'.
    *
    * If the client and db parameters are not provided, the instances of the
    * MongoClient and Db classes will be created automatically.
@@ -61,14 +65,20 @@ export class Database {
     this[kClient] = client;
     this[kDb] = db;
 
-    if (this.config.uri && this.config.username && this.config.password) {
+    // CR-01: a URI nunca deve ser descartada por falta de credenciais —
+    // exigir `uri && username && password` fazia `new Database({ uri })`
+    // (ou config puramente por env var) conectar silenciosamente no
+    // default localhost, com risco real de escrita no banco errado.
+    const uri = process.env.MONGODB_URI || this.config.uri;
+
+    if (uri) {
       const username = process.env.MONGODB_USERNAME || this.config.username;
       const password = process.env.MONGODB_PASSWORD || this.config.password;
-      const uri = process.env.MONGODB_URI || this.config.uri;
 
-      this[kConnectionUrl] = uri
-        .replace('<username>', username)
-        .replace('<password>', password);
+      this[kConnectionUrl] =
+        username && password
+          ? uri.replace('<username>', username).replace('<password>', password)
+          : uri;
     }
 
     if (!Model.hasDatabase()) Model.setDatabase(this);
