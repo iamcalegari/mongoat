@@ -35,6 +35,34 @@ import { toObjectId } from '@/utils';
 
 const kDatabase = Symbol('kDatabase');
 
+/**
+ * Lightweight structural comparison used by the `Model` constructor to
+ * detect a divergent re-registration of an already-registered
+ * `collectionName` (D-06). Compares only the fields that define a model's
+ * identity — `allowedMethods` (order-independent) and the fully-built
+ * `validator` (which already embeds the schema + validationQueryExpressions)
+ * — via `JSON.stringify`. Deliberately hand-rolled instead of pulling in a
+ * deep-equal dependency (`lodash.isequal`/`fast-deep-equal`): the surface
+ * being compared is small and known, and a generic deep-equal lib would
+ * violate the project's "minimum runtime dependencies" constraint.
+ */
+function isSameConfig(
+  existing: Model<Document>,
+  candidate: {
+    allowedMethods: METHODS[];
+    validator: { $jsonSchema: ModelValidationSchema };
+  }
+): boolean {
+  const sameAllowedMethods =
+    JSON.stringify([...existing.allowedMethods].sort()) ===
+    JSON.stringify([...candidate.allowedMethods].sort());
+
+  const sameValidator =
+    JSON.stringify(existing.validator) === JSON.stringify(candidate.validator);
+
+  return sameAllowedMethods && sameValidator;
+}
+
 export class Model<ModelType extends Document = Document> {
   collectionName!: string;
 
@@ -71,13 +99,9 @@ export class Model<ModelType extends Document = Document> {
 
   constructor(props: CreateModelProps<ModelType>) {
     if (!Model[kDatabase]) {
-      throw new MongoatError('Database not connected — call db.connect() first');
-    }
-
-    let model = Model[kDatabase].getModel(props.collectionName);
-
-    if (!!model) {
-      return model;
+      throw new MongoatError(
+        'Database not connected — call db.connect() first'
+      );
     }
 
     const {
@@ -103,21 +127,49 @@ export class Model<ModelType extends Document = Document> {
       ]
       : allowedMethods;
 
-    this.collectionName = collectionName;
-    this.indexes = indexes;
-    this.allowedMethods = _allowedMethods;
-    this.documentDefaults = documentDefaults;
-
+    // Built before the existing-registration check (still fully
+    // synchronous — no `await` between this and `registerModel()` below,
+    // D-07) so `isSameConfig` has the fully-resolved validator to compare
+    // against when the collection is already registered (D-06).
     const { validationAction, validationLevel, validator } =
       this.schemaValidatorBuilder({
         schema,
         validationQueryExpressions,
       });
 
+    // D-06: a second `new Model(...)` for an already-registered
+    // collectionName used to be silently ignored (`if (!!model) return
+    // model;`), discarding whatever config it was called with — even a
+    // config that conflicts with the first registration. Now the
+    // candidate config is compared against the registered one:
+    // identical → reuse the existing (Proxy-wrapped) instance;
+    // divergent → fail loudly instead of masking the mismatch.
+    const existing = Model[kDatabase].getModel(collectionName);
+
+    if (existing) {
+      if (
+        isSameConfig(existing as unknown as Model<Document>, {
+          allowedMethods: _allowedMethods,
+          validator,
+        })
+      ) {
+        return existing;
+      }
+
+      // Only the collectionName + the fact of divergence — never the
+      // schema content itself (Information Disclosure, T-01-05-01).
+      throw new MongoatError(
+        `Model "${collectionName}" already registered with a different configuration`
+      );
+    }
+
+    this.collectionName = collectionName;
+    this.indexes = indexes;
+    this.allowedMethods = _allowedMethods;
+    this.documentDefaults = documentDefaults;
     this.validator = validator;
     this.validationAction = validationAction;
     this.validationLevel = validationLevel;
-
     this.methods = Object.values(METHODS);
 
     // registerModel() wraps `this` in the KModelProxyHandler Proxy and
