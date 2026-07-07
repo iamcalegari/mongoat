@@ -98,6 +98,40 @@ describe('Model — registro atômico com detecção de config divergente (D-06)
     );
   });
 
+  // Regressão de WR-05 (Code Review da Fase 01): a comparação usava
+  // `JSON.stringify` puro, sensível à ordem de inserção das chaves — o mesmo
+  // schema declarado com `properties` em ordem distinta gerava um falso
+  // "already registered with a different configuration".
+  it('new Model() com o MESMO schema declarado com chaves em ordem diferente reusa a instância', () => {
+    const first = new Model<Doc>({
+      collectionName: 'registry_config_key_order',
+      allowedMethods: [METHODS.FIND],
+      schema: {
+        bsonType: 'object',
+        properties: {
+          name: { bsonType: 'string' },
+          tag: { bsonType: 'string' },
+        },
+        required: ['name'],
+      },
+    });
+
+    const second = new Model<Doc>({
+      collectionName: 'registry_config_key_order',
+      allowedMethods: [METHODS.FIND],
+      schema: {
+        properties: {
+          tag: { bsonType: 'string' },
+          name: { bsonType: 'string' },
+        },
+        required: ['name'],
+        bsonType: 'object',
+      },
+    });
+
+    expect(second).toBe(first);
+  });
+
   // Regressão de WR-04 (Code Review da Fase 01): `isSameConfig` comparava
   // apenas allowedMethods + validator — re-registração com mesmo schema mas
   // documentDefaults ou indexes diferentes retornava a primeira instância

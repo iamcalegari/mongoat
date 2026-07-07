@@ -36,6 +36,27 @@ import { toObjectId } from '@/utils';
 const kDatabase = Symbol('kDatabase');
 
 /**
+ * WR-05: serialização com chaves ordenadas. `JSON.stringify` puro é sensível
+ * à ordem de inserção das chaves — o mesmo schema declarado com `properties`
+ * em ordem distinta em dois módulos geraria um falso `MongoatError:
+ * already registered with a different configuration`. Ordenar as chaves de
+ * objetos planos (arrays preservam a ordem, que é semântica) torna a
+ * comparação estrutural, não posicional.
+ */
+function stableStringify(value: unknown): string {
+  return JSON.stringify(value, (_key, val) =>
+    val && typeof val === 'object' && !Array.isArray(val)
+      ? Object.keys(val as Record<string, unknown>)
+          .sort()
+          .reduce((acc: Record<string, unknown>, key) => {
+            acc[key] = (val as Record<string, unknown>)[key];
+            return acc;
+          }, {})
+      : val
+  );
+}
+
+/**
  * Lightweight structural comparison used by the `Model` constructor to
  * detect a divergent re-registration of an already-registered
  * `collectionName` (D-06). Compares the fields that define a model's
@@ -61,16 +82,20 @@ function isSameConfig(
     JSON.stringify([...candidate.allowedMethods].sort());
 
   const sameValidator =
-    JSON.stringify(existing.validator) === JSON.stringify(candidate.validator);
+    stableStringify(existing.validator) ===
+    stableStringify(candidate.validator);
 
   // WR-04: `documentDefaults` e `indexes` afetam materialmente o
   // comportamento do model — uma re-registração com defaults/índices
   // diferentes também deve falhar alto em vez de ser descartada em
   // silêncio (mesma classe de mascaramento que D-06 eliminou).
   const sameDocumentDefaults =
-    JSON.stringify(existing.documentDefaults) ===
-    JSON.stringify(candidate.documentDefaults);
+    stableStringify(existing.documentDefaults) ===
+    stableStringify(candidate.documentDefaults);
 
+  // Indexes usam JSON.stringify puro de propósito: a ordem das chaves em um
+  // índice composto (`{ a: 1, b: 1 }` vs `{ b: 1, a: 1 }`) é SEMÂNTICA no
+  // MongoDB — ordená-las equipararia índices genuinamente diferentes.
   const sameIndexes =
     JSON.stringify(existing.indexes) === JSON.stringify(candidate.indexes);
 
