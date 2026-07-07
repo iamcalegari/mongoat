@@ -17,6 +17,13 @@ import { METHODS } from '@/utils/enums';
  * `TypeError` críptico na primeira chamada de método na collection
  * `undefined`, em vez de um erro claro. Fix: helper `getCollectionOrThrow()`
  * lança `MongoatError` descritivo.
+ *
+ * Fase 2 (HOOK-02): `total()` (como todos os 12 métodos CRUD) agora passa
+ * pelo pipeline pre → driver → post, que é assíncrono (o driver call só
+ * roda depois de `await runPreHooks(...)`) — o `MongoatError` de
+ * `getCollectionOrThrow()` deixa de ser um throw SÍNCRONO e passa a ser
+ * uma rejeição da Promise retornada. Migrado de `expect(() =>
+ * ...).toThrow()` para `await expect(...).rejects.toThrow()`.
  */
 interface Doc extends Document {
   name: string;
@@ -29,7 +36,7 @@ const schema: ModelValidationSchema = {
 };
 
 describe('Model — getCollectionOrThrow lança MongoatError sem conexão (D-10)', () => {
-  it('método CRUD antes de connect() lança MongoatError descritivo, não TypeError', () => {
+  it('método CRUD antes de connect() lança MongoatError descritivo, não TypeError', async () => {
     const db = new Database({
       uri: process.env.MONGODB_URI,
       dbName: process.env.MONGODB_DB_NAME,
@@ -43,8 +50,8 @@ describe('Model — getCollectionOrThrow lança MongoatError sem conexão (D-10)
       schema,
     });
 
-    expect(() => model.total()).toThrow(MongoatError);
-    expect(() => model.total()).toThrow(
+    await expect(model.total()).rejects.toThrow(MongoatError);
+    await expect(model.total()).rejects.toThrow(
       'Database not connected — call db.connect() first'
     );
   });

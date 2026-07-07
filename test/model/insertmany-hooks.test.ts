@@ -57,12 +57,14 @@ describe('Model — insertMany aguarda pre-hooks assíncronos (QUAL-01)', () => 
 
     await db.setupCollection(model as unknown as Model);
 
-    model.pre(METHODS.INSERT_MANY, async function (this: Doc) {
+    model.pre(METHODS.INSERT_MANY, async (ctx) => {
       // Simula um pre-hook assíncrono real (ex.: uma consulta externa) — se
       // o insertMany não aguardar corretamente, o insert corre antes desta
-      // linha rodar e o campo não é persistido.
+      // linha rodar e o campo não é persistido. Migrado para o contrato de
+      // `ctx` explícito (D-03) — `this` deixou de ser vinculado ao
+      // documento (Fase 2).
       await new Promise((resolve) => setTimeout(resolve, 20));
-      this.processedAt = 'hook-applied';
+      ctx.document!.processedAt = 'hook-applied';
     });
 
     await model.insertMany([{ name: 'a' }, { name: 'b' }, { name: 'c' }]);

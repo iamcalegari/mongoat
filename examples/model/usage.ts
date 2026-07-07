@@ -33,7 +33,7 @@ const main = async () => {
     }
   );
 
-  console.log('DOCUMENT UPDATED: ', updatedDocument.firstName); // John
+  console.log('DOCUMENT UPDATED: ', updatedDocument?.firstName); // John
 
   await User.insert({
     username: 'anotherUser',

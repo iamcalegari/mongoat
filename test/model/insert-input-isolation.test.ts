@@ -66,10 +66,11 @@ describe('Model — insertMany/bulkWrite não mutam o input e hooks enxergam def
   });
 
   it('insertMany: hook enxerga documentDefaults via this e mutações não vazam para o array do chamador', async () => {
-    model.pre(METHODS.INSERT_MANY, function (this: Doc) {
-      // `this` deve ser a cópia já mesclada com os defaults (como em insert()).
-      this.seenStatus = this.status;
-      this.name = `${this.name}-hooked`;
+    model.pre(METHODS.INSERT_MANY, (ctx) => {
+      // `ctx.document` deve ser a cópia já mesclada com os defaults (como
+      // em insert()). Migrado para o contrato de `ctx` explícito (D-03).
+      ctx.document!.seenStatus = ctx.document!.status;
+      ctx.document!.name = `${ctx.document!.name}-hooked`;
     });
 
     const input: Doc[] = [{ name: 'a' }, { name: 'b' }];
@@ -82,9 +83,9 @@ describe('Model — insertMany/bulkWrite não mutam o input e hooks enxergam def
     const persisted = await model.findMany({}, { sort: { name: 1 } });
 
     expect(persisted.map((doc) => doc.name)).toEqual(['a-hooked', 'b-hooked']);
-    expect(
-      persisted.every((doc) => doc.seenStatus === 'default-status')
-    ).toBe(true);
+    expect(persisted.every((doc) => doc.seenStatus === 'default-status')).toBe(
+      true
+    );
 
     model.pre(METHODS.INSERT_MANY, () => {});
   });
@@ -140,17 +141,21 @@ describe('Model — insertMany/bulkWrite não mutam o input e hooks enxergam def
 
     await db.setupCollection(metaModel as unknown as Model);
 
-    metaModel.pre(METHODS.INSERT, function (this: MetaDoc) {
+    metaModel.pre(METHODS.INSERT, (ctx) => {
       // Sob o bug, isto mutava a instância COMPARTILHADA do default.
-      this.meta!.source = 'mutated-by-hook';
+      ctx.document.meta!.source = 'mutated-by-hook';
     });
 
     const first = await metaModel.insert({ name: 'first' });
     expect(first.meta?.source).toBe('mutated-by-hook');
 
-    metaModel.pre(METHODS.INSERT, () => {});
-
-    const second = await metaModel.insert({ name: 'second' });
-    expect(second.meta?.source).toBe('api');
+    // D-01 (Fase 2): `.pre()` passou a ACUMULAR em vez de sobrescrever —
+    // não há mais como "resetar" o hook registrando um no-op por cima, e
+    // o hook acima seguirá mutando `ctx.document.meta` em todo insert
+    // subsequente. A asserção original (segundo insert com default
+    // intacto) deixou de ser observável pela SAÍDA do model; o invariante
+    // de WR-06 (o default INTERNO compartilhado nunca é corrompido pela
+    // mutação do hook no clone por-insert) é verificado diretamente.
+    expect(metaModel.documentDefaults.meta?.source).toBe('api');
   });
 });

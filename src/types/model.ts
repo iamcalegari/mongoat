@@ -38,7 +38,9 @@ export interface ModelDbValidationProps {
   };
 }
 
-export type DocumentDefaults<T extends Document> = Partial<OptionalUnlessRequiredId<T>> | Partial<SchemaWithDefaults<OptionalUnlessRequiredId<T>>>;
+export type DocumentDefaults<T extends Document> =
+  | Partial<OptionalUnlessRequiredId<T>>
+  | Partial<SchemaWithDefaults<OptionalUnlessRequiredId<T>>>;
 
 export interface CreateModelProps<ModelType extends Document> {
   allowedMethods?: METHODS[];
@@ -55,7 +57,7 @@ export interface CreateModelProps<ModelType extends Document> {
   validity?: boolean;
 }
 
-export interface ValidationQueryExpressions extends Filter<Document> { }
+export interface ValidationQueryExpressions extends Filter<Document> {}
 
 export interface ModelSetup {
   allowedMethods?: METHODS[];
@@ -74,8 +76,9 @@ export interface DefaultProperties {
 
 export type SchemaWithDefaults<S> = S & DefaultProperties;
 
-export interface ModelValidationSchema<T extends DefaultProperties = any>
-  extends JSONSchema4Subset {
+export interface ModelValidationSchema<
+  T extends DefaultProperties = any,
+> extends JSONSchema4Subset {
   bsonType: string | string[];
   items?: ModelValidationSchema;
   properties?: {

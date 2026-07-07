@@ -1,11 +1,7 @@
 import { Document } from 'mongodb';
 
 import type { Model } from '@/model';
-import {
-  HookContextMap,
-  HookFn,
-  PostHookEntry,
-} from '@/types/hooks';
+import { HookContextMap, HookFn, PostHookEntry } from '@/types/hooks';
 import { METHODS } from '@/utils/enums';
 
 /**

@@ -64,7 +64,6 @@ export const User = new Model<UserSchema>({
   },
 });
 
-
-User.pre<UserSchema>(METHODS.INSERT, function () {
-  this.password = 'hashedPassword';
+User.pre(METHODS.INSERT, (ctx) => {
+  ctx.document.password = 'hashedPassword';
 });

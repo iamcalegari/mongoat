@@ -1,23 +1,30 @@
+import { AsyncLocalStorage } from 'node:async_hooks';
+
 import {
   AggregateOptions,
   AnyBulkWriteOperation,
   BulkWriteOptions,
+  BulkWriteResult,
   Collection,
   CountDocumentsOptions,
   DeleteOptions,
+  DeleteResult,
   Document,
   Filter,
   FindOneAndDeleteOptions,
   FindOneAndUpdateOptions,
   FindOptions,
+  InsertManyResult,
   InsertOneOptions,
   ObjectId,
   OptionalUnlessRequiredId,
   UpdateFilter,
   UpdateOptions,
+  UpdateResult,
   WithId,
 } from 'mongodb';
 
+import { buildContext, runPostHooks, runPreHooks } from '@/model/hooks';
 import {
   CreateIndexProps,
   CreateModelProps,
@@ -27,12 +34,19 @@ import {
   ModelValidationSchema,
   ValidationQueryExpressions,
 } from '@/types/model';
+import {
+  HookConfig,
+  HookContextMap,
+  HookFn,
+  HookRegistry,
+} from '@/types/hooks';
 import { METHODS } from '@/utils/enums';
 import { Database } from '@/database';
 import { MongoatError } from '@/errors';
 import { toObjectId } from '@/utils';
 
 const kDatabase = Symbol('kDatabase');
+const kHookContext = Symbol('kHookContext');
 
 /**
  * WR-05: serialização com chaves ordenadas. `JSON.stringify` puro é sensível
@@ -173,22 +187,30 @@ export class Model<ModelType extends Document = Document> {
 
   documentDefaults!: DocumentDefaults<ModelType>;
 
-  preMethod: Record<METHODS, Function> = {
-    [METHODS.UPDATE]: () => { },
-    [METHODS.UPDATE_MANY]: () => { },
-    [METHODS.INSERT]: () => { },
-    [METHODS.FIND_MANY]: () => { },
-    [METHODS.FIND]: () => { },
-    [METHODS.TOTAL]: () => { },
-    [METHODS.FIND_BY_ID]: () => { },
-    [METHODS.DELETE]: () => { },
-    [METHODS.AGGREGATE]: () => { },
-    [METHODS.INSERT_MANY]: () => { },
-    [METHODS.DELETE_MANY]: () => { },
-    [METHODS.BULK_WRITE]: () => { },
-  };
+  /**
+   * Hook registry (replaces `preMethod: Record<METHODS, Function>`) — one
+   * `{ pre: []; post: [] }` array pair per `METHODS` value, populated by
+   * the declarative `hooks` constructor option (D-01) and by the
+   * chainable `.pre()`/`.post()` (D-02: construtor primeiro).
+   */
+  hooks: HookRegistry<ModelType> = Object.fromEntries(
+    Object.values(METHODS).map((method) => [method, { pre: [], post: [] }])
+  ) as unknown as HookRegistry<ModelType>;
 
   static [kDatabase]: Database | undefined;
+
+  /**
+   * D-07 — per-instance `AsyncLocalStorage` reentrancy guard (Pattern 5).
+   * A hook (or an internal method delegation, e.g. `findById` → `find`)
+   * that calls another method of THIS SAME model runs inside the same
+   * async context established by the outer method's dispatch, so it sees
+   * `{ raw: true }` in the store and skips that method's own hook
+   * pipeline instead of re-entering it. Scoped per Model instance (not
+   * global/static) so concurrent calls on the SAME model never leak
+   * reentrancy state into each other's async chains (a boolean instance
+   * flag would).
+   */
+  private [kHookContext] = new AsyncLocalStorage<{ raw: true }>();
 
   constructor(props: CreateModelProps<ModelType>) {
     if (!Model[kDatabase]) {
@@ -209,15 +231,15 @@ export class Model<ModelType extends Document = Document> {
 
     const _allowedMethods = validity
       ? [
-        METHODS.DELETE,
-        METHODS.FIND,
-        METHODS.FIND_BY_ID,
-        METHODS.FIND_MANY,
-        METHODS.INSERT,
-        METHODS.TOTAL,
-        METHODS.UPDATE,
-        METHODS.UPDATE_MANY,
-      ]
+          METHODS.DELETE,
+          METHODS.FIND,
+          METHODS.FIND_BY_ID,
+          METHODS.FIND_MANY,
+          METHODS.INSERT,
+          METHODS.TOTAL,
+          METHODS.UPDATE,
+          METHODS.UPDATE_MANY,
+        ]
       : allowedMethods;
 
     // Built before the existing-registration check (still fully
@@ -268,6 +290,28 @@ export class Model<ModelType extends Document = Document> {
     this.validationAction = validationAction;
     this.validationLevel = validationLevel;
     this.methods = Object.values(METHODS);
+
+    // D-01/D-02: hooks declarados no construtor populam a registry ANTES
+    // de qualquer `.pre()`/`.post()` encadeável chamado depois (que só
+    // faz `push`, nunca sobrescreve — ver `pre()`/`post()` abaixo).
+    if (props.hooks) {
+      for (const [method, config] of Object.entries(props.hooks) as [
+        METHODS,
+        HookConfig<HookContextMap<ModelType>[METHODS]>,
+      ][]) {
+        if (config.pre) {
+          this.hooks[method].pre.push(...config.pre);
+        }
+
+        if (config.post) {
+          this.hooks[method].post.push(
+            ...config.post.map((entry) =>
+              typeof entry === 'function' ? { fn: entry } : entry
+            )
+          );
+        }
+      }
+    }
 
     // registerModel() wraps `this` in the KModelProxyHandler Proxy and
     // stores it in the registry — return that wrapped instance instead of
@@ -371,144 +415,293 @@ export class Model<ModelType extends Document = Document> {
     return collection;
   }
 
-  pre<T extends ModelType>(
-    methodName: METHODS,
-    transformer: (
-      this: UpdateFilter<T> & T,
-      args: FindOneAndUpdateOptions &
-        FindOptions &
-        DeleteOptions &
-        InsertOneOptions &
-        BulkWriteOptions &
-        ModelType
-    ) => void
-  ) {
-    this.preMethod[methodName] = transformer;
+  pre<M extends METHODS>(
+    method: M,
+    fn: HookFn<HookContextMap<ModelType>[M]>
+  ): this {
+    // D-01: acumula (push), nunca sobrescreve — encadeável (D-02: depois
+    // dos hooks declarados no construtor).
+    this.hooks[method].pre.push(fn);
+
+    return this;
   }
 
-  aggregate(pipeline: Document[], options: AggregateOptions = {}) {
+  post<M extends METHODS>(
+    method: M,
+    fn: HookFn<HookContextMap<ModelType>[M]>,
+    options: { fireAndForget?: boolean } = {}
+  ): this {
+    this.hooks[method].post.push({ fn, fireAndForget: options.fireAndForget });
+
+    return this;
+  }
+
+  /**
+   * @private
+   *
+   * Runs the pre → driver → post pipeline for a single-ctx method (every
+   * CRUD method except `insertMany`, which needs a per-document pre-hook
+   * pass — see `insertMany()`). `rawFn` reads its arguments from `ctx`
+   * (not from the original public-method parameters) so a pre-hook
+   * mutation of `ctx.options`/`ctx.filter`/`ctx.document` reaches the
+   * driver call (Pitfall 4).
+   */
+  private async executeHooked<M extends METHODS>(
+    method: M,
+    ctx: HookContextMap<ModelType>[M],
+    rawFn: () => unknown
+  ): Promise<unknown> {
+    await runPreHooks(this.hooks[method].pre, ctx);
+
+    const result = await rawFn();
+    (ctx as unknown as { result?: unknown }).result = result;
+
+    await runPostHooks(this.hooks[method].post, ctx);
+
+    return (ctx as unknown as { result?: unknown }).result;
+  }
+
+  /**
+   * @private
+   *
+   * Reentrancy dispatch shared by every CRUD method except `insertMany`
+   * (Pattern 5/D-07): if this Model's async context is already marked
+   * `raw` (this call is nested inside a hook, or inside another
+   * already-hooked method of the same instance — e.g. `findById` →
+   * `find`), skip straight to `rawFn` — no hooks re-fire, no new async
+   * context opens. Otherwise, open a fresh `{ raw: true }` context and run
+   * the full pre → driver → post pipeline via `executeHooked`.
+   */
+  private runHooked<M extends METHODS>(
+    method: M,
+    ctx: HookContextMap<ModelType>[M],
+    rawFn: (ctx: HookContextMap<ModelType>[M]) => unknown
+  ): unknown {
+    const store = this[kHookContext].getStore();
+
+    if (store?.raw) {
+      return rawFn(ctx);
+    }
+
+    return this[kHookContext].run({ raw: true }, () =>
+      this.executeHooked(method, ctx, () => rawFn(ctx))
+    );
+  }
+
+  aggregate(
+    pipeline: Document[],
+    options: AggregateOptions = {}
+  ): Promise<Document[]> {
+    const ctx = buildContext(METHODS.AGGREGATE, this, { pipeline, options });
+
+    return this.runHooked(METHODS.AGGREGATE, ctx, (c) =>
+      this.rawAggregate(c.pipeline, c.options)
+    ) as Promise<Document[]>;
+  }
+
+  private rawAggregate(pipeline: Document[], options: AggregateOptions) {
     const collection = this.getCollectionOrThrow();
 
     return collection.aggregate(pipeline, options).toArray();
   }
 
-  async update(
+  update(
     filter: Filter<ModelType>,
     update: UpdateFilter<ModelType>,
     options: FindOneAndUpdateOptions = {}
-  ) {
+  ): Promise<WithId<ModelType> | null> {
     const _update = { ...update };
-
-    await this.preMethod[METHODS.UPDATE].bind(_update)({
-      ...filter,
-      ...options,
+    const ctx = buildContext(METHODS.UPDATE, this, {
+      filter,
+      update: _update,
+      options,
     });
 
-    const collection = this.getCollectionOrThrow();
-
-    const doc = (await collection.findOneAndUpdate(
-      filter,
-      _update as UpdateFilter<ModelType>,
-      {
-        returnDocument: 'after',
-        ...options,
-      }
-    ))!;
-
-    return doc;
+    return this.runHooked(METHODS.UPDATE, ctx, (c) =>
+      this.rawUpdate(c.filter, c.update, c.options)
+    ) as Promise<WithId<ModelType> | null>;
   }
 
-  async updateMany(
+  private async rawUpdate(
+    filter: Filter<ModelType>,
+    update: UpdateFilter<ModelType>,
+    options: FindOneAndUpdateOptions
+  ) {
+    const collection = this.getCollectionOrThrow();
+
+    return (await collection.findOneAndUpdate(filter, update, {
+      returnDocument: 'after',
+      ...options,
+    }))!;
+  }
+
+  updateMany(
     filter: Filter<ModelType>,
     update: UpdateFilter<ModelType>,
     options: UpdateOptions = {}
-  ) {
-    const _update = {
-      ...update,
-    };
-
-    await this.preMethod[METHODS.UPDATE_MANY].bind(_update)(options);
-
-    const collection = this.getCollectionOrThrow();
-
-    const updateResult = (await collection.updateMany(
+  ): Promise<UpdateResult> {
+    const _update = { ...update };
+    const ctx = buildContext(METHODS.UPDATE_MANY, this, {
       filter,
-      _update as UpdateFilter<ModelType>,
-      {
-        ...options,
-      }
-    ))!;
+      update: _update,
+      options,
+    });
 
-    return updateResult;
+    return this.runHooked(METHODS.UPDATE_MANY, ctx, (c) =>
+      this.rawUpdateMany(c.filter, c.update, c.options)
+    ) as Promise<UpdateResult>;
   }
 
-  findMany(filter: Filter<ModelType> = {}, options: FindOptions = {}) {
+  private async rawUpdateMany(
+    filter: Filter<ModelType>,
+    update: UpdateFilter<ModelType>,
+    options: UpdateOptions
+  ) {
+    const collection = this.getCollectionOrThrow();
+
+    return (await collection.updateMany(filter, update, { ...options }))!;
+  }
+
+  findMany(
+    filter: Filter<ModelType> = {},
+    options: FindOptions = {}
+  ): Promise<WithId<ModelType>[]> {
+    const ctx = buildContext(METHODS.FIND_MANY, this, { filter, options });
+
+    return this.runHooked(METHODS.FIND_MANY, ctx, (c) =>
+      this.rawFindMany(c.filter, c.options)
+    ) as Promise<WithId<ModelType>[]>;
+  }
+
+  private rawFindMany(filter: Filter<ModelType>, options: FindOptions) {
     const collection = this.getCollectionOrThrow();
 
     // WR-07: sem `?? []` — `toArray()` retorna uma Promise, que nunca é
     // nullish; o fallback era código morto que mentia sobre um retorno
-    // síncrono `[]` impossível (mesma classe do fix de tipagem do find()).
+    // síncrono `[]` impossível.
     return collection.find(filter, options).toArray();
   }
 
-  deleteMany(filter: Filter<ModelType>, options: DeleteOptions = {}) {
+  deleteMany(
+    filter: Filter<ModelType>,
+    options: DeleteOptions = {}
+  ): Promise<DeleteResult> {
+    const ctx = buildContext(METHODS.DELETE_MANY, this, { filter, options });
+
+    return this.runHooked(METHODS.DELETE_MANY, ctx, (c) =>
+      this.rawDeleteMany(c.filter, c.options)
+    ) as Promise<DeleteResult>;
+  }
+
+  private rawDeleteMany(filter: Filter<ModelType>, options: DeleteOptions) {
     const collection = this.getCollectionOrThrow();
 
     return collection.deleteMany(filter, options);
   }
 
-  async insert(
+  insert(
     document: OptionalUnlessRequiredId<ModelType>,
     options: InsertOneOptions = {}
-  ) {
+  ): Promise<WithId<ModelType> & DefaultProperties> {
     // WR-06: clone por insert — o spread raso compartilharia defaults
-    // aninhados entre todos os documentos (e com o próprio model).
-    let _document = {
+    // aninhados entre todos os documentos (e com o próprio model). Feito
+    // ANTES do ctx ser montado, então os pre-hooks veem/mutam a cópia já
+    // mesclada com os defaults (não o objeto original do chamador).
+    const mergedDocument = {
       ...cloneDocumentDefaults(this.documentDefaults),
       ...document,
-    };
+    } as OptionalUnlessRequiredId<ModelType>;
 
-    await this.preMethod[METHODS.INSERT].bind(_document)(options);
+    const ctx = buildContext(METHODS.INSERT, this, {
+      document: mergedDocument,
+      options,
+    });
 
+    return this.runHooked(METHODS.INSERT, ctx, (c) =>
+      this.rawInsert(c.document, c.options)
+    ) as Promise<WithId<ModelType> & DefaultProperties>;
+  }
+
+  private async rawInsert(
+    document: OptionalUnlessRequiredId<ModelType>,
+    options: InsertOneOptions
+  ) {
     const collection = this.getCollectionOrThrow();
 
     try {
-      const { insertedId } = await collection.insertOne(_document, options);
+      const { insertedId } = await collection.insertOne(document, options);
 
-      return { _id: insertedId, ..._document } as unknown as WithId<ModelType> &
+      return { _id: insertedId, ...document } as unknown as WithId<ModelType> &
         DefaultProperties;
     } catch (err: any) {
       throw wrapDriverError(err);
     }
   }
 
+  /**
+   * `insertMany` is special-cased instead of going through
+   * `runHooked`/`executeHooked` (Pitfall 1 / A4): pre hooks run PER
+   * DOCUMENT — `Promise.all` parallelizes ACROSS documents (preserved
+   * from the Fase 1 fix), while the pre hooks of the SAME document run
+   * sequentially via `runPreHooks`. Post hooks run ONCE for the whole
+   * batch, against a single `ctx.result` (`InsertManyResult`) — there is
+   * no per-document result to hand each post hook.
+   */
   async insertMany(
     documents: OptionalUnlessRequiredId<ModelType>[],
     options: BulkWriteOptions = {}
-  ) {
-    // WR-02: merge dos defaults ANTES dos hooks, e hooks vinculados às
-    // CÓPIAS — mesmo comportamento de insert(): o hook enxerga os
-    // documentDefaults via `this` e as mutações do hook não vazam para o
-    // array de entrada do chamador.
+  ): Promise<InsertManyResult<ModelType>> {
+    // WR-06: clone por documento — cada doc precisa da própria instância
+    // dos defaults aninhados.
     const _documents = documents.map((doc) => ({
-      // WR-06: clone por documento — cada doc precisa da própria instância
-      // dos defaults aninhados.
       ...cloneDocumentDefaults(this.documentDefaults),
       ...doc,
-    }));
+    })) as OptionalUnlessRequiredId<ModelType>[];
 
-    await Promise.all(
-      _documents.map((doc) =>
-        this.preMethod[METHODS.INSERT_MANY].bind(doc)(options)
-      )
-    );
+    const store = this[kHookContext].getStore();
 
+    if (store?.raw) {
+      return this.rawInsertMany(_documents, options);
+    }
+
+    return this[kHookContext].run({ raw: true }, async () => {
+      // Pitfall 1: paralelo ENTRE documentos, sequencial DENTRO de cada
+      // documento — nunca `Promise.all` para os hooks de UM documento.
+      await Promise.all(
+        _documents.map((document) => {
+          const preCtx = buildContext(METHODS.INSERT_MANY, this, {
+            document,
+            documents: _documents,
+            options,
+          });
+
+          return runPreHooks(this.hooks[METHODS.INSERT_MANY].pre, preCtx);
+        })
+      );
+
+      const postCtx = buildContext(METHODS.INSERT_MANY, this, {
+        documents: _documents,
+        options,
+      });
+
+      postCtx.result = await this.rawInsertMany(_documents, options);
+
+      await runPostHooks(this.hooks[METHODS.INSERT_MANY].post, postCtx);
+
+      return postCtx.result as InsertManyResult<ModelType>;
+    });
+  }
+
+  private async rawInsertMany(
+    documents: OptionalUnlessRequiredId<ModelType>[],
+    options: BulkWriteOptions
+  ) {
     const collection = this.getCollectionOrThrow();
+
     try {
-      // WR-01: sem o `await`, a Promise rejeitada do driver escapava do
-      // try/catch (código morto) — mesma classe do bug de hooks não
-      // aguardados. `return await` garante que rejeições passem pelo catch.
-      return await collection.insertMany(_documents, options);
+      // WR-01: `return await` — sem ele, a Promise rejeitada do driver
+      // escapava do try/catch (código morto).
+      return await collection.insertMany(documents, options);
     } catch (err: any) {
       throw wrapDriverError(err);
     }
@@ -518,39 +711,89 @@ export class Model<ModelType extends Document = Document> {
     filter: Filter<ModelType> = {},
     options?: FindOptions
   ): Promise<WithId<ModelType> | null> {
+    const ctx = buildContext(METHODS.FIND, this, { filter, options });
+
+    return this.runHooked(METHODS.FIND, ctx, (c) =>
+      this.rawFind(c.filter, c.options)
+    ) as Promise<WithId<ModelType> | null>;
+  }
+
+  private rawFind(filter: Filter<ModelType>, options?: FindOptions) {
     const collection = this.getCollectionOrThrow();
 
     return collection.findOne(filter, options);
   }
 
-  findById(documentId: ObjectId | string, options?: FindOptions) {
+  findById(
+    documentId: ObjectId | string,
+    options?: FindOptions
+  ): Promise<WithId<ModelType> | null> {
+    const ctx = buildContext(METHODS.FIND_BY_ID, this, {
+      documentId,
+      options,
+    });
+
+    return this.runHooked(METHODS.FIND_BY_ID, ctx, (c) =>
+      this.rawFindById(c.documentId, c.options)
+    ) as Promise<WithId<ModelType> | null>;
+  }
+
+  private rawFindById(documentId: ObjectId | string, options?: FindOptions) {
+    // Delega ao `find()` público — a chamada roda dentro do mesmo
+    // contexto `{ raw: true }` já aberto por `findById`'s dispatch
+    // (Pattern 5/D-07), então `find()` também pula seu próprio pipeline
+    // de hooks (não apenas o gating do Proxy, já pulado por estar
+    // vinculado a `target` — ver QUAL-01).
     return this.find(
       { _id: toObjectId(documentId) } as unknown as Filter<ModelType>,
       options
     );
   }
 
-  async delete(filter: Filter<ModelType>, options?: FindOneAndDeleteOptions) {
+  delete(
+    filter: Filter<ModelType>,
+    options?: FindOneAndDeleteOptions
+  ): Promise<WithId<ModelType> | null> {
+    const ctx = buildContext(METHODS.DELETE, this, { filter, options });
+
+    return this.runHooked(METHODS.DELETE, ctx, (c) =>
+      this.rawDelete(c.filter, c.options)
+    ) as Promise<WithId<ModelType> | null>;
+  }
+
+  private rawDelete(
+    filter: Filter<ModelType>,
+    options?: FindOneAndDeleteOptions
+  ) {
     const collection = this.getCollectionOrThrow();
 
     // mongodb@7 `findOneAndDelete` resolves the matched document directly
     // (`WithId<ModelType> | null`) — the driver's pre-v5 `{ value }`
-    // wrapper no longer exists. Returning `result?.value` here always
-    // resolved to `undefined`, silently swallowing every deleted document
-    // (Rule 1 fix — found exercising D-12 happy-path CRUD for `delete`).
+    // wrapper no longer exists.
     return collection.findOneAndDelete(filter, options ?? {});
   }
 
-  total(filter: Filter<ModelType> = {}, options: CountDocumentsOptions = {}) {
+  total(
+    filter: Filter<ModelType> = {},
+    options: CountDocumentsOptions = {}
+  ): Promise<number> {
+    const ctx = buildContext(METHODS.TOTAL, this, { filter, options });
+
+    return this.runHooked(METHODS.TOTAL, ctx, (c) =>
+      this.rawTotal(c.filter, c.options)
+    ) as Promise<number>;
+  }
+
+  private rawTotal(filter: Filter<ModelType>, options: CountDocumentsOptions) {
     const collection = this.getCollectionOrThrow();
 
     return collection.countDocuments(filter, options);
   }
 
-  async bulkWrite(
+  bulkWrite(
     operations: AnyBulkWriteOperation<ModelType>[],
     options?: BulkWriteOptions
-  ) {
+  ): Promise<BulkWriteResult> {
     // WR-02: clonar a operação em vez de reatribuir `insertOne.document`
     // in-place — a versão anterior mutava os objetos de operação do
     // próprio chamador (o map retornava as mesmas referências).
@@ -574,14 +817,25 @@ export class Model<ModelType extends Document = Document> {
       return operation;
     });
 
-    // Retrieved outside the try block: a MongoatError thrown here (D-10 —
-    // no connection) must propagate as-is, not get caught and re-wrapped
-    // by the driver-error catch below (D-11 scope boundary).
+    const ctx = buildContext(METHODS.BULK_WRITE, this, {
+      operations: _operations,
+      options,
+    });
+
+    return this.runHooked(METHODS.BULK_WRITE, ctx, (c) =>
+      this.rawBulkWrite(c.operations, c.options)
+    ) as Promise<BulkWriteResult>;
+  }
+
+  private async rawBulkWrite(
+    operations: AnyBulkWriteOperation<ModelType>[],
+    options?: BulkWriteOptions
+  ) {
     const collection = this.getCollectionOrThrow();
 
     try {
       // WR-01: `return await` — ver comentário equivalente em insertMany.
-      return await collection.bulkWrite(_operations, options ?? {});
+      return await collection.bulkWrite(operations, options ?? {});
     } catch (err: any) {
       throw wrapDriverError(err);
     }
