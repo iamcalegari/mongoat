@@ -13,61 +13,57 @@
     "access": "public"
   },
   "engines": {
-    "node": ">=16.20.1"
+    "node": "^20.19.0 || >=22.12.0"
   },
   "scripts": {
-    "build": "tsc --project tsconfig.build.json && tsc-alias",
-    "example": "ts-node --",
-    "prebuild": "rimraf ./lib"
+    "build": "tsdown",
+    "check:package": "npm pack --dry-run && npx publint && npx @arethetypeswrong/cli --pack .",
+    "example": "tsx",
+    "prebuild": "rimraf ./lib",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "bson": "7.0.0",
-    "json-schema": "0.4.0",
     "mongodb": "7.0.0"
   },
   "devDependencies": {
+    "@arethetypeswrong/cli": "^0.18.4",
+    "@testcontainers/mongodb": "^12.0.4",
     "@typescript-eslint/eslint-plugin": "8.50.0",
     "@typescript-eslint/parser": "8.50.0",
+    "@vitest/coverage-v8": "^4.1.10",
     "eslint": "9.39.2",
+    "json-schema": "^0.4.0",
     "prettier": "3.7.4",
+    "publint": "^0.3.21",
     "rimraf": "6.1.2",
-    "ts-jest": "29.4.6",
-    "ts-node-dev": "2.0.0",
-    "tsc-alias": "1.8.16",
-    "tsconfig-paths": "4.2.0",
+    "testcontainers": "^12.0.4",
+    "tsdown": "^0.22.3",
     "tslib": "2.8.1",
+    "tsx": "^4.23.0",
     "typescript": "5.9.3",
-    "typescript-cached-transpile": "0.0.6",
-    "typescript-eslint": "8.50.0"
+    "typescript-eslint": "8.50.0",
+    "vite-tsconfig-paths": "^6.1.1",
+    "vitest": "^4.1.10"
   },
   "files": [
-    "lib",
-    "src",
-    "tsconfig.json"
+    "lib"
   ],
-  "main": "lib/index.js",
-  "module": "lib/index.js",
-  "types": "lib/index.d.ts",
+  "main": "./lib/index.cjs",
+  "module": "./lib/index.mjs",
+  "types": "./lib/index.d.cts",
   "exports": {
     ".": {
-      "types": "./lib/index.d.ts",
-      "default": "./lib/index.js"
-    },
-    "./database": {
-      "types": "./lib/database/index.d.ts",
-      "default": "./lib/database/index.js"
-    },
-    "./model": {
-      "types": "./lib/model/index.d.ts",
-      "default": "./lib/model/index.js"
-    },
-    "./utils": {
-      "types": "./lib/utils/index.d.ts",
-      "default": "./lib/utils/index.js"
-    },
-    "./types": {
-      "types": "./lib/types/index.d.ts",
-      "default": "./lib/types/index.js"
+      "import": {
+        "types": "./lib/index.d.mts",
+        "default": "./lib/index.mjs"
+      },
+      "require": {
+        "types": "./lib/index.d.cts",
+        "default": "./lib/index.cjs"
+      }
     }
   }
 }

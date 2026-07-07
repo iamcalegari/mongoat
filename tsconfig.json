@@ -4,9 +4,9 @@
     "checkJs": false,
     "strict": true,
     "alwaysStrict": true,
-    "target": "ES2022",
+    "target": "ES2023",
     "skipLibCheck": true,
-    "lib": ["es2021", "ES2022.Error", "ES2022.Object"],
+    "lib": ["ES2023"],
 
     // We don't make use of tslib helpers, all syntax used is supported by target engine
     "importHelpers": false,
@@ -47,11 +47,6 @@
       "@utils/*": ["src/utils/*"]
     },
     "typeRoots": ["./node_modules/@types"]
-  },
-  "ts-node": {
-    "transpileOnly": true,
-    "compiler": "typescript-cached-transpile",
-    "require": ["tsconfig-paths/register"]
   },
   "include": ["src/utils", "examples", "src/**/*"],
   "exclude": ["./node_modules/*", "./lib"]
