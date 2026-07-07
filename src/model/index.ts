@@ -11,7 +11,6 @@ import {
   FindOneAndUpdateOptions,
   FindOptions,
   InsertOneOptions,
-  MongoError,
   ObjectId,
   OptionalUnlessRequiredId,
   UpdateFilter,
@@ -54,6 +53,21 @@ function stableStringify(value: unknown): string {
           }, {})
       : val
   );
+}
+
+/**
+ * WR-11: wrap mínimo de erros do driver até a hierarquia de erros da Fase 3
+ * (SEC-04). O padrão anterior — `new MongoError(JSON.stringify(err, null,
+ * 2))` — destruía a informação do erro: para `Error`s genéricos,
+ * `JSON.stringify(err)` produz `'{}'` (`message`/`stack` são propriedades
+ * não-enumeráveis), então o erro lançado tinha mensagem `{}` e a stack
+ * original era descartada. Agora a mensagem original é preservada e o erro
+ * original inteiro segue acessível via `cause`.
+ */
+function wrapDriverError(err: unknown): MongoatError {
+  return new MongoatError(err instanceof Error ? err.message : String(err), {
+    cause: err,
+  });
 }
 
 /**
@@ -464,7 +478,7 @@ export class Model<ModelType extends Document = Document> {
       return { _id: insertedId, ..._document } as unknown as WithId<ModelType> &
         DefaultProperties;
     } catch (err: any) {
-      throw new MongoError(JSON.stringify(err, null, 2));
+      throw wrapDriverError(err);
     }
   }
 
@@ -496,7 +510,7 @@ export class Model<ModelType extends Document = Document> {
       // aguardados. `return await` garante que rejeições passem pelo catch.
       return await collection.insertMany(_documents, options);
     } catch (err: any) {
-      throw new MongoError(JSON.stringify(err, null, 2));
+      throw wrapDriverError(err);
     }
   }
 
@@ -562,14 +576,14 @@ export class Model<ModelType extends Document = Document> {
 
     // Retrieved outside the try block: a MongoatError thrown here (D-10 —
     // no connection) must propagate as-is, not get caught and re-wrapped
-    // into a MongoError by the catch below (D-11 scope boundary).
+    // by the driver-error catch below (D-11 scope boundary).
     const collection = this.getCollectionOrThrow();
 
     try {
       // WR-01: `return await` — ver comentário equivalente em insertMany.
       return await collection.bulkWrite(_operations, options ?? {});
     } catch (err: any) {
-      throw new MongoError(JSON.stringify(err, null, 2));
+      throw wrapDriverError(err);
     }
   }
 
