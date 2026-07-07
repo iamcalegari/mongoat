@@ -310,9 +310,11 @@ export class Model<ModelType extends Document = Document> {
     documents: OptionalUnlessRequiredId<ModelType>[],
     options: BulkWriteOptions = {}
   ) {
-    documents.forEach(async (doc) => {
-      await this.preMethod[METHODS.INSERT_MANY].bind(doc)(options);
-    });
+    await Promise.all(
+      documents.map((doc) =>
+        this.preMethod[METHODS.INSERT_MANY].bind(doc)(options)
+      )
+    );
 
     const _documents = documents.map((doc) => ({
       ...this.documentDefaults,
@@ -332,12 +334,12 @@ export class Model<ModelType extends Document = Document> {
   find(
     filter: Filter<ModelType> = {},
     options?: FindOptions
-  ): Promise<WithId<ModelType> | null> | null {
+  ): Promise<WithId<ModelType> | null> {
     const collection = Model[kDatabase]?.getCollection<ModelType>(
       this.collectionName
     ) as Collection<ModelType>;
 
-    return collection.findOne(filter, options) ?? null;
+    return collection.findOne(filter, options);
   }
 
   findById(documentId: ObjectId | string, options?: FindOptions) {
