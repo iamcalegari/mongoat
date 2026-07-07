@@ -96,7 +96,7 @@ describe('Model — post hooks múltiplos, ctx.result, transform via retorno (HO
 
     let observed = false;
 
-    model.post(METHODS.INSERT, (ctx) => {
+    model.post(METHODS.INSERT, () => {
       observed = true;
       // Sem `return` — apenas observa (D-04).
     });

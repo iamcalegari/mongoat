@@ -55,7 +55,7 @@ describe('Model — pre hooks múltiplos, ordem de registro, sequenciais (HOOK-0
       hooks: {
         [METHODS.INSERT]: {
           pre: [
-            (ctx) => {
+            () => {
               executionOrder.push('construtor');
             },
           ],
@@ -65,7 +65,7 @@ describe('Model — pre hooks múltiplos, ordem de registro, sequenciais (HOOK-0
 
     await db.setupCollection(model as unknown as Model);
 
-    model.pre(METHODS.INSERT, (ctx) => {
+    model.pre(METHODS.INSERT, () => {
       executionOrder.push('encadeavel');
     });
 

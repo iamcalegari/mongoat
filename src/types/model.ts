@@ -64,12 +64,12 @@ export interface CreateModelProps<ModelType extends Document> {
   validity?: boolean;
 }
 
-export interface ValidationQueryExpressions extends Filter<Document> {}
+export type ValidationQueryExpressions = Filter<Document>;
 
 export interface ModelSetup {
   allowedMethods?: METHODS[];
   collectionName: string;
-  documentDefaults?: DocumentDefaults<any>;
+  documentDefaults?: DocumentDefaults<Document>;
   indexes?: CreateIndexProps[];
   schema: ModelValidationSchema;
   validationQueryExpressions?: ValidationQueryExpressions;
@@ -84,6 +84,21 @@ export interface DefaultProperties {
 export type SchemaWithDefaults<S> = S & DefaultProperties;
 
 export interface ModelValidationSchema<
+  // `any` é intencional aqui (não um descuido): o mapped type homomórfico
+  // `{ [k in keyof T]: ... }` abaixo depende de `keyof any` == `string |
+  // number | symbol` para permitir QUALQUER chave de propriedade quando
+  // nenhum T concreto é passado (uso normal em toda a suíte). Duas
+  // alternativas foram tentadas e descartadas: `never` colapsa o mapped
+  // type para `undefined` (caso especial de mapped types homomórficos
+  // sobre `never`); `Record<string, unknown> & DefaultProperties` faz
+  // `updatedAt`/`insertedAt` virarem propriedades OBRIGATÓRIAS extras em
+  // `properties`/`required` (porque deixa de ser um `keyof` "solto" e
+  // passa a herdar os required flags reais de `DefaultProperties`),
+  // quebrando toda a suíte de testes que declara `properties` sem esses
+  // dois campos. Mantido como exceção pontual e documentada (Rule 4 —
+  // mudança estrutural do tipo genérico fica fora do escopo do lint gate
+  // desta task).
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   T extends DefaultProperties = any,
 > extends JSONSchema4Subset {
   bsonType: string | string[];

@@ -287,7 +287,7 @@ export class Model<ModelType extends Document = Document> {
           validator,
         })
       ) {
-        return existing;
+        return existing as unknown as Model<ModelType>;
       }
 
       // Only the collectionName + the fact of divergence — never the
@@ -679,7 +679,7 @@ export class Model<ModelType extends Document = Document> {
 
       return { _id: insertedId, ...document } as unknown as WithId<ModelType> &
         DefaultProperties;
-    } catch (err: any) {
+    } catch (err: unknown) {
       throw wrapDriverError(err);
     }
   }
@@ -763,7 +763,7 @@ export class Model<ModelType extends Document = Document> {
       // WR-01: `return await` — sem ele, a Promise rejeitada do driver
       // escapava do try/catch (código morto).
       return await collection.insertMany(documents, options);
-    } catch (err: any) {
+    } catch (err: unknown) {
       throw wrapDriverError(err);
     }
   }
@@ -859,17 +859,22 @@ export class Model<ModelType extends Document = Document> {
     // in-place — a versão anterior mutava os objetos de operação do
     // próprio chamador (o map retornava as mesmas referências).
     const _operations = operations.map((operation) => {
-      const anyOperation = operation as any;
+      // Tipo estreito (em vez de `any`) que expõe apenas `insertOne.document`
+      // — o único campo de `InsertOneModel<ModelType>` (ver mongodb.d.ts)
+      // que este bloco de fato lê/escreve.
+      const insertOperation = operation as AnyBulkWriteOperation<ModelType> & {
+        insertOne?: { document: OptionalUnlessRequiredId<ModelType> };
+      };
 
-      if (anyOperation.insertOne) {
+      if (insertOperation.insertOne) {
         return {
-          ...anyOperation,
+          ...insertOperation,
           insertOne: {
-            ...anyOperation.insertOne,
+            ...insertOperation.insertOne,
             document: {
               // WR-06: clone por operação (ver comentário em insert()).
               ...cloneDocumentDefaults(this.documentDefaults),
-              ...anyOperation.insertOne.document,
+              ...insertOperation.insertOne.document,
             },
           },
         } as AnyBulkWriteOperation<ModelType>;
@@ -897,7 +902,7 @@ export class Model<ModelType extends Document = Document> {
     try {
       // WR-01: `return await` — ver comentário equivalente em insertMany.
       return await collection.bulkWrite(operations, options);
-    } catch (err: any) {
+    } catch (err: unknown) {
       throw wrapDriverError(err);
     }
   }

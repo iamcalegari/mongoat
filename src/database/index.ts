@@ -35,7 +35,7 @@ export class Database {
   /** @private */
   protected [kConnectionUrl]: string = 'mongodb://127.0.0.1:27017/';
   /** @private */
-  private static [KModelMap] = new Map<string, Model | any>();
+  private static [KModelMap] = new Map<string, Model>();
 
   /**
    * @public
@@ -241,7 +241,9 @@ export class Database {
       validity,
     });
 
-    return Database[KModelMap].get(collectionName) as Model<ModelType>;
+    return Database[KModelMap].get(
+      collectionName
+    ) as unknown as Model<ModelType>;
   }
 
   /**
@@ -368,10 +370,10 @@ export class Database {
     }
   }
 
-  async withTransaction(
-    fn: (session: ClientSession) => Promise<any> | undefined,
+  async withTransaction<T = unknown>(
+    fn: (session: ClientSession) => Promise<T> | undefined,
     options?: ClientSessionOptions
-  ) {
+  ): Promise<T | undefined> {
     // CR-02: sem este guard, `this[kClient]?.startSession(...)` retornava
     // `undefined` com o banco desconectado e o método resolvia com
     // `undefined` SEM nunca invocar `fn` — perda de escrita silenciosa.
@@ -383,7 +385,7 @@ export class Database {
     }
 
     const clientSession = this[kClient].startSession({ ...options });
-    let result: any;
+    let result: T | undefined;
 
     try {
       await clientSession.withTransaction(async (session) => {
@@ -424,7 +426,7 @@ export class Database {
     };
   }
 
-  private isConnected(): Boolean {
+  private isConnected(): boolean {
     return Boolean(this[kDb]) && Boolean(this[kClient]);
   }
 

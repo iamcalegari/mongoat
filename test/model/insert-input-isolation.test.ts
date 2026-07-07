@@ -1,4 +1,4 @@
-import { Document } from 'mongodb';
+import { AnyBulkWriteOperation, Document, Filter } from 'mongodb';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { Database } from '@/database';
@@ -96,7 +96,7 @@ describe('Model — insertMany/bulkWrite não mutam o input e hooks enxergam def
       { insertOne: { document: { name: 'bulk-b' } } },
     ];
 
-    await model.bulkWrite(operations as any);
+    await model.bulkWrite(operations as AnyBulkWriteOperation<Doc>[]);
 
     // Objetos de operação do chamador intactos — sem defaults injetados.
     expect(operations).toEqual([
@@ -104,7 +104,7 @@ describe('Model — insertMany/bulkWrite não mutam o input e hooks enxergam def
       { insertOne: { document: { name: 'bulk-b' } } },
     ]);
 
-    const persisted = await model.findMany({ name: /^bulk-/ } as any);
+    const persisted = await model.findMany({ name: /^bulk-/ } as Filter<Doc>);
 
     expect(persisted).toHaveLength(2);
     expect(persisted.every((doc) => doc.status === 'default-status')).toBe(
