@@ -16,6 +16,7 @@ import {
   FindOptions,
   InsertManyResult,
   InsertOneOptions,
+  MongoServerError,
   ObjectId,
   OptionalUnlessRequiredId,
   UpdateFilter,
@@ -50,7 +51,7 @@ import { METHODS } from '@/utils/enums';
 import { Database } from '@/database';
 import {
   MongoatConnectionError,
-  MongoatError,
+  MongoatDriverError,
   MongoatValidationError,
 } from '@/errors';
 import { toObjectId } from '@/utils';
@@ -80,18 +81,60 @@ function stableStringify(value: unknown): string {
 }
 
 /**
- * WR-11: wrap mínimo de erros do driver até a hierarquia de erros da Fase 3
- * (SEC-04). O padrão anterior — `new MongoError(JSON.stringify(err, null,
- * 2))` — destruía a informação do erro: para `Error`s genéricos,
- * `JSON.stringify(err)` produz `'{}'` (`message`/`stack` são propriedades
- * não-enumeráveis), então o erro lançado tinha mensagem `{}` e a stack
- * original era descartada. Agora a mensagem original é preservada e o erro
- * original inteiro segue acessível via `cause`.
+ * SEC-03/D-03/D-04: mapa de códigos numéricos estáveis do driver
+ * (`MongoServerError.code`) para o `code` string do `MongoatDriverError`.
+ * `11000` é o código de violação de chave duplicada — fonte: `err.code`/
+ * `err.codeName` em `MongoServerError`, verificado em
+ * `node_modules/mongodb/lib/error.js` (a classe copia todas as props da
+ * resposta do servidor, incluindo `code`).
  */
-function wrapDriverError(err: unknown): MongoatError {
-  return new MongoatError(err instanceof Error ? err.message : String(err), {
-    cause: err,
-  });
+const DRIVER_CODE_MAP: Record<number, string> = {
+  11000: 'DUPLICATE_KEY',
+};
+
+/**
+ * Extrai APENAS o nome do índice da mensagem E11000 do driver (formato
+ * `... index: <nome> dup key: { ... }`) — nunca o valor duplicado, que
+ * pode ser dado do usuário (Pitfall 3 / Open Question 2 do 03-RESEARCH.md).
+ * Retorna `undefined` se o formato não bater (mensagem de outro shape),
+ * caso em que o chamador cai para uma mensagem genérica sem nome de índice.
+ */
+function extractDuplicateKeyIndexName(message: string): string | undefined {
+  return /index:\s*(\S+)\s+dup key/.exec(message)?.[1];
+}
+
+/**
+ * WR-11/SEC-03: evoluído da Fase 2 para emitir `MongoatDriverError`
+ * (D-01/D-04) com `code` mapeado de `err.code` do driver. `.message`
+ * permanece estável e sanitizada — nunca `JSON.stringify(err)` (D-03); o
+ * erro original inteiro segue acessível via `.cause` para quem quiser
+ * inspecionar.
+ *
+ * Caso especial `DUPLICATE_KEY` (E11000): o `.message` do driver inclui o
+ * VALOR do campo duplicado (`dup key: { email: "user@example.com" }`) — a
+ * mensagem própria construída aqui expõe só o NOME do índice, nunca o
+ * valor; o valor completo segue disponível via `.cause` (Pitfall 3).
+ */
+function wrapDriverError(err: unknown): MongoatDriverError {
+  const originalMessage = err instanceof Error ? err.message : String(err);
+
+  if (err instanceof MongoServerError && err.code === 11000) {
+    const indexName = extractDuplicateKeyIndexName(originalMessage);
+
+    return new MongoatDriverError(
+      indexName
+        ? `Duplicate key violation on index '${indexName}'`
+        : 'Duplicate key violation',
+      { cause: err, code: DRIVER_CODE_MAP[11000] }
+    );
+  }
+
+  const code =
+    err instanceof MongoServerError && typeof err.code === 'number'
+      ? (DRIVER_CODE_MAP[err.code] ?? 'DRIVER_ERROR')
+      : 'DRIVER_ERROR';
+
+  return new MongoatDriverError(originalMessage, { cause: err, code });
 }
 
 /**
