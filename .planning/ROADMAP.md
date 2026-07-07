@@ -33,7 +33,12 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. O pacote instala e importa corretamente em projetos CommonJS e ESM, com os tipos resolvendo sob `are-the-types-wrong` (exports map válido).
   4. O registro de models é livre de race condition e o setup de schema não muta objetos de schema compartilhados (`includeAdditionalPropertiesFalse`).
   5. A lib não carrega mais a dependência de runtime `json-schema`.
-**Plans**: TBD
+**Plans**: 5 plans
+- [ ] 01-01-PLAN.md — Fundação: tooling install, package manifest dual + MongoatError (Wave 1)
+- [ ] 01-02-PLAN.md — Build dual CJS/ESM (tsdown) + validação de empacotamento (attw/publint, smoke CJS/ESM) (Wave 2)
+- [ ] 01-03-PLAN.md — Infraestrutura de teste (vitest + testcontainers Docker) (Wave 2)
+- [ ] 01-04-PLAN.md — Correções da camada Database (Proxy binding, dbName, registry reset) (Wave 3)
+- [ ] 01-05-PLAN.md — Correções da camada Model (insertMany hooks, find typing, schema clone, D-06/D-10) (Wave 4)
 
 ### Phase 2: Sistema de hooks completo e API thin nativa
 **Goal**: O dev ganha um pipeline pre/post de hooks completo e controle total do driver nativo — repassando options em todos os métodos, com escape hatch para `Collection`/`Db`/`MongoClient` e tipos de retorno precisos.
@@ -114,7 +119,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Fundação — Core sem bugs e build moderno | 0/TBD | Not started | - |
+| 1. Fundação — Core sem bugs e build moderno | 0/5 | Not started | - |
 | 2. Sistema de hooks completo e API thin nativa | 0/TBD | Not started | - |
 | 3. Blindagem — testes, CI e segurança | 0/TBD | Not started | - |
 | 4. Estabilização de API e release v1.0 | 0/TBD | Not started | - |
