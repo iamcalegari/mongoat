@@ -30,8 +30,8 @@ See: .planning/PROJECT.md (updated 2026-07-03)
 
 Phase: 02 (sistema-de-hooks-completo-e-api-thin-nativa) — EXECUTING
 Plan: 3 of 3
-Status: Phase complete — ready for verification
-Last activity: 2026-07-07 — Phase 02 execution started
+Status: Phase complete — ready for re-verification (CR-01/Gap #1 fechado via quick 260707-mfp)
+Last activity: 2026-07-07 — Completed quick task 260707-mfp: fix CR-01/API-01 options passthrough
 
 Progress: [░░░░░░░░░░] 0%
 
@@ -107,6 +107,12 @@ None yet.
 
 - REL-02 (build dual CJS/ESM) é entregue na Phase 1, mas o gate `are-the-types-wrong` em CI só é automatizado quando a CI existir (Phase 3) — validar localmente até lá.
 - Gaps de pesquisa a decidir no planning: versão mínima de MongoDB (Phase 3), `Schema.compile()` público vs interno (Phase 5), `Object.freeze` do validator pós-setup (Phase 6).
+
+### Quick Tasks Completed
+
+| # | Description | Date | Commit | Directory |
+|---|-------------|------|--------|-----------|
+| 260707-mfp | Corrigir CR-01/API-01 (blocker Fase 2): options passthrough em find/findById/delete/bulkWrite | 2026-07-07 | b51c4c9 | [260707-mfp-corrigir-cr-01-api-01-blocker-fase-2-def](./quick/260707-mfp-corrigir-cr-01-api-01-blocker-fase-2-def/) |
 
 ## Deferred Items
 
