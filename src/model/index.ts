@@ -119,7 +119,17 @@ export class Model<ModelType extends Document = Document> {
 
     this.methods = Object.values(METHODS);
 
-    Model[kDatabase].registerModel(this as unknown as Model<Document>);
+    // registerModel() wraps `this` in the KModelProxyHandler Proxy and
+    // stores it in the registry — return that wrapped instance instead of
+    // letting the constructor implicitly return the raw `this`. Without
+    // this, `new Model(...)` would hand callers an unproxied instance on
+    // first construction, silently bypassing the allowedMethods guard
+    // (only the second `new Model(...)` call for the same collectionName,
+    // which hits the early-return registry lookup above, would return the
+    // proxy). See Phase 1 Plan 04 (QUAL-01 — Proxy binding).
+    return Model[kDatabase].registerModel(
+      this as unknown as Model<Document>
+    ) as unknown as Model<ModelType>;
   }
 
   /** @deprecated */

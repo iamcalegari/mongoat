@@ -8,6 +8,7 @@ import {
   ServerApiVersion,
 } from 'mongodb';
 
+import { MongoatError } from '@/errors';
 import { Model } from '@/model';
 import { DatabaseConfig, ModelSetup } from '@/types';
 import { METHODS } from '@/utils/enums';
@@ -194,7 +195,12 @@ export class Database {
         ]
       : allowedMethods;
 
-    const newModel = Model.create({
+    // Model.create() → new Model(...) já registra e envolve a instância em
+    // Proxy dentro do próprio constructor (via registerModel()). Reaproveitar
+    // a instância já registrada evita o duplo-wrap de Proxy (Open Question 3
+    // do RESEARCH.md / Fix 3 do PATTERNS.md) — NÃO envolver o resultado em um
+    // segundo `new Proxy(...)`.
+    Model.create({
       allowedMethods: _allowedMethods,
       collectionName,
       documentDefaults,
@@ -204,11 +210,7 @@ export class Database {
       validity,
     });
 
-    model = new Proxy(newModel, this[KModelProxyHandler]());
-
-    Database[KModelMap].set(collectionName, model);
-
-    return model as Model<ModelType>;
+    return Database[KModelMap].get(collectionName) as Model<ModelType>;
   }
 
   /**
@@ -313,18 +315,23 @@ export class Database {
           target.methods.includes(prop) &&
           !target.allowedMethods.includes(prop)
         ) {
-          throw new Error(
+          throw new MongoatError(
             `The method "${prop}" is not allowed in "${target.collectionName}"`
           );
         }
 
-        const originalMethod = target[prop as unknown as keyof typeof target];
+        const value = Reflect.get(target, prop, receiver);
 
-        if (typeof originalMethod === 'function') {
-          Reflect.get(target, prop, receiver).bind(target);
+        // Bind ALWAYS to `target` (the raw instance), never to `receiver`
+        // (the Proxy itself) — binding to `receiver` would make every
+        // internal `this.xxx` access inside the method re-enter this trap,
+        // which can incorrectly re-trigger (or mask) the allowedMethods
+        // guard above for internal calls (QUAL-01 — Proxy binding bug).
+        if (typeof value === 'function') {
+          return value.bind(target);
         }
 
-        return Reflect.get(target, prop, receiver);
+        return value;
       },
     };
   }
