@@ -6,14 +6,14 @@ current_phase: 02
 current_phase_name: sistema-de-hooks-completo-e-api-thin-nativa
 status: executing
 stopped_at: Phase 2 context gathered
-last_updated: "2026-07-07T18:04:21.934Z"
+last_updated: "2026-07-07T18:13:56.539Z"
 last_activity: 2026-07-07
 last_activity_desc: Phase 02 execution started
 progress:
   total_phases: 7
   completed_phases: 1
   total_plans: 8
-  completed_plans: 6
+  completed_plans: 7
   percent: 14
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-07-03)
 ## Current Position
 
 Phase: 02 (sistema-de-hooks-completo-e-api-thin-nativa) — EXECUTING
-Plan: 2 of 3
+Plan: 3 of 3
 Status: Ready to execute
 Last activity: 2026-07-07 — Phase 02 execution started
 
@@ -61,6 +61,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 01 P04 | 12min | 2 tasks | 5 files |
 | Phase 01 P05 | 35min | 3 tasks | 7 files |
 | Phase 02 P01 | 20min | 3 tasks | 14 files |
+| Phase 02 P02 | 10min | 3 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -87,6 +88,8 @@ Recent decisions affecting current work:
 - [Phase 02-01]: INSERT_MANY ctx usa document (singular, por-doc) alem de documents (batch) - pre hooks rodam por documento, post hooks rodam uma vez para o batch inteiro
 - [Phase 02-01]: Todos os 12 metodos CRUD agora passam pelo pipeline assincrono de hooks - metodos de leitura deixam de lancar MongoatError sincronamente quando desconectados, agora rejeitam a Promise
 - [Phase 02-01]: pre()/post() acumulam (push) em vez de sobrescrever (D-01) - breaking change intencional em alpha, quebra o padrao antigo de resetar hooks com pre() no-op
+- [Phase ?]: [Phase 02-02]: fireAndForget post-hook dispatch é Promise.resolve().then().catch(onHookError) + continue no loop — verdadeiramente não-aguardado, resolve Open Question 1/A2 do RESEARCH.md
+- [Phase ?]: [Phase 02-02]: defaultOnHookError loga apenas err via console.error, nunca o ctx inteiro (T-02-02 — evita vazar document/filter em logs ingênuos)
 
 ### Pending Todos
 
@@ -111,6 +114,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-07T18:03:22.655Z
+Last session: 2026-07-07T18:13:09.566Z
 Stopped at: Phase 2 context gathered
 Resume file: .planning/phases/02-sistema-de-hooks-completo-e-api-thin-nativa/02-CONTEXT.md

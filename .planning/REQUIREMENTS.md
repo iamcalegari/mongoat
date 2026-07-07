@@ -11,8 +11,8 @@
 
 - [x] **HOOK-01**: Dev pode registrar múltiplos handlers `pre` por método; executam em ordem de registro, aguardados sequencialmente em todos os caminhos (incluindo `insertMany`)
 - [x] **HOOK-02**: Dev pode registrar hooks `post` em todos os métodos CRUD, com acesso ao resultado da operação via contexto do hook
-- [ ] **HOOK-03**: Erro lançado em pre-hook aborta a operação antes da chamada ao driver; erro em post-hook propaga ao caller por padrão
-- [ ] **HOOK-04**: Dev pode registrar post-hook `fireAndForget` (opt-in explícito) cujos erros não propagam
+- [x] **HOOK-03**: Erro lançado em pre-hook aborta a operação antes da chamada ao driver; erro em post-hook propaga ao caller por padrão
+- [x] **HOOK-04**: Dev pode registrar post-hook `fireAndForget` (opt-in explícito) cujos erros não propagam
 - [x] **HOOK-05**: Executor de hooks tem guard contra recursão infinita quando um hook chama métodos do próprio model
 
 ### API Thin (controle nativo)
@@ -89,8 +89,8 @@
 |--------|-------|--------|
 | HOOK-01 | Phase 2 | Complete |
 | HOOK-02 | Phase 2 | Complete |
-| HOOK-03 | Phase 2 | Pending |
-| HOOK-04 | Phase 2 | Pending |
+| HOOK-03 | Phase 2 | Complete |
+| HOOK-04 | Phase 2 | Complete |
 | HOOK-05 | Phase 2 | Complete |
 | API-01 | Phase 2 | Pending |
 | API-02 | Phase 2 | Pending |
