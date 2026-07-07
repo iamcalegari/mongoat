@@ -186,12 +186,11 @@ export class Database {
     validationQueryExpressions,
     validity = false,
   }: ModelSetup): Model<ModelType> {
-    let model = Database[KModelMap].get(collectionName);
-
-    if (!!model) {
-      return model;
-    }
-
+    // WR-03: sem early-return aqui — `if (!!model) return model;` retornava
+    // o model registrado ANTES de qualquer comparação de config,
+    // reintroduzindo o bug D-06 (config divergente silenciosamente
+    // descartada) pelo caminho deprecated. O construtor do Model já
+    // resolve: reusa se a config for igual, lança MongoatError se divergir.
     const _allowedMethods = validity
       ? [
           METHODS.DELETE,

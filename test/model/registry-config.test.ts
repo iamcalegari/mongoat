@@ -97,4 +97,40 @@ describe('Model — registro atômico com detecção de config divergente (D-06)
       'extraDivergentField'
     );
   });
+
+  // Regressão de WR-03 (Code Review da Fase 01): o caminho deprecated
+  // `Database.defineModel()` tinha um early-return (`if (!!model) return
+  // model;`) ANTES de qualquer comparação de config — o bug D-06 original
+  // sobrevivia pela API deprecated. Agora delega ao construtor do Model.
+  it('Database.defineModel() (deprecated) também lança MongoatError para config divergente', () => {
+    Database.defineModel<Doc>({
+      collectionName: 'registry_config_definemodel',
+      allowedMethods: [METHODS.FIND],
+      schema,
+    });
+
+    expect(() =>
+      Database.defineModel<Doc>({
+        collectionName: 'registry_config_definemodel',
+        allowedMethods: [METHODS.FIND, METHODS.INSERT],
+        schema,
+      })
+    ).toThrow(MongoatError);
+  });
+
+  it('Database.defineModel() (deprecated) com a MESMA config retorna a instância existente', () => {
+    const first = Database.defineModel<Doc>({
+      collectionName: 'registry_config_definemodel_same',
+      allowedMethods: [METHODS.FIND],
+      schema,
+    });
+
+    const second = Database.defineModel<Doc>({
+      collectionName: 'registry_config_definemodel_same',
+      allowedMethods: [METHODS.FIND],
+      schema,
+    });
+
+    expect(second).toBe(first);
+  });
 });
