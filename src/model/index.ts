@@ -431,7 +431,10 @@ export class Model<ModelType extends Document = Document> {
   findMany(filter: Filter<ModelType> = {}, options: FindOptions = {}) {
     const collection = this.getCollectionOrThrow();
 
-    return collection.find(filter, options).toArray() ?? [];
+    // WR-07: sem `?? []` — `toArray()` retorna uma Promise, que nunca é
+    // nullish; o fallback era código morto que mentia sobre um retorno
+    // síncrono `[]` impossível (mesma classe do fix de tipagem do find()).
+    return collection.find(filter, options).toArray();
   }
 
   deleteMany(filter: Filter<ModelType>, options: DeleteOptions = {}) {
