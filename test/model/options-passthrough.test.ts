@@ -139,7 +139,65 @@ describe('Model — options passthrough tipado (D-09/API-01)', () => {
       ])
     ).rejects.toThrow();
 
-    const survivor = await model.findMany({ tag: 'w', name: 'after-duplicate' });
+    const survivor = await model.findMany({
+      tag: 'w',
+      name: 'after-duplicate',
+    });
     expect(survivor).toHaveLength(1);
+  });
+
+  // CR-01: antes do fix, `find` declarava `options?: FindOptions` (sem default
+  // `{}`), então com o caller omitindo options `ctx.options` era `undefined` e
+  // esta mutação lançava `TypeError: Cannot set properties of undefined`. Um
+  // hook de redação de campo sensível é exatamente o caso de uso de segurança
+  // citado no code review.
+  it('pre-hook que muta ctx.options.projection afeta a chamada real ao driver (find, sem options do caller)', async () => {
+    const model = new Model<Doc>({
+      collectionName: 'options_passthrough_find_redact',
+      allowedMethods: [METHODS.INSERT, METHODS.FIND],
+      schema,
+    });
+
+    await db.setupCollection(model as unknown as Model);
+
+    await model.insert({ name: 'sensitive', tag: 'find-redact' } as Doc);
+
+    model.pre(METHODS.FIND, (ctx) => {
+      // Caller não passou options — o pre-hook injeta a projection que redige.
+      ctx.options.projection = { name: 0 };
+    });
+
+    // Chamada pública SEM options: prova que `ctx.options` tem default `{}`.
+    const result = await model.find({ tag: 'find-redact' });
+    expect(result?.name).toBeUndefined();
+    expect(result?.tag).toBe('find-redact');
+  });
+
+  // CR-01: idem para `delete` — antes do fix declarava
+  // `options?: FindOneAndDeleteOptions` sem default. A projection é aplicada ao
+  // documento devolvido por `findOneAndDelete`.
+  it('pre-hook que muta ctx.options.projection afeta a chamada real ao driver (delete, sem options do caller)', async () => {
+    const model = new Model<Doc>({
+      collectionName: 'options_passthrough_delete_redact',
+      allowedMethods: [METHODS.INSERT, METHODS.DELETE, METHODS.FIND_MANY],
+      schema,
+    });
+
+    await db.setupCollection(model as unknown as Model);
+
+    await model.insert({ name: 'to-delete', tag: 'del-redact' } as Doc);
+
+    model.pre(METHODS.DELETE, (ctx) => {
+      ctx.options.projection = { name: 0 };
+    });
+
+    // Chamada pública SEM options.
+    const deleted = await model.delete({ tag: 'del-redact' });
+    expect(deleted?.name).toBeUndefined();
+    expect(deleted?.tag).toBe('del-redact');
+
+    // O documento foi de fato removido (a mutação não impediu o delete).
+    const remaining = await model.findMany({ tag: 'del-redact' });
+    expect(remaining).toHaveLength(0);
   });
 });

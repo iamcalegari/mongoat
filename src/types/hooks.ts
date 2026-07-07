@@ -103,7 +103,7 @@ export interface HookContextMap<ModelType extends Document> {
   };
   [METHODS.FIND]: BaseHookContext<ModelType> & {
     filter: Filter<ModelType>;
-    options?: FindOptions;
+    options: FindOptions;
     result?: WithId<ModelType> | null;
   };
   [METHODS.FIND_MANY]: BaseHookContext<ModelType> & {
@@ -113,7 +113,7 @@ export interface HookContextMap<ModelType extends Document> {
   };
   [METHODS.FIND_BY_ID]: BaseHookContext<ModelType> & {
     documentId: ObjectId | string;
-    options?: FindOptions;
+    options: FindOptions;
     result?: WithId<ModelType> | null;
   };
   [METHODS.UPDATE]: BaseHookContext<ModelType> & {
@@ -130,7 +130,7 @@ export interface HookContextMap<ModelType extends Document> {
   };
   [METHODS.DELETE]: BaseHookContext<ModelType> & {
     filter: Filter<ModelType>;
-    options?: FindOneAndDeleteOptions;
+    options: FindOneAndDeleteOptions;
     result?: WithId<ModelType> | null;
   };
   [METHODS.DELETE_MANY]: BaseHookContext<ModelType> & {
@@ -150,7 +150,7 @@ export interface HookContextMap<ModelType extends Document> {
   };
   [METHODS.BULK_WRITE]: BaseHookContext<ModelType> & {
     operations: AnyBulkWriteOperation<ModelType>[];
-    options?: BulkWriteOptions;
+    options: BulkWriteOptions;
     result?: BulkWriteResult;
   };
 }

@@ -770,7 +770,7 @@ export class Model<ModelType extends Document = Document> {
 
   find(
     filter: Filter<ModelType> = {},
-    options?: FindOptions
+    options: FindOptions = {}
   ): Promise<WithId<ModelType> | null> {
     const ctx = buildContext(METHODS.FIND, this, { filter, options });
 
@@ -779,7 +779,7 @@ export class Model<ModelType extends Document = Document> {
     ) as Promise<WithId<ModelType> | null>;
   }
 
-  private rawFind(filter: Filter<ModelType>, options?: FindOptions) {
+  private rawFind(filter: Filter<ModelType>, options: FindOptions) {
     const collection = this.getCollectionOrThrow();
 
     return collection.findOne(filter, options);
@@ -787,7 +787,7 @@ export class Model<ModelType extends Document = Document> {
 
   findById(
     documentId: ObjectId | string,
-    options?: FindOptions
+    options: FindOptions = {}
   ): Promise<WithId<ModelType> | null> {
     const ctx = buildContext(METHODS.FIND_BY_ID, this, {
       documentId,
@@ -799,7 +799,7 @@ export class Model<ModelType extends Document = Document> {
     ) as Promise<WithId<ModelType> | null>;
   }
 
-  private rawFindById(documentId: ObjectId | string, options?: FindOptions) {
+  private rawFindById(documentId: ObjectId | string, options: FindOptions) {
     // Delega ao `find()` público — a chamada roda dentro do mesmo
     // contexto `{ raw: true }` já aberto por `findById`'s dispatch
     // (Pattern 5/D-07), então `find()` também pula seu próprio pipeline
@@ -813,7 +813,7 @@ export class Model<ModelType extends Document = Document> {
 
   delete(
     filter: Filter<ModelType>,
-    options?: FindOneAndDeleteOptions
+    options: FindOneAndDeleteOptions = {}
   ): Promise<WithId<ModelType> | null> {
     const ctx = buildContext(METHODS.DELETE, this, { filter, options });
 
@@ -824,14 +824,14 @@ export class Model<ModelType extends Document = Document> {
 
   private rawDelete(
     filter: Filter<ModelType>,
-    options?: FindOneAndDeleteOptions
+    options: FindOneAndDeleteOptions
   ) {
     const collection = this.getCollectionOrThrow();
 
     // mongodb@7 `findOneAndDelete` resolves the matched document directly
     // (`WithId<ModelType> | null`) — the driver's pre-v5 `{ value }`
     // wrapper no longer exists.
-    return collection.findOneAndDelete(filter, options ?? {});
+    return collection.findOneAndDelete(filter, options);
   }
 
   total(
@@ -853,7 +853,7 @@ export class Model<ModelType extends Document = Document> {
 
   bulkWrite(
     operations: AnyBulkWriteOperation<ModelType>[],
-    options?: BulkWriteOptions
+    options: BulkWriteOptions = {}
   ): Promise<BulkWriteResult> {
     // WR-02: clonar a operação em vez de reatribuir `insertOne.document`
     // in-place — a versão anterior mutava os objetos de operação do
@@ -890,13 +890,13 @@ export class Model<ModelType extends Document = Document> {
 
   private async rawBulkWrite(
     operations: AnyBulkWriteOperation<ModelType>[],
-    options?: BulkWriteOptions
+    options: BulkWriteOptions
   ) {
     const collection = this.getCollectionOrThrow();
 
     try {
       // WR-01: `return await` — ver comentário equivalente em insertMany.
-      return await collection.bulkWrite(operations, options ?? {});
+      return await collection.bulkWrite(operations, options);
     } catch (err: any) {
       throw wrapDriverError(err);
     }
