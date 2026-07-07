@@ -422,14 +422,35 @@ export class Database {
 
     const newIndexes = model.indexes;
 
-    if (!newIndexes.length) return;
+    if (!newIndexes.length || !collection) return;
 
-    await collection?.dropIndexes();
-
+    // WR-10: nada de `dropIndexes()` incondicional — ele destruía TODOS os
+    // índices da collection (inclusive os criados fora do Mongoat por
+    // DBAs/migrations) e abria uma janela sem unicidade entre o drop e o
+    // recreate a cada boot. Em vez disso, diff: `createIndex` já é
+    // idempotente para specs idênticas; só quando a spec de um índice
+    // GERENCIADO divergiu (conflito de nome ou de key pattern) é que o
+    // índice específico é derrubado e recriado.
     for (const newIndex of newIndexes) {
       const { key, ...options } = newIndex;
 
-      await collection?.createIndex(key, options);
+      try {
+        await collection.createIndex(key, options);
+      } catch (err) {
+        const existingIndexes = await collection.listIndexes().toArray();
+
+        const conflicting = existingIndexes.find(
+          (existing) =>
+            existing.name !== '_id_' &&
+            (JSON.stringify(existing.key) === JSON.stringify(key) ||
+              (options.name !== undefined && existing.name === options.name))
+        );
+
+        if (!conflicting) throw err;
+
+        await collection.dropIndex(conflicting.name);
+        await collection.createIndex(key, options);
+      }
     }
   }
 
