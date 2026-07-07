@@ -288,6 +288,41 @@ export class Database {
     return this[kDb]?.collection<T>(collectionName);
   }
 
+  /**
+   * @public
+   *
+   * Escape hatch honesto (D-08/API-03): devolve o `MongoClient` **cru** do
+   * driver oficial. `Database` nunca é envolvida em Proxy (só `Model` é,
+   * via `registerModel()`) — este getter já é "escape total" por natureza,
+   * sem nenhum gating a contornar. `undefined` antes de `connect()`.
+   *
+   * ATENÇÃO — bypass DELIBERADO: o `MongoClient` retornado é o objeto
+   * nativo do driver, fora de qualquer abstração do Mongoat. Ao chamar
+   * `getClient()` você saiu da zona segura do ODM — agora é o driver puro.
+   *
+   * @returns O `MongoClient` nativo, ou `undefined` se ainda não conectado.
+   */
+  getClient(): MongoClient | undefined {
+    return this[kClient];
+  }
+
+  /**
+   * @public
+   *
+   * Escape hatch honesto (D-08/API-03): devolve o `Db` **cru** do driver
+   * oficial. Mesmo trade-off de `getClient()` — sem Proxy, sem gating,
+   * bypass total e deliberado. `undefined` antes de `connect()`.
+   *
+   * ATENÇÃO — bypass DELIBERADO: o `Db` retornado é o objeto nativo do
+   * driver. Ao chamar `getDb()` você saiu da zona segura do ODM — agora é
+   * o driver puro.
+   *
+   * @returns O `Db` nativo, ou `undefined` se ainda não conectado.
+   */
+  getDb(): Db | undefined {
+    return this[kDb];
+  }
+
   async setupCollections(): Promise<void> {
     const modelArray = Database[KModelMap].values();
 

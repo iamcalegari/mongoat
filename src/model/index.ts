@@ -433,6 +433,30 @@ export class Model<ModelType extends Document = Document> {
     return collection;
   }
 
+  /**
+   * @public
+   *
+   * Escape hatch honesto (D-08/API-02): devolve a `Collection<ModelType>`
+   * **crua** do driver oficial. Reaproveita `getCollectionOrThrow()` — o
+   * mesmo fail-loud pré-conexão de `MongoatError` ("Database not connected
+   * — call db.connect() first") usado internamente por todos os métodos
+   * CRUD (D-10).
+   *
+   * ATENÇÃO — bypass DELIBERADO e TOTAL: a `Collection` retornada não
+   * passa pelo pipeline de hooks (pre/post nunca disparam para chamadas
+   * feitas diretamente nela) **nem** pelo gating de `allowedMethods` (esta
+   * função nunca é adicionada ao enum `METHODS`, então o
+   * `KModelProxyHandler` já a deixa passar sem checagem nenhuma). Ao
+   * chamar `getCollection()` você saiu da zona segura do ODM — agora é o
+   * driver puro, coerente com o core value do Mongoat de nunca bloquear
+   * o acesso ao driver nativo do MongoDB.
+   *
+   * @returns A `Collection<ModelType>` nativa do driver `mongodb`.
+   */
+  getCollection(): Collection<ModelType> {
+    return this.getCollectionOrThrow();
+  }
+
   pre<M extends METHODS>(
     method: M,
     fn: HookFn<HookContextMap<ModelType>[M]>
