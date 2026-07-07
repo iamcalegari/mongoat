@@ -110,4 +110,47 @@ describe('Model — insertMany/bulkWrite não mutam o input e hooks enxergam def
       true
     );
   });
+
+  // Regressão de WR-06 (Code Review da Fase 01): `documentDefaults` era
+  // guardado por referência e os merges eram spreads rasos — um default
+  // aninhado era compartilhado entre TODOS os inserts; um hook que mutasse
+  // `this.meta.source` poluía o default permanentemente.
+  it('default aninhado mutado por um hook não vaza para inserts subsequentes (WR-06)', async () => {
+    interface MetaDoc extends Document {
+      name: string;
+      meta?: { source: string };
+    }
+
+    const metaModel = new Model<MetaDoc>({
+      collectionName: 'insert_defaults_clone',
+      allowedMethods: [METHODS.INSERT],
+      documentDefaults: { meta: { source: 'api' } },
+      schema: {
+        bsonType: 'object',
+        properties: {
+          name: { bsonType: 'string' },
+          meta: {
+            bsonType: 'object',
+            properties: { source: { bsonType: 'string' } },
+          },
+        },
+        required: ['name'],
+      },
+    });
+
+    await db.setupCollection(metaModel as unknown as Model);
+
+    metaModel.pre(METHODS.INSERT, function (this: MetaDoc) {
+      // Sob o bug, isto mutava a instância COMPARTILHADA do default.
+      this.meta!.source = 'mutated-by-hook';
+    });
+
+    const first = await metaModel.insert({ name: 'first' });
+    expect(first.meta?.source).toBe('mutated-by-hook');
+
+    metaModel.pre(METHODS.INSERT, () => {});
+
+    const second = await metaModel.insert({ name: 'second' });
+    expect(second.meta?.source).toBe('api');
+  });
 });

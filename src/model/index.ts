@@ -57,6 +57,44 @@ function stableStringify(value: unknown): string {
 }
 
 /**
+ * WR-06: deep-clone de `documentDefaults` restrito a plain objects/arrays.
+ *
+ * `this.documentDefaults` guardava a referência do usuário e os merges eram
+ * spreads rasos — um default aninhado (ex.: `{ meta: { source: 'api' } }`)
+ * era COMPARTILHADO por todos os documentos inseridos; um pre-hook que
+ * mutasse `this.meta.source` poluía o default permanentemente para todos os
+ * inserts futuros. Mesma classe de vazamento por referência corrigida no
+ * schema (`structuredClone` em `schemaValidatorBuilder`).
+ *
+ * Não usa `structuredClone` de propósito: defaults podem conter instâncias
+ * de classe do BSON (ex.: `ObjectId`), cujo protótipo o `structuredClone`
+ * destruiria. Plain objects/arrays são clonados em profundidade; qualquer
+ * outra coisa (primitivos, `Date`, `ObjectId`, …) passa por referência.
+ */
+function cloneDocumentDefaults<T>(value: T): T {
+  if (Array.isArray(value)) {
+    return value.map(cloneDocumentDefaults) as unknown as T;
+  }
+
+  if (
+    value &&
+    typeof value === 'object' &&
+    (Object.getPrototypeOf(value) === Object.prototype ||
+      Object.getPrototypeOf(value) === null)
+  ) {
+    const cloned: Record<string, unknown> = {};
+
+    for (const [key, entry] of Object.entries(value)) {
+      cloned[key] = cloneDocumentDefaults(entry);
+    }
+
+    return cloned as T;
+  }
+
+  return value;
+}
+
+/**
  * Lightweight structural comparison used by the `Model` constructor to
  * detect a divergent re-registration of an already-registered
  * `collectionName` (D-06). Compares the fields that define a model's
@@ -209,7 +247,9 @@ export class Model<ModelType extends Document = Document> {
     this.collectionName = collectionName;
     this.indexes = indexes;
     this.allowedMethods = _allowedMethods;
-    this.documentDefaults = documentDefaults;
+    // WR-06: nunca guardar a referência do chamador — mutações posteriores
+    // no objeto original não devem vazar para os inserts do model.
+    this.documentDefaults = cloneDocumentDefaults(documentDefaults);
     this.validator = validator;
     this.validationAction = validationAction;
     this.validationLevel = validationLevel;
@@ -404,8 +444,10 @@ export class Model<ModelType extends Document = Document> {
     document: OptionalUnlessRequiredId<ModelType>,
     options: InsertOneOptions = {}
   ) {
+    // WR-06: clone por insert — o spread raso compartilharia defaults
+    // aninhados entre todos os documentos (e com o próprio model).
     let _document = {
-      ...this.documentDefaults,
+      ...cloneDocumentDefaults(this.documentDefaults),
       ...document,
     };
 
@@ -432,7 +474,9 @@ export class Model<ModelType extends Document = Document> {
     // documentDefaults via `this` e as mutações do hook não vazam para o
     // array de entrada do chamador.
     const _documents = documents.map((doc) => ({
-      ...this.documentDefaults,
+      // WR-06: clone por documento — cada doc precisa da própria instância
+      // dos defaults aninhados.
+      ...cloneDocumentDefaults(this.documentDefaults),
       ...doc,
     }));
 
@@ -502,7 +546,8 @@ export class Model<ModelType extends Document = Document> {
           insertOne: {
             ...anyOperation.insertOne,
             document: {
-              ...this.documentDefaults,
+              // WR-06: clone por operação (ver comentário em insert()).
+              ...cloneDocumentDefaults(this.documentDefaults),
               ...anyOperation.insertOne.document,
             },
           },
