@@ -47,6 +47,7 @@ describe('Database — KModelProxyHandler binding (QUAL-01)', () => {
   });
 
   afterAll(async () => {
+    Database.resetRegistry();
     await db.disconnect();
   });
 

@@ -224,6 +224,20 @@ export class Database {
   }
 
   /**
+   * @internal
+   *
+   * Clears the static model registry (`KModelMap`).
+   *
+   * Not part of the public API — intended for test suites that need to
+   * isolate registry state between cases (D-09). Using this outside of
+   * tests will make every previously registered `Model` instance
+   * unreachable via `getModel()`.
+   */
+  static resetRegistry(): void {
+    Database[KModelMap].clear();
+  }
+
+  /**
    * Registers a model in the database model map.
    *
    * This method is used internally by the `Model` class constructor to register a model
@@ -381,7 +395,7 @@ export class Database {
   }
 
   async [kCreateClientConnection](options?: DatabaseConfig): Promise<string> {
-    const { mongoDbName, mongoUrl } = await this[kGetUrlAndDbName]();
+    const { mongoDbName, mongoUrl } = this[kGetUrlAndDbName]();
 
     this[kClient] = await MongoClient.connect(mongoUrl, options);
     this[kDb] = this[kClient].db(mongoDbName);
@@ -389,17 +403,25 @@ export class Database {
     return mongoDbName;
   }
 
-  async [kGetUrlAndDbName](): Promise<{
+  [kGetUrlAndDbName](): {
     mongoDbName: string;
     mongoUrl: string;
-  }> {
+  } {
     const mongoUrl = this[kConnectionUrl];
-    const mongoDbName = await this[kGetDbName]();
+    const mongoDbName = this[kGetDbName]();
 
     return { mongoDbName, mongoUrl };
   }
 
-  [kGetDbName](): Promise<string> | string {
+  /**
+   * @private
+   *
+   * Resolves the database name to connect to: `MONGODB_DB_NAME` env var
+   * first, then `config.dbName`. No implicit fallback — if neither is
+   * configured, throws a `MongoatError` instead of silently connecting to
+   * a hardcoded test database name (D-08).
+   */
+  [kGetDbName](): string {
     if (process.env.MONGODB_DB_NAME) {
       return process.env.MONGODB_DB_NAME;
     }
@@ -408,12 +430,8 @@ export class Database {
       return this.config.dbName;
     }
 
-    const isTestSingleFile = !process.env.PACKAGE;
-
-    if (isTestSingleFile) {
-      return 'mongoat-test';
-    }
-
-    return `${process.env.PACKAGE}-test-${process.env.JEST_WORKER_ID || process.env.TAP_JOB_ID}`;
+    throw new MongoatError(
+      'No database name configured — set the MONGODB_DB_NAME env var or pass config.dbName'
+    );
   }
 }
