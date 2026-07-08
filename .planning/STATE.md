@@ -3,17 +3,17 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: "**Goal**: A API do alpha é auditada e estabilizada deliberadamente, e então publicada como v1.0.0 com semver disciplinado e um pipeline de release automatizado."
 current_phase: 4
-current_phase_name: Site de documentação
-status: planning
-stopped_at: Phase 4 context gathered
-last_updated: "2026-07-08T04:46:56.109Z"
+current_phase_name: site-de-documenta-o
+status: executing
+stopped_at: Completed 04-01-PLAN.md
+last_updated: "2026-07-08T15:51:11.854Z"
 last_activity: 2026-07-08
-last_activity_desc: Roadmap reorganizado; Migrations promovido a Fase 8
+last_activity_desc: Phase 4 execution started
 progress:
   total_phases: 8
   completed_phases: 3
-  total_plans: 13
-  completed_plans: 13
+  total_plans: 19
+  completed_plans: 14
   percent: 38
 ---
 
@@ -24,14 +24,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-03)
 
 **Core value:** Ser um ODM fino e extensível — produtividade de ODM sem abrir mão do controle e do acesso direto ao driver nativo do MongoDB.
-**Current focus:** Phase 4 — Site de documentação (antes da release v1.0)
+**Current focus:** Phase 4 — site-de-documenta-o
 
 ## Current Position
 
-Phase: 4 — Site de documentação
-Plan: Not started
-Status: Roadmap v1.0 reorganizado (docs→release→decorators→plugins→migrations). Próximo: discutir a Fase 4 (Documentação)
-Last activity: 2026-07-08 — Roadmap reorganizado; Migrations promovido a Fase 8
+Phase: 4 (site-de-documenta-o) — EXECUTING
+Plan: 2 of 6
+Status: Ready to execute
+Last activity: 2026-07-08 — Phase 4 execution started
 
 Progress: [░░░░░░░░░░] 0%
 
@@ -69,6 +69,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 03 P02 | 25min | 3 tasks | 8 files |
 | Phase 03 P04 | 25min | 2 tasks | 4 files |
 | Phase 03 P05 | 15min | 2 tasks | 3 files |
+| Phase 04 P01 | 6min | 3 tasks | 17 files |
 
 ## Accumulated Context
 
@@ -114,6 +115,9 @@ Recent decisions affecting current work:
 - [Phase ?]: Thresholds de coverage (D-10) mantidos em 80/80/80/70 (ponto de partida), não elevados ao valor real observado (~94%/97%/94%/85%) — evita gate frágil
 - [Phase ?]: [Phase 03-05]: Ambas as ocorrências de Error Handling no CLAUDE.md foram corrigidas (não só a primeira) — a segunda também violava D-03 (MongoError + JSON.stringify)
 - [Phase ?]: [Phase 03-05]: Matriz de CI limitada a ['20.x','22.x'] (última patch de cada major), sem testar o piso exato do engines — YAGNI (Open Question 3)
+- [Phase ?]: typedoc pinado em 0.28.19 (não 0.28.20, flagged too-new) — npm sobrescreveu o pin durante install conjunto, corrigido manualmente
+- [Phase ?]: excludeExternals: true adicionado ao typedoc.json — necessário p/ docs:build não quebrar (JSDoc herdado do driver mongodb com sintaxe <string|buffer> quebrava o parser Vue)
+- [Phase ?]: toObjectId corrigido para ser re-exportado de src/index.ts (bug de barrel — função pública sem re-export)
 
 ### Pending Todos
 
@@ -144,6 +148,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-08T04:46:56.103Z
-Stopped at: Phase 4 context gathered
-Resume file: .planning/phases/04-site-de-documenta-o/04-CONTEXT.md
+Last session: 2026-07-08T15:50:25.359Z
+Stopped at: Completed 04-01-PLAN.md
+Resume file: None

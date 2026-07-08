@@ -132,11 +132,11 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 **Nota**: features pós-v1.0 (decorators, plugins, migrations — Fases 6-8) são documentadas incrementalmente quando cada uma sai.
 
-**Plans**: 6 plans
+**Plans**: 1/6 plans executed
 
 **Wave 1**
 
-- [ ] 04-01-PLAN.md — Stack de docs: devDeps + typedoc.json + VitePress config + scripts + Home + scaffold Diátaxis (buildando verde) (DOCS-01 infra, DOCS-02)
+- [x] 04-01-PLAN.md — Stack de docs: devDeps + typedoc.json + VitePress config + scripts + Home + scaffold Diátaxis (buildando verde) (DOCS-01 infra, DOCS-02)
 
 **Wave 2** *(blocked on Wave 1)*
 
@@ -216,7 +216,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
 | 1. Fundação — Core sem bugs e build moderno | 5/5 | Complete    | 2026-07-07 |
 | 2. Sistema de hooks completo e API thin nativa | 3/3 | Complete   | 2026-07-07 |
 | 3. Blindagem — testes, CI e segurança | 5/5 | Complete    | 2026-07-08 |
-| 4. Site de documentação | 0/6 | Not started | - |
+| 4. Site de documentação | 1/6 | In Progress|  |
 | 5. Estabilização de API e release v1.0 | 0/TBD | Not started | - |
 | 6. API de schema com decorators (TC39) | 0/TBD | Not started | - |
 | 7. Sistema de plugins | 0/TBD | Not started | - |
