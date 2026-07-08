@@ -60,7 +60,7 @@
 
 - [x] **DOCS-01**: Site VitePress publicado com quick start e guias do **core da v1.0** (conexão/models, CRUD, hooks pre/post, validação `$jsonSchema`, segurança, escape hatch); decorators/plugins/migrations são documentados quando saem (Fases 6-8)
 - [x] **DOCS-02**: Referência de API gerada por TypeDoc (typedoc-plugin-markdown) integrada ao site
-- [ ] **DOCS-03**: Guia de migração alpha→v1.0 documentando todas as mudanças de API (consolida `CHANGELOG.md`/`MIGRATION.md`)
+- [x] **DOCS-03**: Guia de migração alpha→v1.0 documentando todas as mudanças de API (consolida `CHANGELOG.md`/`MIGRATION.md`)
 - [ ] **DOCS-04**: README renovado com quick start funcional, apontando para o site (sem o disclaimer "work in progress")
 
 ### Migrations (pós-v1.0 — promovido de Out of Scope em 2026-07-08)
@@ -111,7 +111,7 @@
 | SEC-04 | Phase 3 | Complete |
 | DOCS-01 | Phase 4 | Complete |
 | DOCS-02 | Phase 4 | Complete |
-| DOCS-03 | Phase 4 | Pending |
+| DOCS-03 | Phase 4 | Complete |
 | DOCS-04 | Phase 4 | Pending |
 | REL-01 | Phase 5 | Pending |
 | REL-02 | Phase 1 | Complete |

@@ -6,14 +6,14 @@ current_phase: 4
 current_phase_name: site-de-documenta-o
 status: executing
 stopped_at: Completed 04-03-PLAN.md
-last_updated: "2026-07-08T16:11:47.571Z"
+last_updated: "2026-07-08T16:17:01.973Z"
 last_activity: 2026-07-08
 last_activity_desc: Phase 4 execution started
 progress:
   total_phases: 8
   completed_phases: 3
   total_plans: 19
-  completed_plans: 17
+  completed_plans: 18
   percent: 38
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-07-03)
 ## Current Position
 
 Phase: 4 (site-de-documenta-o) — EXECUTING
-Plan: 5 of 6
+Plan: 6 of 6
 Status: Ready to execute
 Last activity: 2026-07-08 — Phase 4 execution started
 
@@ -73,6 +73,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 04 P02 | 20min | 2 tasks | 3 files |
 | Phase 04 P03 | 12min | 2 tasks | 3 files |
 | Phase 04 P04 | 25min | 2 tasks | 3 files |
+| Phase 04 P05 | 12min | 1 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -125,6 +126,7 @@ Recent decisions affecting current work:
 - [Phase ?]: sanitize-filters.md contrasta sanitizeFilter opt-in vs guard $where incondicional reaproveitando o mesmo scanner
 - [Phase ?]: handle-errors.md reproduz a tabela subclasse->.code de MIGRATION.md secao 2.1 verbatim
 - [Phase ?]: escape-hatch.md documenta getCollection fail-loud vs getClient/getDb undefined pre-conexao (comportamentos reais diferentes)
+- [Phase ?]: docs/migration.md é a versão publicada/consolidada; CHANGELOG.md e MIGRATION.md na raiz permanecem fonte editável (D-03) — Evita duplicação de manutenção; nota no topo da página explicita a relação
 
 ### Pending Todos
 
@@ -155,6 +157,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-08T16:10:12.556Z
+Last session: 2026-07-08T16:15:42.404Z
 Stopped at: Completed 04-03-PLAN.md
 Resume file: None
