@@ -132,7 +132,22 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 **Nota**: features pós-v1.0 (decorators, plugins, migrations — Fases 6-8) são documentadas incrementalmente quando cada uma sai.
 
-**Plans**: TBD
+**Plans**: 6 plans
+
+**Wave 1**
+
+- [ ] 04-01-PLAN.md — Stack de docs: devDeps + typedoc.json + VitePress config + scripts + Home + scaffold Diátaxis (buildando verde) (DOCS-01 infra, DOCS-02)
+
+**Wave 2** *(blocked on Wave 1)*
+
+- [ ] 04-02-PLAN.md — Tutorial getting-started + how-tos de hooks e índices/validação (DOCS-01)
+- [ ] 04-03-PLAN.md — How-tos de segurança/nativo: sanitizeFilter, handle-errors, escape-hatch (DOCS-01)
+- [ ] 04-04-PLAN.md — Quadrante Explanation: thin ODM, proxy gating, validação server-side (DOCS-01)
+- [ ] 04-05-PLAN.md — Guia de migração alpha→v1.0 consolidado (CHANGELOG/MIGRATION) (DOCS-03)
+
+**Wave 3** *(blocked on Wave 2)*
+
+- [ ] 04-06-PLAN.md — Deploy Pages (docs.yml) + README renovado + homepage (DOCS-01 publicado, DOCS-04)
 
 ### Phase 5: Estabilização de API e release v1.0
 
@@ -201,7 +216,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
 | 1. Fundação — Core sem bugs e build moderno | 5/5 | Complete    | 2026-07-07 |
 | 2. Sistema de hooks completo e API thin nativa | 3/3 | Complete   | 2026-07-07 |
 | 3. Blindagem — testes, CI e segurança | 5/5 | Complete    | 2026-07-08 |
-| 4. Site de documentação | 0/TBD | Not started | - |
+| 4. Site de documentação | 0/6 | Not started | - |
 | 5. Estabilização de API e release v1.0 | 0/TBD | Not started | - |
 | 6. API de schema com decorators (TC39) | 0/TBD | Not started | - |
 | 7. Sistema de plugins | 0/TBD | Not started | - |
