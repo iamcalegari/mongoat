@@ -4,17 +4,17 @@ milestone: v1.0
 milestone_name: "**Goal**: A API do alpha é auditada e estabilizada deliberadamente, e então publicada como v1.0.0 com semver disciplinado e um pipeline de release automatizado."
 current_phase: 4
 current_phase_name: site-de-documenta-o
-status: executing
+status: verifying
 stopped_at: Completed 04-03-PLAN.md
-last_updated: "2026-07-08T16:17:01.973Z"
+last_updated: "2026-07-08T16:29:46.056Z"
 last_activity: 2026-07-08
 last_activity_desc: Phase 4 execution started
 progress:
   total_phases: 8
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 19
-  completed_plans: 18
-  percent: 38
+  completed_plans: 19
+  percent: 50
 ---
 
 # Project State
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-07-03)
 
 Phase: 4 (site-de-documenta-o) — EXECUTING
 Plan: 6 of 6
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-07-08 — Phase 4 execution started
 
 Progress: [░░░░░░░░░░] 0%
@@ -74,6 +74,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 04 P03 | 12min | 2 tasks | 3 files |
 | Phase 04 P04 | 25min | 2 tasks | 3 files |
 | Phase 04 P05 | 12min | 1 tasks | 1 files |
+| Phase 04 P06 | 35min | 3 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -127,6 +128,8 @@ Recent decisions affecting current work:
 - [Phase ?]: handle-errors.md reproduz a tabela subclasse->.code de MIGRATION.md secao 2.1 verbatim
 - [Phase ?]: escape-hatch.md documenta getCollection fail-loud vs getClient/getDb undefined pre-conexao (comportamentos reais diferentes)
 - [Phase ?]: docs/migration.md é a versão publicada/consolidada; CHANGELOG.md e MIGRATION.md na raiz permanecem fonte editável (D-03) — Evita duplicação de manutenção; nota no topo da página explicita a relação
+- [Phase ?]: docs.yml: deploy Pages via GitHub Actions (configure/upload/deploy-pages), separado do ci.yml, permissions minimais
+- [Phase ?]: README enxuto em inglês apontando para o site (D-03); homepage no package.json → iamcalegari.github.io/mongoat
 
 ### Pending Todos
 
@@ -157,6 +160,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-08T16:15:42.404Z
+Last session: 2026-07-08T16:29:11.866Z
 Stopped at: Completed 04-03-PLAN.md
 Resume file: None
