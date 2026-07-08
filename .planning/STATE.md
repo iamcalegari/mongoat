@@ -5,10 +5,10 @@ milestone_name: "**Goal**: A API do alpha é auditada e estabilizada deliberadam
 current_phase: 4
 current_phase_name: Site de documentação
 status: planning
-stopped_at: Roadmap reorganizado — docs antes do release, migrations adicionada (Fase 8)
-last_updated: "2026-07-08T04:20:00.000Z"
+stopped_at: Phase 4 context gathered
+last_updated: "2026-07-08T04:46:56.109Z"
 last_activity: 2026-07-08
-last_activity_desc: Roadmap v1.0 reorganizado (docs→release; +Migrations Fase 8)
+last_activity_desc: Roadmap reorganizado; Migrations promovido a Fase 8
 progress:
   total_phases: 8
   completed_phases: 3
@@ -144,6 +144,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-08T02:53:41.277Z
-Stopped at: Completed 03-05-PLAN.md
-Resume file: None
+Last session: 2026-07-08T04:46:56.103Z
+Stopped at: Phase 4 context gathered
+Resume file: .planning/phases/04-site-de-documenta-o/04-CONTEXT.md
