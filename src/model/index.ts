@@ -837,6 +837,20 @@ export class Model<ModelType extends Document = Document> {
     documentId: ObjectId | string,
     options: FindOptions = {}
   ): Promise<WithId<ModelType> | null> {
+    // SEC-02/D-02: nullish é erro explícito do caller — NÃO delega a
+    // `toObjectId(undefined)`, que geraria um ObjectId aleatório e
+    // mascararia o bug (Pitfall 2 / 03-RESEARCH.md, `findById(undefined)`
+    // "funcionava" silenciosamente retornando `null`). `Promise.reject`
+    // (não `throw` síncrono) preserva o contrato de Promise do método.
+    if (documentId === undefined || documentId === null) {
+      return Promise.reject(
+        new MongoatValidationError(
+          'findById requires a documentId — received null/undefined',
+          { code: 'INVALID_OBJECT_ID' }
+        )
+      );
+    }
+
     const ctx = buildContext(METHODS.FIND_BY_ID, this, {
       documentId,
       options,
