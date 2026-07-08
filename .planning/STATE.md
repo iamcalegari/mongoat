@@ -6,14 +6,14 @@ current_phase: 4
 current_phase_name: site-de-documenta-o
 status: executing
 stopped_at: Completed 04-01-PLAN.md
-last_updated: "2026-07-08T15:51:11.854Z"
+last_updated: "2026-07-08T15:58:30.733Z"
 last_activity: 2026-07-08
 last_activity_desc: Phase 4 execution started
 progress:
   total_phases: 8
   completed_phases: 3
   total_plans: 19
-  completed_plans: 14
+  completed_plans: 15
   percent: 38
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-07-03)
 ## Current Position
 
 Phase: 4 (site-de-documenta-o) — EXECUTING
-Plan: 2 of 6
+Plan: 3 of 6
 Status: Ready to execute
 Last activity: 2026-07-08 — Phase 4 execution started
 
@@ -70,6 +70,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 03 P04 | 25min | 2 tasks | 4 files |
 | Phase 03 P05 | 15min | 2 tasks | 3 files |
 | Phase 04 P01 | 6min | 3 tasks | 17 files |
+| Phase 04 P02 | 20min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -118,6 +119,7 @@ Recent decisions affecting current work:
 - [Phase ?]: typedoc pinado em 0.28.19 (não 0.28.20, flagged too-new) — npm sobrescreveu o pin durante install conjunto, corrigido manualmente
 - [Phase ?]: excludeExternals: true adicionado ao typedoc.json — necessário p/ docs:build não quebrar (JSDoc herdado do driver mongodb com sintaxe <string|buffer> quebrava o parser Vue)
 - [Phase ?]: toObjectId corrigido para ser re-exportado de src/index.ts (bug de barrel — função pública sem re-export)
+- [Phase 04]: Conteúdo dos guias 04-02 100% derivado de src/ e examples/ — nenhuma API inventada
 
 ### Pending Todos
 
@@ -148,6 +150,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-08T15:50:25.359Z
+Last session: 2026-07-08T15:57:33.195Z
 Stopped at: Completed 04-01-PLAN.md
 Resume file: None
