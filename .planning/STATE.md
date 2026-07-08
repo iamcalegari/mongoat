@@ -5,15 +5,15 @@ milestone_name: "**Goal**: A API do alpha é auditada e estabilizada deliberadam
 current_phase: 3
 current_phase_name: blindagem-testes-ci-e-seguran-a
 status: executing
-stopped_at: Completed 03-02-PLAN.md
-last_updated: "2026-07-08T02:33:23.354Z"
+stopped_at: Completed 03-04-PLAN.md
+last_updated: "2026-07-08T02:46:10.530Z"
 last_activity: 2026-07-07
 last_activity_desc: Phase 3 execution started
 progress:
   total_phases: 7
   completed_phases: 2
   total_plans: 13
-  completed_plans: 11
+  completed_plans: 12
   percent: 29
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-07-03)
 ## Current Position
 
 Phase: 3 (blindagem-testes-ci-e-seguran-a) — EXECUTING
-Plan: 4 of 5
+Plan: 5 of 5
 Status: Ready to execute
 Last activity: 2026-07-07 — Phase 3 execution started
 
@@ -66,6 +66,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 03 P01 | 20min | 3 tasks | 13 files |
 | Phase 03 P03 | 6min | 2 tasks | 3 files |
 | Phase 03 P02 | 25min | 3 tasks | 8 files |
+| Phase 03 P04 | 25min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -106,6 +107,9 @@ Recent decisions affecting current work:
 - [Phase 03-02]: toObjectId()/toObjectId(undefined) mantém geração de novo ObjectId (não-breaking) — valida e lança MongoatValidationError(INVALID_OBJECT_ID) somente quando um argumento é fornecido mas inválido
 - [Phase 03-02]: findById trata documentId nullish como erro explícito via Promise.reject, em vez de delegar a toObjectId(undefined) que geraria _id aleatório mascarando o bug do caller
 - [Phase 03-02]: sanitizeFilter permanece opt-in (D-06); guard $where (assertNoWhere) é o único automático/não-desligável (D-05); ambos reusam o mesmo scanner findForbiddenOperator
+- [Phase ?]: aggregate/total/update/updateMany/delete/deleteMany não passam por wrapDriverError (herdado do Plano 01); testes de erro usam .rejects.toThrow() genérico em vez de instanceof MongoatDriverError
+- [Phase ?]: options-passthrough-remaining.test.ts cobre só findById/bulkWrite — find/delete já cobertos desde o fix CR-01 (Fase 2)
+- [Phase ?]: Thresholds de coverage (D-10) mantidos em 80/80/80/70 (ponto de partida), não elevados ao valor real observado (~94%/97%/94%/85%) — evita gate frágil
 
 ### Pending Todos
 
@@ -136,6 +140,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-08T02:33:23.348Z
-Stopped at: Completed 03-02-PLAN.md
+Last session: 2026-07-08T02:46:10.524Z
+Stopped at: Completed 03-04-PLAN.md
 Resume file: None
