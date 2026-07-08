@@ -2,13 +2,13 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: "**Goal**: A API do alpha é auditada e estabilizada deliberadamente, e então publicada como v1.0.0 com semver disciplinado e um pipeline de release automatizado."
-current_phase: 4
-current_phase_name: site-de-documenta-o
+current_phase: 5
+current_phase_name: Estabilização de API e release v1.0
 status: verifying
 stopped_at: Completed 04-03-PLAN.md
-last_updated: "2026-07-08T16:29:46.056Z"
+last_updated: "2026-07-08T16:55:28.129Z"
 last_activity: 2026-07-08
-last_activity_desc: Phase 4 execution started
+last_activity_desc: Phase 4 complete, transitioned to Phase 5
 progress:
   total_phases: 8
   completed_phases: 4
@@ -28,10 +28,10 @@ See: .planning/PROJECT.md (updated 2026-07-03)
 
 ## Current Position
 
-Phase: 4 (site-de-documenta-o) — EXECUTING
-Plan: 6 of 6
+Phase: 5 — Estabilização de API e release v1.0
+Plan: Not started
 Status: Phase complete — ready for verification
-Last activity: 2026-07-08 — Phase 4 execution started
+Last activity: 2026-07-08 — Phase 4 complete, transitioned to Phase 5
 
 Progress: [░░░░░░░░░░] 0%
 
@@ -39,7 +39,7 @@ Progress: [░░░░░░░░░░] 0%
 
 **Velocity:**
 
-- Total plans completed: 10
+- Total plans completed: 16
 - Average duration: — min
 - Total execution time: 0.0 hours
 
@@ -49,6 +49,7 @@ Progress: [░░░░░░░░░░] 0%
 |-------|-------|-------|----------|
 | 01 | 5 | - | - |
 | 3 | 5 | - | - |
+| 4 | 6 | - | - |
 
 **Recent Trend:**
 
