@@ -64,7 +64,7 @@ Ser um ODM fino e extensível: produtividade de ODM sem abrir mão do controle e
 - **Arquitetura**: manter a arquitetura atual baseada em Proxy (gating de métodos e registro de models) — decisão do autor
 - **Dependências**: mínimo possível de dependências de runtime; preferir recursos nativos do driver oficial
 - **Segurança**: seguir as boas práticas de segurança e desenvolvimento recomendadas pelo MongoDB (validação server-side, credenciais via env vars, `serverApi` strict em produção, queries injection-safe)
-- **Compatibilidade**: Node >= 16.20.1; driver `mongodb` v7; TypeScript 5.x
+- **Compatibilidade**: Node `^20.19.0 || >=22.12.0`; driver `mongodb` v7; TypeScript 5.x
 - **Distribuição**: pacote npm público — mudanças de API exigem versionamento semântico disciplinado
 
 ## Key Decisions

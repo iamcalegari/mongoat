@@ -13,7 +13,7 @@ Mongoat é um ODM (Object Document Mapper) leve, rápido e type-safe para MongoD
 - **Arquitetura**: manter a arquitetura atual baseada em Proxy (gating de métodos e registro de models) — decisão do autor
 - **Dependências**: mínimo possível de dependências de runtime; preferir recursos nativos do driver oficial
 - **Segurança**: seguir as boas práticas de segurança e desenvolvimento recomendadas pelo MongoDB (validação server-side, credenciais via env vars, `serverApi` strict em produção, queries injection-safe)
-- **Compatibilidade**: Node >= 16.20.1; driver `mongodb` v7; TypeScript 5.x
+- **Compatibilidade**: Node `^20.19.0 || >=22.12.0`; driver `mongodb` v7; TypeScript 5.x
 - **Distribuição**: pacote npm público — mudanças de API exigem versionamento semântico disciplinado
 
 <!-- GSD:project-end -->
@@ -29,7 +29,7 @@ Mongoat é um ODM (Object Document Mapper) leve, rápido e type-safe para MongoD
 
 ## Runtime
 
-- Node.js >=16.20.1
+- Node.js `^20.19.0 || >=22.12.0`
 - ES2022 target (modern JavaScript features supported)
 - npm (no lockfile present - likely auto-generated at install)
 
@@ -69,9 +69,9 @@ Mongoat é um ODM (Object Document Mapper) leve, rápido e type-safe para MongoD
 
 ## Platform Requirements
 
-- Node.js 16.20.1 or higher
+- Node.js `^20.19.0 || >=22.12.0`
 - npm or yarn or pnpm (package manager)
-- Node.js 16.20.1 or higher
+- Node.js `^20.19.0 || >=22.12.0`
 - MongoDB server (local or remote)
 - No explicit deployment platform specified; library is framework-agnostic
 
@@ -154,8 +154,10 @@ Mongoat é um ODM (Object Document Mapper) leve, rápido e type-safe para MongoD
 ## Error Handling
 
 - try-catch blocks for database operations that may throw
-- Throw `MongoError` for database errors
-- Errors serialized with `JSON.stringify()` for clarity
+- Throw `MongoatError` or a subclass: `MongoatValidationError`, `MongoatConnectionError`, `MongoatDriverError`
+- Errors are never serialized with `JSON.stringify()`; `.message` is stable and sanitized (no stack traces or internal details)
+- `.cause` preserves the original driver/underlying error for deliberate inspection
+- Consumers discriminate by `instanceof` and by the stable `.code` field (e.g. `INVALID_OBJECT_ID`)
 
 ## Logging
 
@@ -356,8 +358,9 @@ Mongoat é um ODM (Object Document Mapper) leve, rápido e type-safe para MongoD
 
 ## Error Handling
 
-- Insert/insertMany errors: Wrap with `throw new MongoError(JSON.stringify(err, null, 2))` (`src/model/index.ts:295, 318`)
-- Connection errors: Let MongoClient.connect() throw native errors (unhandled in library)
+- Driver errors (insert/insertMany/etc.): wrapped as `MongoatDriverError` via `wrapDriverError`, preserving `.cause` and a stable `.code` (e.g. `DUPLICATE_KEY`) — never re-serialized with `JSON.stringify()` (`src/model/index.ts`)
+- Validation errors (ObjectId inválido, schema, filtro proibido): thrown as `MongoatValidationError` with `.code` (e.g. `INVALID_OBJECT_ID`, `FORBIDDEN_OPERATOR`, `VALIDATION_FAILED`)
+- Connection/config errors (sem conexão, dbName ausente): thrown as `MongoatConnectionError` with `.code` (e.g. `NOT_CONNECTED`)
 - Method authorization errors: Throw custom Error with message including method name and collection name (`src/database/index.ts:316-318`)
 - Validation errors: MongoDB server validates at collection update time via JSON Schema validator
 
