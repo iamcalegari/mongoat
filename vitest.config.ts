@@ -26,5 +26,21 @@ export default defineConfig({
     // Subir o container Mongo na primeira execução pode demorar; timeout
     // generoso evita falso-negativo em máquinas mais lentas/CI.
     testTimeout: 60000,
+    // D-10: gate de cobertura, só aplicado quando a suíte roda com
+    // `--coverage` (`npm test` puro não paga o custo de instrumentação).
+    // Thresholds são o PONTO DE PARTIDA definido em 03-CONTEXT.md/
+    // 03-RESEARCH.md (Wave 0 Gaps) — deliberadamente abaixo de 100%, que
+    // incentivaria testes vazios só para inflar o número. O gate falha o
+    // build (`process.exitCode = 1`) se a suíte cair abaixo do mínimo —
+    // consumido como gate real pelo CI no Plano 05.
+    coverage: {
+      provider: 'v8',
+      thresholds: {
+        lines: 80,
+        functions: 80,
+        statements: 80,
+        branches: 70,
+      },
+    },
   },
 });
