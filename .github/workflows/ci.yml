@@ -22,5 +22,11 @@ jobs:
       - run: npm run lint
       - run: npm run typecheck
       - run: npm run build
+      # A suíte de integração usa testcontainers@12 → undici@8, que exige Node
+      # >=22.19 (usa worker_threads.markAsUncloneable). A lib em runtime suporta
+      # Node 20 — validado acima por lint/typecheck/build e abaixo por
+      # check:package; os testes de integração rodam só na linha 22.x, onde a
+      # ferramenta funciona (o comportamento exercitado independe da versão).
       - run: npm test -- --coverage
+        if: startsWith(matrix.node-version, '22')
       - run: npm run check:package
