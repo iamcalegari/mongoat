@@ -97,7 +97,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   4. A conversão de ObjectId valida a entrada com `ObjectId.isValid` e lança um erro tipado e documentado em entrada inválida.
   5. Erros re-lançados carregam mensagens sanitizadas (sem stack traces / detalhes internos), e `setupIndexes` só recria índices que de fato mudaram.
 
-**Plans**: 2/5 plans executed
+**Plans**: 3/5 plans executed
 
 **Wave 1**
 
@@ -106,7 +106,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 **Wave 2** *(blocked on Wave 1)*
 
-- [ ] 03-02-PLAN.md — Blindagem de entrada: ObjectId fail-loud + $where guard + sanitizeFilter (SEC-01, SEC-02)
+- [x] 03-02-PLAN.md — Blindagem de entrada: ObjectId fail-loud + $where guard + sanitizeFilter (SEC-01, SEC-02)
 
 **Wave 3** *(blocked on Wave 2)*
 
@@ -183,7 +183,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 |-------|----------------|--------|-----------|
 | 1. Fundação — Core sem bugs e build moderno | 5/5 | Complete    | 2026-07-07 |
 | 2. Sistema de hooks completo e API thin nativa | 3/3 | Complete   | 2026-07-07 |
-| 3. Blindagem — testes, CI e segurança | 2/5 | In Progress|  |
+| 3. Blindagem — testes, CI e segurança | 3/5 | In Progress|  |
 | 4. Estabilização de API e release v1.0 | 0/TBD | Not started | - |
 | 5. API de schema com decorators (TC39) | 0/TBD | Not started | - |
 | 6. Sistema de plugins | 0/TBD | Not started | - |
