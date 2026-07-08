@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://github.com/iamcalegari/mongoat/blob/main/graphics/mongoat-cover-4_1.png" alt="Mongoat Logo" width="600"/>
+  <img src="https://raw.githubusercontent.com/iamcalegari/mongoat/main/graphics/mongoat-cover-4_1-no-bg.png" alt="Mongoat" width="640"/>
 </p>
 
 <h1 align="center">MONGOAT</h1>

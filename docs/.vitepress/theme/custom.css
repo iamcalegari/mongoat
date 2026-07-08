@@ -1,0 +1,12 @@
+/* Banner da arte oficial no topo da home (slot home-hero-before, ver index.ts). */
+.mongoat-banner {
+  display: flex;
+  justify-content: center;
+  padding: 2.5rem 1.5rem 0;
+}
+
+.mongoat-banner img {
+  width: 100%;
+  max-width: 760px;
+  height: auto;
+}

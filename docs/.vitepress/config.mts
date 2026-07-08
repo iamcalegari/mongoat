@@ -21,6 +21,15 @@ export default defineConfig({
   description: 'A lightweight, type-safe MongoDB ODM for Node.js/TypeScript',
   base: '/mongoat/',
 
+  // Favicon: arte oficial do Mongoat. `head` links NÃO são auto-prefixados
+  // pelo VitePress, então o `base` (/mongoat/) entra explícito no href.
+  head: [
+    [
+      'link',
+      { rel: 'icon', type: 'image/png', href: '/mongoat/mongoat-cover-4_1-no-bg.png' },
+    ],
+  ],
+
   themeConfig: {
     search: {
       provider: 'local',
