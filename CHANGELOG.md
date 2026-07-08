@@ -70,8 +70,14 @@ see [MIGRATION.md](./MIGRATION.md).
 
 - Duplicate-key (**E11000**) error messages redact the duplicated value; the full
   value stays available via `.cause`.
-- _In progress (Phase 3):_ unconditional `$where` rejection, an opt-in
-  `sanitizeFilter` utility, and `ObjectId` input validation with a typed error.
+- **BREAKING** — `$where` is rejected unconditionally on every method that takes a
+  filter (at any depth), with `MongoatValidationError` (`code: FORBIDDEN_OPERATOR`).
+- **BREAKING** — `toObjectId`/`findById` validate their input and throw
+  `MongoatValidationError` (`code: INVALID_OBJECT_ID`) on malformed ids (calling
+  `toObjectId()` with no argument still generates a fresh id).
+- Added an opt-in `sanitizeFilter(filter)` utility that neutralizes code-execution
+  operators (`$where`, `$function`, `$accumulator`, `$expr`+`$function`) in untrusted
+  input while preserving normal query operators.
 
 ---
 

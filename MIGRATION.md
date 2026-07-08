@@ -141,12 +141,9 @@ instead of throwing synchronously.
 
 ---
 
-## 3. Input validation _(in progress)_
+## 3. Input validation
 
-> Landing in Phase 3 (Blindagem). Documented here ahead of the RC; verify against
-> your installed version.
-
-### 3.1 `toObjectId` / `findById` throw on invalid input — **BREAKING** _(planned)_
+### 3.1 `toObjectId` / `findById` throw on invalid input — **BREAKING**
 
 `toObjectId(value)` will validate with `ObjectId.isValid` and throw
 `MongoatValidationError` (`code: INVALID_OBJECT_ID`) for malformed input (bad
@@ -157,7 +154,7 @@ generates a fresh `ObjectId` (unchanged).
 **How to migrate:** validate/normalize ids at your input boundary, or catch
 `MongoatValidationError` around `findById`.
 
-### 3.2 `$where` is rejected unconditionally — **BREAKING** _(planned)_
+### 3.2 `$where` is rejected unconditionally — **BREAKING**
 
 Any filter containing `$where` (at any depth) is rejected with
 `MongoatValidationError` (`code: FORBIDDEN_OPERATOR`) — it enables arbitrary
