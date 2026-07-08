@@ -17,26 +17,10 @@ Escopo do conteúdo = **core estável**: conexão/`Database`, `Model` e CRUD (in
 <decisions>
 ## Implementation Decisions
 
-### D-01 — Hosting e deploy: GitHub Pages (DOCS-01)
-- Site hospedado no **GitHub Pages**, com **deploy automático via GitHub Actions** a cada merge na `main` (workflow dedicado, ex.: `actions/deploy-pages` + build do VitePress).
-- URL inicial: `iamcalegari.github.io/mongoat` (domínio próprio pode ser apontado depois, sem retrabalho). Adicionar `homepage` no `package.json` apontando para o site.
-- Zero serviço/conta externa nova (respeita minimalismo).
-
-### D-02 — Estrutura: Diátaxis ESTRITO (DOCS-01)
-- Organização nos **4 quadrantes formais do Diátaxis**:
-  - **Tutorials** — aprendizado guiado, orientado a iniciante (ex.: "Do zero ao primeiro model: connect → definir schema → CRUD"). Inclui o quick start.
-  - **How-to guides** — tarefas específicas (ex.: registrar hooks pre/post; sanitizar filtros não-confiáveis com `sanitizeFilter`; tratar erros por `instanceof`/`code`; usar o escape hatch nativo; definir índices/validação).
-  - **Reference** — a API pública gerada por TypeDoc (D-04).
-  - **Explanation** — conceitos/design (ex.: filosofia "thin ODM"; por que Proxy gating; validação server-side via `$jsonSchema`; modelo de erros sanitizados).
-- Fora dos 4 quadrantes, duas páginas de navegação: **Home/landing** e o **guia de migração** alpha→v1.0 (DOCS-03).
-
-### D-03 — README enxuto + link pro site (DOCS-04)
-- README = quick start funcional + badges + features em bullets + seção "**Full documentation → {site}**". A **fonte da verdade é o site**; o README não duplica os guias (evita drift).
-- Remover o disclaimer "🚧 work in progress" e o badge/versão só é corrigido se necessário (badge dinâmico shields.io já reflete o npm).
-
-### D-04 — Referência de API: TypeDoc integrado ao VitePress (DOCS-02)
-- **`typedoc-plugin-markdown`** gera a referência como páginas markdown **dentro do VitePress** — um site só, navegação e busca unificadas. Gerada do código + JSDoc.
-- Cobrir **só a API pública exportada do barrel raiz** (`src/index.ts`): `Database`, `Model`, `MongoatError` + subclasses, `toObjectId`, `sanitizeFilter`, `METHODS`, tipos públicos.
+- **D-01 — Hosting e deploy: GitHub Pages (DOCS-01)** — Site no **GitHub Pages** com **deploy automático via GitHub Actions** a cada merge na `main` (workflow dedicado `docs.yml`, SEPARADO do `ci.yml`; `actions/deploy-pages` + build do VitePress). URL inicial `iamcalegari.github.io/mongoat` (domínio próprio depois, sem retrabalho); adicionar `homepage` no `package.json`. Zero serviço/conta externa nova (minimalismo).
+- **D-02 — Estrutura: Diátaxis ESTRITO (DOCS-01)** — Organização nos **4 quadrantes formais do Diátaxis** + Home + Migration. **Tutorials**: aprendizado guiado (quick start "connect → definir schema → CRUD"). **How-to guides**: tarefas (hooks pre/post; `sanitizeFilter` em input não-confiável; erros por `instanceof`/`code`; escape hatch nativo; índices/validação). **Reference**: API pública via TypeDoc (D-04). **Explanation**: conceitos (filosofia thin ODM; Proxy gating; validação server-side `$jsonSchema`; erros sanitizados). Fora dos quadrantes: **Home/landing** e o **guia de migração** alpha→v1.0 (DOCS-03).
+- **D-03 — README enxuto + link pro site (DOCS-04)** — README = quick start funcional + badges + features em bullets + "**Full documentation → {site}**". A **fonte da verdade é o site**; o README não duplica os guias (evita drift). Remover o disclaimer "🚧 work in progress" (badge dinâmico shields.io já reflete o npm).
+- **D-04 — Referência de API: TypeDoc integrado ao VitePress (DOCS-02)** — `typedoc-plugin-markdown` gera a referência como markdown **dentro do VitePress** (um site só, busca unificada), do código + JSDoc. Cobrir **só a API pública exportada do barrel raiz** (`src/index.ts`): `Database`, `Model`, `MongoatError` + subclasses, `toObjectId`, `sanitizeFilter`, `METHODS`, tipos públicos.
 
 ### Claude's Discretion (delegadas — escolhas abaixo, ajustáveis no planejamento)
 - **Idioma:** inglês em todo o site/README (consistência com README/CHANGELOG/MIGRATION já em inglês; público npm internacional). Comunicação interna/planning segue em pt.
