@@ -48,6 +48,7 @@ import {
   OnHookError,
 } from '@/types/hooks';
 import { METHODS } from '@/utils/enums';
+import { findForbiddenOperator } from '@/utils/sanitize';
 import { Database } from '@/database';
 import {
   MongoatConnectionError,
@@ -135,6 +136,25 @@ function wrapDriverError(err: unknown): MongoatDriverError {
       : 'DRIVER_ERROR';
 
   return new MongoatDriverError(originalMessage, { cause: err, code });
+}
+
+/**
+ * SEC-01/D-05: guard incondicional de `$where`, embutido nos 7 métodos que
+ * recebem `filter` (find, findMany, update, updateMany, delete,
+ * deleteMany, total). Sempre ativo e NÃO-desligável pelo dev — reusa o
+ * MESMO scanner (`findForbiddenOperator`) de `src/utils/sanitize.ts`,
+ * usado também por `sanitizeFilter` (Task 2), em vez de duplicar a lógica
+ * de percorrer o filtro em qualquer profundidade (dentro de
+ * `$and`/`$or`/`$nor`/arrays). `$where` executa JavaScript arbitrário no
+ * servidor MongoDB — sem uso legítimo defensável numa lib de dados.
+ */
+function assertNoWhere(filter: unknown): void {
+  if (findForbiddenOperator(filter, new Set(['$where']))) {
+    throw new MongoatValidationError(
+      'The $where operator is not allowed — it executes arbitrary JavaScript on the server',
+      { code: 'FORBIDDEN_OPERATOR' }
+    );
+  }
 }
 
 /**
@@ -604,6 +624,14 @@ export class Model<ModelType extends Document = Document> {
     update: UpdateFilter<ModelType>,
     options: FindOneAndUpdateOptions = {}
   ): Promise<WithId<ModelType> | null> {
+    // SEC-01/D-05: guard ANTES de tocar o driver — `Promise.reject` (não
+    // `throw` síncrono) preserva o contrato de Promise do método.
+    try {
+      assertNoWhere(filter);
+    } catch (err) {
+      return Promise.reject(err);
+    }
+
     const _update = { ...update };
     const ctx = buildContext(METHODS.UPDATE, this, {
       filter,
@@ -634,6 +662,12 @@ export class Model<ModelType extends Document = Document> {
     update: UpdateFilter<ModelType>,
     options: UpdateOptions = {}
   ): Promise<UpdateResult> {
+    try {
+      assertNoWhere(filter);
+    } catch (err) {
+      return Promise.reject(err);
+    }
+
     const _update = { ...update };
     const ctx = buildContext(METHODS.UPDATE_MANY, this, {
       filter,
@@ -660,6 +694,12 @@ export class Model<ModelType extends Document = Document> {
     filter: Filter<ModelType> = {},
     options: FindOptions = {}
   ): Promise<WithId<ModelType>[]> {
+    try {
+      assertNoWhere(filter);
+    } catch (err) {
+      return Promise.reject(err);
+    }
+
     const ctx = buildContext(METHODS.FIND_MANY, this, { filter, options });
 
     return this.runHooked(METHODS.FIND_MANY, ctx, (c) =>
@@ -680,6 +720,12 @@ export class Model<ModelType extends Document = Document> {
     filter: Filter<ModelType>,
     options: DeleteOptions = {}
   ): Promise<DeleteResult> {
+    try {
+      assertNoWhere(filter);
+    } catch (err) {
+      return Promise.reject(err);
+    }
+
     const ctx = buildContext(METHODS.DELETE_MANY, this, { filter, options });
 
     return this.runHooked(METHODS.DELETE_MANY, ctx, (c) =>
@@ -820,6 +866,12 @@ export class Model<ModelType extends Document = Document> {
     filter: Filter<ModelType> = {},
     options: FindOptions = {}
   ): Promise<WithId<ModelType> | null> {
+    try {
+      assertNoWhere(filter);
+    } catch (err) {
+      return Promise.reject(err);
+    }
+
     const ctx = buildContext(METHODS.FIND, this, { filter, options });
 
     return this.runHooked(METHODS.FIND, ctx, (c) =>
@@ -877,6 +929,12 @@ export class Model<ModelType extends Document = Document> {
     filter: Filter<ModelType>,
     options: FindOneAndDeleteOptions = {}
   ): Promise<WithId<ModelType> | null> {
+    try {
+      assertNoWhere(filter);
+    } catch (err) {
+      return Promise.reject(err);
+    }
+
     const ctx = buildContext(METHODS.DELETE, this, { filter, options });
 
     return this.runHooked(METHODS.DELETE, ctx, (c) =>
@@ -900,6 +958,12 @@ export class Model<ModelType extends Document = Document> {
     filter: Filter<ModelType> = {},
     options: CountDocumentsOptions = {}
   ): Promise<number> {
+    try {
+      assertNoWhere(filter);
+    } catch (err) {
+      return Promise.reject(err);
+    }
+
     const ctx = buildContext(METHODS.TOTAL, this, { filter, options });
 
     return this.runHooked(METHODS.TOTAL, ctx, (c) =>
