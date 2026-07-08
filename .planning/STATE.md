@@ -6,14 +6,14 @@ current_phase: 3
 current_phase_name: blindagem-testes-ci-e-seguran-a
 status: executing
 stopped_at: Completed 03-01-PLAN.md
-last_updated: "2026-07-07T23:27:34.883Z"
+last_updated: "2026-07-08T00:29:20.890Z"
 last_activity: 2026-07-07
 last_activity_desc: Phase 3 execution started
 progress:
   total_phases: 7
   completed_phases: 2
   total_plans: 13
-  completed_plans: 9
+  completed_plans: 10
   percent: 29
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-07-03)
 ## Current Position
 
 Phase: 3 (blindagem-testes-ci-e-seguran-a) — EXECUTING
-Plan: 2 of 5
+Plan: 3 of 5
 Status: Ready to execute
 Last activity: 2026-07-07 — Phase 3 execution started
 
@@ -64,6 +64,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 02 P02 | 10min | 3 tasks | 7 files |
 | Phase 02 P03 | 15min | 3 tasks | 5 files |
 | Phase 03 P01 | 20min | 3 tasks | 13 files |
+| Phase 03 P03 | 6min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -99,6 +100,8 @@ Recent decisions affecting current work:
 - [Phase ?]: [Phase 03-01]: eslint.config.js virou eslint.config.mjs (ESM) - evita globals extras (require/module/__dirname) so para o proprio arquivo de config
 - [Phase ?]: [Phase 03-01]: ModelValidationSchema<T = any> manteve o any documentado - never/Record<string,unknown>&DefaultProperties quebram o mapped type homomorfico {[k in keyof T]}, mudanca estrutural fora do escopo do lint gate
 - [Phase ?]: [Phase 03-01]: KModelProxyHandler 'method not allowed' permanece MongoatError base (nao subclasse) com code METHOD_NOT_ALLOWED - gating de Proxy nao e validacao/conexao/driver
+- [Phase ?]: onHookError é void mas runtime pode devolver Promise — dispatchOnHookError faz cast via unknown antes de sondar .then()
+- [Phase ?]: setupIndexes não foi reimplementado (já incremental desde WR-10/Fase 1) — apenas coberto por teste de regressão de idempotência
 
 ### Pending Todos
 
@@ -129,6 +132,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-07T23:27:34.872Z
+Last session: 2026-07-08T00:28:34.176Z
 Stopped at: Completed 03-01-PLAN.md
 Resume file: None
