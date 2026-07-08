@@ -15,7 +15,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Fundação — Core sem bugs e build moderno** - Corrige bugs conhecidos, remove `json-schema` e configura build dual CJS/ESM (completed 2026-07-07)
 - [x] **Phase 2: Sistema de hooks completo e API thin nativa** - Hooks pre/post completos, options nativas em todos os métodos e escape hatch (completed 2026-07-07)
-- [ ] **Phase 3: Blindagem — testes, CI e segurança** - Suíte unit+integração, GitHub Actions e hardening contra injeção
+- [x] **Phase 3: Blindagem — testes, CI e segurança** - Suíte unit+integração, GitHub Actions e hardening contra injeção (completed 2026-07-08)
 - [ ] **Phase 4: Estabilização de API e release v1.0** - Auditoria alpha→v1.0, changesets, RC e publicação estável
 - [ ] **Phase 5: API de schema com decorators (TC39)** - `@Schema`/`@Pre`/etc. coexistindo com a API de objetos
 - [ ] **Phase 6: Sistema de plugins** - `plugins[]` por model e `Model.plugin()` global com contrato selado
@@ -97,7 +97,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   4. A conversão de ObjectId valida a entrada com `ObjectId.isValid` e lança um erro tipado e documentado em entrada inválida.
   5. Erros re-lançados carregam mensagens sanitizadas (sem stack traces / detalhes internos), e `setupIndexes` só recria índices que de fato mudaram.
 
-**Plans**: 4/5 plans executed
+**Plans**: 5/5 plans complete
 
 **Wave 1**
 
@@ -114,7 +114,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 **Wave 4** *(blocked on Wave 3)*
 
-- [ ] 03-05-PLAN.md — CI GitHub Actions (matriz 20/22) + reconciliação de docs de Node (QUAL-03)
+- [x] 03-05-PLAN.md — CI GitHub Actions (matriz 20/22) + reconciliação de docs de Node (QUAL-03)
 
 ### Phase 4: Estabilização de API e release v1.0
 
@@ -183,7 +183,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 |-------|----------------|--------|-----------|
 | 1. Fundação — Core sem bugs e build moderno | 5/5 | Complete    | 2026-07-07 |
 | 2. Sistema de hooks completo e API thin nativa | 3/3 | Complete   | 2026-07-07 |
-| 3. Blindagem — testes, CI e segurança | 4/5 | In Progress|  |
+| 3. Blindagem — testes, CI e segurança | 5/5 | Complete   | 2026-07-08 |
 | 4. Estabilização de API e release v1.0 | 0/TBD | Not started | - |
 | 5. API de schema com decorators (TC39) | 0/TBD | Not started | - |
 | 6. Sistema de plugins | 0/TBD | Not started | - |

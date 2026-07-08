@@ -26,7 +26,7 @@
 
 - [x] **QUAL-01**: Bugs conhecidos de `.planning/codebase/CONCERNS.md` corrigidos: pre-hooks não aguardados em `insertMany`, binding perdido no proxy handler, tipo de retorno de `find()`, race condition do registry estático, mutação de schema em `includeAdditionalPropertiesFalse`
 - [x] **QUAL-02**: Suíte de testes unitários + integração (vitest + mongodb-memory-server) cobrindo todos os métodos públicos, incluindo cenários de erro e concorrência
-- [ ] **QUAL-03**: CI (GitHub Actions) executa testes, lint e build em todo push/PR
+- [x] **QUAL-03**: CI (GitHub Actions) executa testes, lint e build em todo push/PR
 - [x] **QUAL-04**: Dependência `json-schema` 0.4.0 removida do runtime (validação é server-side via `$jsonSchema`)
 
 ### Segurança
@@ -98,7 +98,7 @@
 | API-04 | Phase 2 | Complete |
 | QUAL-01 | Phase 1 | In Progress (01-01 lançou MongoatError; fixes em 01-03/04/05) |
 | QUAL-02 | Phase 3 | Complete |
-| QUAL-03 | Phase 3 | Pending |
+| QUAL-03 | Phase 3 | Complete |
 | QUAL-04 | Phase 1 | Complete |
 | SEC-01 | Phase 3 | Complete |
 | SEC-02 | Phase 3 | Complete |

@@ -4,17 +4,17 @@ milestone: v1.0
 milestone_name: "**Goal**: A API do alpha é auditada e estabilizada deliberadamente, e então publicada como v1.0.0 com semver disciplinado e um pipeline de release automatizado."
 current_phase: 3
 current_phase_name: blindagem-testes-ci-e-seguran-a
-status: executing
-stopped_at: Completed 03-04-PLAN.md
-last_updated: "2026-07-08T02:46:10.530Z"
+status: verifying
+stopped_at: Completed 03-05-PLAN.md
+last_updated: "2026-07-08T02:53:41.284Z"
 last_activity: 2026-07-07
 last_activity_desc: Phase 3 execution started
 progress:
   total_phases: 7
-  completed_phases: 2
+  completed_phases: 3
   total_plans: 13
-  completed_plans: 12
-  percent: 29
+  completed_plans: 13
+  percent: 43
 ---
 
 # Project State
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-07-03)
 
 Phase: 3 (blindagem-testes-ci-e-seguran-a) — EXECUTING
 Plan: 5 of 5
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-07-07 — Phase 3 execution started
 
 Progress: [░░░░░░░░░░] 0%
@@ -67,6 +67,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 03 P03 | 6min | 2 tasks | 3 files |
 | Phase 03 P02 | 25min | 3 tasks | 8 files |
 | Phase 03 P04 | 25min | 2 tasks | 4 files |
+| Phase 03 P05 | 15min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -110,6 +111,8 @@ Recent decisions affecting current work:
 - [Phase ?]: aggregate/total/update/updateMany/delete/deleteMany não passam por wrapDriverError (herdado do Plano 01); testes de erro usam .rejects.toThrow() genérico em vez de instanceof MongoatDriverError
 - [Phase ?]: options-passthrough-remaining.test.ts cobre só findById/bulkWrite — find/delete já cobertos desde o fix CR-01 (Fase 2)
 - [Phase ?]: Thresholds de coverage (D-10) mantidos em 80/80/80/70 (ponto de partida), não elevados ao valor real observado (~94%/97%/94%/85%) — evita gate frágil
+- [Phase ?]: [Phase 03-05]: Ambas as ocorrências de Error Handling no CLAUDE.md foram corrigidas (não só a primeira) — a segunda também violava D-03 (MongoError + JSON.stringify)
+- [Phase ?]: [Phase 03-05]: Matriz de CI limitada a ['20.x','22.x'] (última patch de cada major), sem testar o piso exato do engines — YAGNI (Open Question 3)
 
 ### Pending Todos
 
@@ -140,6 +143,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-08T02:46:10.524Z
-Stopped at: Completed 03-04-PLAN.md
+Last session: 2026-07-08T02:53:41.277Z
+Stopped at: Completed 03-05-PLAN.md
 Resume file: None
