@@ -58,10 +58,16 @@
 
 ### Documentação
 
-- [ ] **DOCS-01**: Site VitePress publicado com quick start e guias (hooks, plugins, decorators, segurança, escape hatch)
+- [ ] **DOCS-01**: Site VitePress publicado com quick start e guias do **core da v1.0** (conexão/models, CRUD, hooks pre/post, validação `$jsonSchema`, segurança, escape hatch); decorators/plugins/migrations são documentados quando saem (Fases 6-8)
 - [ ] **DOCS-02**: Referência de API gerada por TypeDoc (typedoc-plugin-markdown) integrada ao site
-- [ ] **DOCS-03**: Guia de migração alpha→v1.0 documentando todas as mudanças de API
-- [ ] **DOCS-04**: README renovado com quick start funcional, apontando para o site
+- [ ] **DOCS-03**: Guia de migração alpha→v1.0 documentando todas as mudanças de API (consolida `CHANGELOG.md`/`MIGRATION.md`)
+- [ ] **DOCS-04**: README renovado com quick start funcional, apontando para o site (sem o disclaimer "work in progress")
+
+### Migrations (pós-v1.0 — promovido de Out of Scope em 2026-07-08)
+
+- [ ] **MIG-01**: Dev define migrations versionadas com funções `up`/`down` que alteram schema (`$jsonSchema`/índices via `collMod`/`createIndex`) e/ou dados
+- [ ] **MIG-02**: A lib aplica migrations pendentes em ordem e reverte com `down`, rastreando o estado aplicado numa collection de controle (idempotente — não re-aplica o que já rodou)
+- [ ] **MIG-03**: CLI (`mongoat migrate`) cria, executa (`up`/`down`/`to <versão>`) e mostra o `status` das migrations
 
 ## v2 Requirements (deferred)
 
@@ -75,7 +81,6 @@
 - **Populate / referências de documento (`.populate()`, sugar de `$lookup`)** — incentiva padrões relacionais em document DB e N+1 queries; usar `aggregate()` com `$lookup` (já exposto); documentar o padrão
 - **Virtual fields / propriedades computadas** — concern da camada de aplicação, não do ODM
 - **Query builder chainable (`.where().gt()`)** — DSL paralela que precisa acompanhar o driver; o filtro nativo já é composável e tipado
-- **Tooling de schema migration** — domínio separado (recomendar `migrate-mongo`)
 - **Gerência multi-database/multi-tenant** — instanciar `Database` separados; fora do escopo declarado
 - **Validação client-side (class-validator etc.)** — `$jsonSchema` server-side é o caminho MongoDB-native; duplicaria lógica e adicionaria dependência
 - **Discriminators / herança de models** — mapeia mal para o modelo de documentos; documentar alternativas
@@ -104,23 +109,26 @@
 | SEC-02 | Phase 3 | Complete |
 | SEC-03 | Phase 3 | Complete |
 | SEC-04 | Phase 3 | Complete |
-| REL-01 | Phase 4 | Pending |
+| DOCS-01 | Phase 4 | Pending |
+| DOCS-02 | Phase 4 | Pending |
+| DOCS-03 | Phase 4 | Pending |
+| DOCS-04 | Phase 4 | Pending |
+| REL-01 | Phase 5 | Pending |
 | REL-02 | Phase 1 | Complete |
-| REL-03 | Phase 4 | Pending |
-| REL-04 | Phase 4 | Pending |
-| DECO-01 | Phase 5 | Pending |
-| DECO-02 | Phase 5 | Pending |
-| DECO-03 | Phase 5 | Pending |
-| DECO-04 | Phase 5 | Pending |
-| PLUG-01 | Phase 6 | Pending |
-| PLUG-02 | Phase 6 | Pending |
-| PLUG-03 | Phase 6 | Pending |
-| DOCS-01 | Phase 7 | Pending |
-| DOCS-02 | Phase 7 | Pending |
-| DOCS-03 | Phase 7 | Pending |
-| DOCS-04 | Phase 7 | Pending |
+| REL-03 | Phase 5 | Pending |
+| REL-04 | Phase 5 | Pending |
+| DECO-01 | Phase 6 | Pending |
+| DECO-02 | Phase 6 | Pending |
+| DECO-03 | Phase 6 | Pending |
+| DECO-04 | Phase 6 | Pending |
+| PLUG-01 | Phase 7 | Pending |
+| PLUG-02 | Phase 7 | Pending |
+| PLUG-03 | Phase 7 | Pending |
+| MIG-01 | Phase 8 | Pending |
+| MIG-02 | Phase 8 | Pending |
+| MIG-03 | Phase 8 | Pending |
 
-**Coverage:** 32/32 requisitos v1 mapeados — cada um para exatamente uma fase, sem órfãos nem duplicatas.
+**Coverage:** 35/35 requisitos mapeados (32 do v1.0 + 3 MIG pós-v1.0) — cada um para exatamente uma fase, sem órfãos nem duplicatas.
 
 ---
-*Requirements defined: 2026-07-03 — 32 requisitos v1 em 8 categorias*
+*Requirements defined: 2026-07-03 (32 do v1.0) — Migrations (MIG-01..03) promovido de Out of Scope em 2026-07-08 → 35 requisitos em 9 categorias*

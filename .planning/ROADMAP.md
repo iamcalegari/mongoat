@@ -2,7 +2,7 @@
 
 ## Overview
 
-Mongoat é uma lib brownfield publicada como `@iamcalegari/mongoat@1.0.34-alpha`: um ODM fino sobre o driver oficial do MongoDB, com CRUD completo, hooks `pre`, validação server-side `$jsonSchema` e gating de métodos via Proxy. Este roadmap leva a lib do alpha à **v1.0.0 estável** e aos diferenciais competitivos (decorators TC39, plugins, site de docs). A jornada segue o grafo de dependências da pesquisa: primeiro consertar o core e modernizar o build (fundação), depois completar o pipeline de hooks e a API thin nativa, então blindar com testes/CI/segurança, estabilizar e publicar a v1.0, e por fim adicionar as camadas aditivas (decorators, plugins) e a documentação. Cada fase entrega uma capacidade coerente e verificável; os dois pontos de não-retorno (escolha de decorators, contrato semver da v1.0) ficam em fases dedicadas.
+Mongoat é uma lib brownfield publicada como `@iamcalegari/mongoat@1.0.34-alpha`: um ODM fino sobre o driver oficial do MongoDB, com CRUD completo, hooks `pre`, validação server-side `$jsonSchema` e gating de métodos via Proxy. Este roadmap leva a lib do alpha à **v1.0.0 estável** e aos diferenciais competitivos (site de docs, decorators TC39, plugins, migrations). A jornada segue o grafo de dependências da pesquisa: primeiro consertar o core e modernizar o build (fundação), depois completar o pipeline de hooks e a API thin nativa, então blindar com testes/CI/segurança, **documentar o core e publicar a v1.0 já bem documentada**, e por fim adicionar as camadas aditivas pós-v1.0 — decorators, plugins e migrations — como minors 1.x. Cada fase entrega uma capacidade coerente e verificável; o ponto de não-retorno (contrato semver da v1.0) fica em fase dedicada.
 
 ## Phases
 
@@ -16,10 +16,11 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 1: Fundação — Core sem bugs e build moderno** - Corrige bugs conhecidos, remove `json-schema` e configura build dual CJS/ESM (completed 2026-07-07)
 - [x] **Phase 2: Sistema de hooks completo e API thin nativa** - Hooks pre/post completos, options nativas em todos os métodos e escape hatch (completed 2026-07-07)
 - [x] **Phase 3: Blindagem — testes, CI e segurança** - Suíte unit+integração, GitHub Actions e hardening contra injeção (completed 2026-07-08)
-- [ ] **Phase 4: Estabilização de API e release v1.0** - Auditoria alpha→v1.0, changesets, RC e publicação estável
-- [ ] **Phase 5: API de schema com decorators (TC39)** - `@Schema`/`@Pre`/etc. coexistindo com a API de objetos
-- [ ] **Phase 6: Sistema de plugins** - `plugins[]` por model e `Model.plugin()` global com contrato selado
-- [ ] **Phase 7: Site de documentação** - VitePress + referência TypeDoc + guia de migração
+- [ ] **Phase 4: Site de documentação** - README renovado + VitePress + TypeDoc + guia de migração do core v1.0 (antes do release)
+- [ ] **Phase 5: Estabilização de API e release v1.0** - Auditoria alpha→v1.0, changesets, RC e publicação estável
+- [ ] **Phase 6: API de schema com decorators (TC39)** - `@Schema`/`@Pre`/etc. coexistindo com a API de objetos (aditivo, minor 1.x)
+- [ ] **Phase 7: Sistema de plugins** - `plugins[]` por model e `Model.plugin()` global com contrato selado (aditivo, minor 1.x)
+- [ ] **Phase 8: Migrations** - schema + data migrations versionadas (up/down), estado rastreado e CLI (aditivo, minor 1.x)
 
 ## Phase Details
 
@@ -116,11 +117,28 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] 03-05-PLAN.md — CI GitHub Actions (matriz 20/22) + reconciliação de docs de Node (QUAL-03)
 
-### Phase 4: Estabilização de API e release v1.0
+### Phase 4: Site de documentação
+
+**Goal**: A lib entra na v1.0 **bem documentada**: um site publicado + README renovado cobrindo o core estável (conexão, models, CRUD, hooks pre/post, validação `$jsonSchema`, segurança, escape hatch nativo), com referência de API TypeDoc e o guia de migração alpha→v1.0. Documentar o core primeiro também audita a API antes de congelá-la no release.
+**Mode:** mvp
+**Depends on**: Phase 3
+**Requirements**: DOCS-01, DOCS-02, DOCS-03, DOCS-04
+**Success Criteria** (what must be TRUE):
+
+  1. Um site VitePress é publicado com quick start e guias do **core da v1.0**: conexão/models, CRUD, hooks pre/post, validação `$jsonSchema`, segurança (`sanitizeFilter`/hierarquia de erros) e escape hatch nativo.
+  2. Uma referência de API gerada por TypeDoc (typedoc-plugin-markdown) é integrada ao site.
+  3. O guia de migração alpha→v1.0 (consolidando `CHANGELOG.md`/`MIGRATION.md`) documenta todas as mudanças de API.
+  4. O README é renovado com um quick start funcional que aponta para o site — sem o disclaimer "work in progress".
+
+**Nota**: features pós-v1.0 (decorators, plugins, migrations — Fases 6-8) são documentadas incrementalmente quando cada uma sai.
+
+**Plans**: TBD
+
+### Phase 5: Estabilização de API e release v1.0
 
 **Goal**: A API do alpha é auditada e estabilizada deliberadamente, e então publicada como v1.0.0 com semver disciplinado e um pipeline de release automatizado.
 **Mode:** mvp
-**Depends on**: Phase 3
+**Depends on**: Phase 4
 **Requirements**: REL-01, REL-03, REL-04
 **Success Criteria** (what must be TRUE):
 
@@ -130,11 +148,11 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 **Plans**: TBD
 
-### Phase 5: API de schema com decorators (TC39)
+### Phase 6: API de schema com decorators (TC39)
 
-**Goal**: O dev pode definir schemas com decorators TC39 padrão como alternativa de primeira classe à API de objetos, compilando para a mesma representação interna.
+**Goal**: O dev pode definir schemas com decorators TC39 padrão como alternativa de primeira classe à API de objetos, compilando para a mesma representação interna. Feature aditiva pós-v1.0 (minor 1.x).
 **Mode:** mvp
-**Depends on**: Phase 4
+**Depends on**: Phase 5
 **Requirements**: DECO-01, DECO-02, DECO-03, DECO-04
 **Success Criteria** (what must be TRUE):
 
@@ -145,11 +163,11 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 **Plans**: TBD
 
-### Phase 6: Sistema de plugins
+### Phase 7: Sistema de plugins
 
-**Goal**: O dev pode estender models com plugins reutilizáveis — por model e globais — através de um contrato de plugin tipado e selado.
+**Goal**: O dev pode estender models com plugins reutilizáveis — por model e globais — através de um contrato de plugin tipado e selado. Feature aditiva pós-v1.0 (minor 1.x).
 **Mode:** mvp
-**Depends on**: Phase 4 (usa os hook arrays entregues na Phase 2; aditivo pós-v1.0, independente da Phase 5)
+**Depends on**: Phase 5 (usa os hook arrays entregues na Phase 2; independente da Phase 6)
 **Requirements**: PLUG-01, PLUG-02, PLUG-03
 **Success Criteria** (what must be TRUE):
 
@@ -159,32 +177,32 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 **Plans**: TBD
 
-### Phase 7: Site de documentação
+### Phase 8: Migrations
 
-**Goal**: Um site de documentação publicado, com guias, referência de API gerada e guia de migração, amplifica o sinal de qualidade da lib estável e completa.
+**Goal**: O dev ganha um sistema de **migrations versionadas** para evoluir schema (validators/índices) e dados de forma controlada e reversível — a capacidade que faltava para operar a lib em produção ao longo do tempo. Feature aditiva pós-v1.0 (minor 1.x); tirada de "Out of Scope" a pedido do autor.
 **Mode:** mvp
-**Depends on**: Phase 6 (documenta o conjunto completo de features, incluindo decorators e plugins)
-**Requirements**: DOCS-01, DOCS-02, DOCS-03, DOCS-04
+**Depends on**: Phase 5 (construída sobre a API v1.0 estável; usa o escape hatch nativo e os models)
+**Requirements**: MIG-01, MIG-02, MIG-03
 **Success Criteria** (what must be TRUE):
 
-  1. Um site VitePress é publicado com quick start e guias de hooks, plugins, decorators, segurança e escape hatch.
-  2. Uma referência de API gerada por TypeDoc (typedoc-plugin-markdown) é integrada ao site.
-  3. Um guia de migração alpha→v1.0 documenta todas as mudanças de API.
-  4. O README é renovado com um quick start funcional que aponta para o site.
+  1. Dev define migrations versionadas com funções `up`/`down` que alteram schema (`$jsonSchema`/índices via `collMod`/`createIndex`) e/ou dados.
+  2. A lib aplica migrations pendentes em ordem e reverte com `down`, rastreando o estado aplicado numa collection de controle (idempotente — não re-aplica o que já rodou).
+  3. Uma CLI (`mongoat migrate`) cria, executa (`up`/`down`/`to <versão>`) e mostra o `status` das migrations.
 
 **Plans**: TBD
 
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
+Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Fundação — Core sem bugs e build moderno | 5/5 | Complete    | 2026-07-07 |
 | 2. Sistema de hooks completo e API thin nativa | 3/3 | Complete   | 2026-07-07 |
 | 3. Blindagem — testes, CI e segurança | 5/5 | Complete    | 2026-07-08 |
-| 4. Estabilização de API e release v1.0 | 0/TBD | Not started | - |
-| 5. API de schema com decorators (TC39) | 0/TBD | Not started | - |
-| 6. Sistema de plugins | 0/TBD | Not started | - |
-| 7. Site de documentação | 0/TBD | Not started | - |
+| 4. Site de documentação | 0/TBD | Not started | - |
+| 5. Estabilização de API e release v1.0 | 0/TBD | Not started | - |
+| 6. API de schema com decorators (TC39) | 0/TBD | Not started | - |
+| 7. Sistema de plugins | 0/TBD | Not started | - |
+| 8. Migrations | 0/TBD | Not started | - |
