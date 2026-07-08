@@ -5,6 +5,7 @@
   "docsRoot": "./docs",
   "plugin": ["typedoc-plugin-markdown", "typedoc-vitepress-theme"],
   "excludeProtected": true,
+  "excludeExternals": true,
   "readme": "none",
   "indexFormat": "table"
 }
