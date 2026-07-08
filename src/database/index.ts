@@ -398,6 +398,13 @@ export class Database {
     return result;
   }
 
+  /**
+   * @internal
+   *
+   * Proxy handler interno do gating de `allowedMethods` — não faz parte da
+   * API pública e não deve aparecer na Reference (`excludeInternal` no
+   * typedoc.json). Chaveado por Symbol module-private; inacessível de fora.
+   */
   static [KModelProxyHandler]() {
     return {
       get(target: Model<Document>, prop: METHODS, receiver: unknown) {

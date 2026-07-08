@@ -281,6 +281,14 @@ export class Model<ModelType extends Document = Document> {
   onHookError: OnHookError<HookContextMap<ModelType>[METHODS]> =
     defaultOnHookError;
 
+  /**
+   * @internal
+   *
+   * Referência estática à `Database` conectada — implementação interna, não
+   * faz parte da API pública e não deve aparecer na Reference
+   * (`excludeInternal` no typedoc.json). Chaveada por Symbol module-private;
+   * inacessível de fora do módulo.
+   */
   static [kDatabase]: Database | undefined;
 
   /**
@@ -513,8 +521,8 @@ export class Model<ModelType extends Document = Document> {
    * ATENÇÃO — bypass DELIBERADO e TOTAL: a `Collection` retornada não
    * passa pelo pipeline de hooks (pre/post nunca disparam para chamadas
    * feitas diretamente nela) **nem** pelo gating de `allowedMethods` (esta
-   * função nunca é adicionada ao enum `METHODS`, então o
-   * `KModelProxyHandler` já a deixa passar sem checagem nenhuma). Ao
+   * função nunca é adicionada ao enum `METHODS`, então o Proxy de gating
+   * de métodos já a deixa passar sem checagem nenhuma). Ao
    * chamar `getCollection()` você saiu da zona segura do ODM — agora é o
    * driver puro, coerente com o core value do Mongoat de nunca bloquear
    * o acesso ao driver nativo do MongoDB.

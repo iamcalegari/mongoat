@@ -12,7 +12,17 @@ import tseslint from 'typescript-eslint';
 // via `parserOptions.project`.
 export default tseslint.config(
   {
-    ignores: ['lib/**', 'node_modules/**', 'coverage/**', '**/*.d.ts'],
+    ignores: [
+      'lib/**',
+      'node_modules/**',
+      'coverage/**',
+      '**/*.d.ts',
+      // Artefatos gerados do site de docs (VitePress build/cache + Reference
+      // do TypeDoc) — não são código-fonte, não devem ser lintados.
+      'docs/.vitepress/dist/**',
+      'docs/.vitepress/cache/**',
+      'docs/api/**',
+    ],
   },
   eslint.configs.recommended,
   tseslint.configs.recommended,
