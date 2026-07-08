@@ -183,7 +183,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
 |-------|----------------|--------|-----------|
 | 1. Fundação — Core sem bugs e build moderno | 5/5 | Complete    | 2026-07-07 |
 | 2. Sistema de hooks completo e API thin nativa | 3/3 | Complete   | 2026-07-07 |
-| 3. Blindagem — testes, CI e segurança | 5/5 | Complete   | 2026-07-08 |
+| 3. Blindagem — testes, CI e segurança | 5/5 | Complete    | 2026-07-08 |
 | 4. Estabilização de API e release v1.0 | 0/TBD | Not started | - |
 | 5. API de schema com decorators (TC39) | 0/TBD | Not started | - |
 | 6. Sistema de plugins | 0/TBD | Not started | - |
