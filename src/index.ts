@@ -24,5 +24,5 @@ export type {
   ValidationQueryExpressions,
 } from './types';
 
-export { CUSTOM_VALIDATION, METHODS, sanitizeFilter } from './utils';
+export { CUSTOM_VALIDATION, METHODS, sanitizeFilter, toObjectId } from './utils';
 export type { SanitizeFilterOptions } from './utils';
