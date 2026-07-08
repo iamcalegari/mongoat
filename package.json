@@ -16,7 +16,7 @@
     "node": "^20.19.0 || >=22.12.0"
   },
   "scripts": {
-    "build": "tsdown",
+    "build": "tsdown --config-loader native",
     "check:package": "npm pack --dry-run && npx publint && npx @arethetypeswrong/cli --pack .",
     "example": "tsx",
     "lint": "eslint .",
