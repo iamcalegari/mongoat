@@ -38,6 +38,44 @@ export async function runPreHooks<Ctx>(
 }
 
 /**
+ * Invokes the dev-provided (or fallback) `onHookError` and CONTAINS any
+ * failure it produces itself — synchronous throw or a returned Promise
+ * that rejects (WR-02, Fase 3/T-03-07). This is the last link in the
+ * `fireAndForget` error chain: there is nowhere left to propagate to
+ * without turning into an `unhandledRejection` in the consumer's process,
+ * so a failing `onHookError` is swallowed here as a last resort. The
+ * original hook error (`err`) was already delivered to `onHookError`
+ * before it failed — only the SECOND failure (inside `onHookError`
+ * itself) is contained by this guard.
+ */
+function dispatchOnHookError<Ctx>(
+  onHookError: OnHookError<Ctx>,
+  err: unknown,
+  ctx: Ctx
+): void {
+  try {
+    // `OnHookError` is typed `void`, but the dev-provided function is
+    // arbitrary JS at runtime — it may still return a Promise (e.g. an
+    // `async` function). Go through `unknown` before probing for
+    // `.then()` since TS rejects a truthiness check directly on `void`.
+    const returned = onHookError(err, ctx) as unknown;
+
+    if (
+      returned &&
+      typeof (returned as { then?: unknown }).then === 'function'
+    ) {
+      (returned as Promise<unknown>).catch(() => {
+        // Last resort: `onHookError` itself rejected — nothing left to
+        // propagate to without becoming a new `unhandledRejection`.
+      });
+    }
+  } catch {
+    // Last resort: `onHookError` itself threw synchronously — nothing
+    // left to propagate to without becoming a new `unhandledRejection`.
+  }
+}
+
+/**
  * Runs `post` hooks in registration order, `for...of` + `await` for the
  * normal (non-`fireAndForget`) path.
  *
@@ -66,6 +104,13 @@ export async function runPostHooks<Ctx extends { result?: unknown }>(
       // rejection is never an unhandled rejection AND never propagates —
       // it is always routed to `onHookError`/`defaultOnHookError`
       // (T-02-05: never an empty `.catch(() => {})`).
+      //
+      // WR-02 (Fase 3): o `onHookError` é código do DEV — ele pode lançar
+      // (síncrono) ou retornar uma Promise que rejeita. Sem este guard,
+      // qualquer um dos dois casos escaparia do `.catch` acima como um
+      // `unhandledRejection` novo, exatamente o cenário que este pipeline
+      // existe para evitar. `dispatchOnHookError` contém os dois casos:
+      // nunca há para onde propagar depois do handler do dev falhar.
       Promise.resolve()
         .then(() => fn(ctx))
         .then((returned) => {
@@ -73,7 +118,7 @@ export async function runPostHooks<Ctx extends { result?: unknown }>(
             ctx.result = returned;
           }
         })
-        .catch((err) => onHookError(err, ctx));
+        .catch((err) => dispatchOnHookError(onHookError, err, ctx));
 
       continue;
     }
