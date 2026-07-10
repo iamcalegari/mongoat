@@ -10,3 +10,35 @@
   max-width: 760px;
   height: auto;
 }
+
+/* Paleta da marca: adota os verdes oficiais do logo do Mongoat no lugar do
+   indigo/lavanda padrão do VitePress. Sobrescrever as brand vars propaga para o
+   hero name (--vp-home-hero-name-color deriva de --vp-c-brand-1), os links e o
+   botão "Get started" (--vp-button-brand-bg deriva de --vp-c-brand-3). Light e
+   dark são separados para manter brand-1 legível sobre o fundo de cada tema. */
+:root {
+  --vp-c-brand-1: #2e7d32;
+  --vp-c-brand-2: #256628;
+  --vp-c-brand-3: #1f6125;
+  --vp-c-brand-soft: rgba(31, 97, 37, 0.14);
+}
+
+.dark {
+  --vp-c-brand-1: #6fce74;
+  --vp-c-brand-2: #55b85c;
+  --vp-c-brand-3: #2e7d32;
+  --vp-c-brand-soft: rgba(111, 206, 116, 0.16);
+}
+
+/* Fix de contraste no dark mode: a arte do banner (mongoat-cover-4_1-no-bg.png)
+   é um PNG transparente desenhado para fundo creme — o wordmark "MONGOAT", o
+   subtitle e os contornos das cabras são verde-quase-preto (#001800) e somem
+   sobre o fundo escuro do VitePress (#1b1b1f). Damos à arte um "card" creme
+   APENAS no dark mode, para ela sentar sobre o fundo para o qual foi desenhada.
+   O light mode fica inalterado (a arte transparente já lê bem sobre o claro). */
+.dark .mongoat-banner img {
+  background: #fdf6e3;
+  border-radius: 16px;
+  padding: 1.25rem 2rem;
+  box-shadow: 0 2px 16px rgba(0, 0, 0, 0.35);
+}
