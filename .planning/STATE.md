@@ -31,7 +31,7 @@ See: .planning/PROJECT.md (updated 2026-07-03)
 Phase: 5 — Estabilização de API e release v1.0
 Plan: Not started
 Status: Phase complete — ready for verification
-Last activity: 2026-07-08 — Phase 4 complete, transitioned to Phase 5
+Last activity: 2026-07-10 — Completed quick task 260708-lt1: fix logo dark mode + paleta verde do logo
 
 Progress: [░░░░░░░░░░] 0%
 
@@ -150,6 +150,7 @@ None yet.
 | # | Description | Date | Commit | Directory |
 |---|-------------|------|--------|-----------|
 | 260707-mfp | Corrigir CR-01/API-01 (blocker Fase 2): options passthrough em find/findById/delete/bulkWrite | 2026-07-07 | b51c4c9 | [260707-mfp-corrigir-cr-01-api-01-blocker-fase-2-def](./quick/260707-mfp-corrigir-cr-01-api-01-blocker-fase-2-def/) |
+| 260708-lt1 | Corrigir bug da logo no dark mode do site de docs + trocar paleta para os verdes do logo | 2026-07-10 | 56be2ef | [260708-lt1-corrigir-bug-da-logo-no-dark-mode-do-sit](./quick/260708-lt1-corrigir-bug-da-logo-no-dark-mode-do-sit/) |
 
 ## Deferred Items
 
