@@ -5,10 +5,19 @@
   padding: 2.5rem 1.5rem 0;
 }
 
+/* A arte do banner (mongoat-cover-4_1-no-bg.png) é um PNG transparente desenhado
+   para fundo creme: o wordmark, o subtitle e os contornos das cabras são
+   verde-quase-preto (#001800). Damos à arte um "card" creme nos DOIS temas —
+   assim o banner fica consistente entre light e dark, e no dark a arte para de
+   sumir sobre o fundo escuro (#1b1b1f). */
 .mongoat-banner img {
   width: 100%;
   max-width: 760px;
   height: auto;
+  background: #fdf6e3;
+  border-radius: 16px;
+  padding: 1.25rem 2rem;
+  box-shadow: 0 2px 16px rgba(0, 0, 0, 0.1);
 }
 
 /* Paleta da marca: adota os verdes oficiais do logo do Mongoat no lugar do
@@ -30,15 +39,8 @@
   --vp-c-brand-soft: rgba(111, 206, 116, 0.16);
 }
 
-/* Fix de contraste no dark mode: a arte do banner (mongoat-cover-4_1-no-bg.png)
-   é um PNG transparente desenhado para fundo creme — o wordmark "MONGOAT", o
-   subtitle e os contornos das cabras são verde-quase-preto (#001800) e somem
-   sobre o fundo escuro do VitePress (#1b1b1f). Damos à arte um "card" creme
-   APENAS no dark mode, para ela sentar sobre o fundo para o qual foi desenhada.
-   O light mode fica inalterado (a arte transparente já lê bem sobre o claro). */
+/* No dark mode o card creme contrasta muito com o fundo escuro, então uma
+   sombra mais forte assenta melhor o painel. */
 .dark .mongoat-banner img {
-  background: #fdf6e3;
-  border-radius: 16px;
-  padding: 1.25rem 2rem;
-  box-shadow: 0 2px 16px rgba(0, 0, 0, 0.35);
+  box-shadow: 0 2px 24px rgba(0, 0, 0, 0.45);
 }
