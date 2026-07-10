@@ -21,13 +21,31 @@ export default defineConfig({
   description: 'A lightweight, type-safe MongoDB ODM for Node.js/TypeScript',
   base: '/mongoat/',
 
-  // Favicon: arte oficial do Mongoat. `head` links NÃO são auto-prefixados
-  // pelo VitePress, então o `base` (/mongoat/) entra explícito no href.
+  // Favicon: medalhão quadrado do símbolo do Mongoat (cabra no círculo verde),
+  // recortado da arte oficial — a arte widescreen do banner virava um borrão
+  // ilegível quando reduzida a 16/32px na aba. `head` links NÃO são
+  // auto-prefixados pelo VitePress, então o `base` (/mongoat/) entra explícito
+  // no href. Dois tamanhos: 32px afiado para a aba, 512px para bookmarks/apple.
   head: [
     [
       'link',
-      { rel: 'icon', type: 'image/png', href: '/mongoat/mongoat-cover-4_1-no-bg.png' },
+      {
+        rel: 'icon',
+        type: 'image/png',
+        sizes: '32x32',
+        href: '/mongoat/mongoat-icon-32.png',
+      },
     ],
+    [
+      'link',
+      {
+        rel: 'icon',
+        type: 'image/png',
+        sizes: '512x512',
+        href: '/mongoat/mongoat-icon.png',
+      },
+    ],
+    ['link', { rel: 'apple-touch-icon', href: '/mongoat/mongoat-icon.png' }],
   ],
 
   themeConfig: {
