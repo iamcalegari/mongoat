@@ -8,16 +8,16 @@
  * (the original error, if any) so consumers can inspect the root cause
  * without losing the original stack trace.
  *
- * D-04: every `MongoatError` (and subclass) carries a stable `code` string
+ * Every `MongoatError` (and subclass) carries a stable `code` string
  * — the dev programs against `.code`, independent of `.message` (which can
  * change without breaking semver). Defaults to `'MONGOAT_ERROR'` for the
  * base class; each subclass below overrides its own default.
  *
- * Subclasses (D-01) let the dev discriminate the error kind via
+ * Subclasses let the dev discriminate the error kind via
  * `instanceof`:
  * - `MongoatValidationError` — schema/ObjectId/filtro inválido.
  * - `MongoatConnectionError` — sem conexão / dbName ausente.
- * - `MongoatDriverError` — wrap sanitizado de um erro do driver (SEC-03).
+ * - `MongoatDriverError` — wrap sanitizado de um erro do driver.
  */
 export class MongoatError extends Error {
   readonly code: string;
@@ -39,7 +39,7 @@ export class MongoatError extends Error {
  *
  * Erro de validação: schema/ObjectId inválido, filtro proibido
  * (`$where`/operadores de execução de código), configuração de model
- * divergente no registro (D-01).
+ * divergente no registro.
  *
  * `code` default: `'VALIDATION_FAILED'` — override pontual disponível
  * (ex.: `INVALID_OBJECT_ID`, `FORBIDDEN_OPERATOR`, `MODEL_CONFIG_CONFLICT`).
@@ -59,7 +59,7 @@ export class MongoatValidationError extends MongoatError {
  * @public
  *
  * Erro de conexão: `Database` não conectada, `dbName` ausente, sessão de
- * transação indisponível (D-01).
+ * transação indisponível.
  *
  * `code` default: `'NOT_CONNECTED'` — override pontual disponível (ex.:
  * `MISSING_DB_NAME`).
@@ -78,14 +78,13 @@ export class MongoatConnectionError extends MongoatError {
 /**
  * @public
  *
- * Wrap sanitizado de um erro re-lançado pelo driver `mongodb` (D-01/D-03).
+ * Wrap sanitizado de um erro re-lançado pelo driver `mongodb`.
  * `.message` é estável e nunca inclui stack trace/detalhes internos; o
  * erro original do driver fica preservado em `.cause` para quem quiser
  * inspecionar. Nunca construído a partir de `JSON.stringify(err)`.
  *
- * `code` default: `'DRIVER_ERROR'` — `wrapDriverError` (src/model/index.ts)
- * mapeia códigos numéricos conhecidos do driver (ex.: `11000` →
- * `'DUPLICATE_KEY'`).
+ * `code` default: `'DRIVER_ERROR'` — códigos numéricos conhecidos do driver
+ * são mapeados para valores estáveis (ex.: `11000` → `'DUPLICATE_KEY'`).
  */
 export class MongoatDriverError extends MongoatError {
   constructor(message: string, options?: { cause?: unknown; code?: string }) {

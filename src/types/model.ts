@@ -47,16 +47,16 @@ export interface CreateModelProps<ModelType extends Document> {
   collectionName: string;
   documentDefaults?: DocumentDefaults<ModelType>;
   /**
-   * Declarative pre/post hook registration (D-01) — merged BEFORE any
-   * later `.pre()`/`.post()` chainable calls (D-02: construtor primeiro).
+   * Declarative pre/post hook registration — merged BEFORE any later
+   * `.pre()`/`.post()` chainable calls (constructor hooks run first).
    */
   hooks?: { [M in METHODS]?: HookConfig<HookContextMap<ModelType>[M]> };
   indexes?: CreateIndexProps[];
   /**
-   * Fallback for `fireAndForget` post-hook rejections (D-06/HOOK-04) — a
-   * `fireAndForget` hook's error never propagates to the caller, so it is
-   * routed here instead. When omitted, the model falls back to
-   * `console.error` (never swallowed in total silence).
+   * Fallback for `fireAndForget` post-hook rejections — a `fireAndForget`
+   * hook's error never propagates to the caller, so it is routed here
+   * instead. When omitted, the model falls back to `console.error` (never
+   * swallowed in total silence).
    */
   onHookError?: OnHookError<HookContextMap<ModelType>[METHODS]>;
   schema: ModelValidationSchema;

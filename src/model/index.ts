@@ -261,25 +261,21 @@ export class Model<ModelType extends Document = Document> {
   documentDefaults!: DocumentDefaults<ModelType>;
 
   /**
-   * Hook registry (replaces `preMethod: Record<METHODS, Function>`) — one
-   * `{ pre: []; post: [] }` array pair per `METHODS` value, populated by
-   * the declarative `hooks` constructor option (D-01) and by the
-   * chainable `.pre()`/`.post()` (D-02: construtor primeiro).
+   * Hook registry — one `{ pre: []; post: [] }` array pair per `METHODS`
+   * value, populated by the declarative `hooks` constructor option and by
+   * the chainable `.pre()`/`.post()` (constructor hooks are applied first).
    */
   hooks: HookRegistry<ModelType> = Object.fromEntries(
     Object.values(METHODS).map((method) => [method, { pre: [], post: [] }])
   ) as unknown as HookRegistry<ModelType>;
 
   /**
-   * Fallback destination for `fireAndForget` post-hook rejections
-   * (D-06/HOOK-04) — resolved once in the constructor from
-   * `props.onHookError`, falling back to `defaultOnHookError`
-   * (`console.error`) so an error never disappears in total silence.
-   * Threaded through a single point (`executeHooked` → `runPostHooks`),
-   * not touched by any of the 12 CRUD methods individually.
+   * Fallback destination for `fireAndForget` post-hook rejections —
+   * resolved once in the constructor from `props.onHookError`, falling back
+   * to `console.error` so an error never disappears in total silence.
+   * Applied consistently across all CRUD methods, never per-method.
    */
-  onHookError: OnHookError<HookContextMap<ModelType>[METHODS]> =
-    defaultOnHookError;
+  onHookError!: OnHookError<HookContextMap<ModelType>[METHODS]>;
 
   /**
    * @internal
@@ -512,11 +508,10 @@ export class Model<ModelType extends Document = Document> {
   /**
    * @public
    *
-   * Escape hatch honesto (D-08/API-02): devolve a `Collection<ModelType>`
-   * **crua** do driver oficial. Reaproveita `getCollectionOrThrow()` — o
-   * mesmo fail-loud pré-conexão de `MongoatError` ("Database not connected
-   * — call db.connect() first") usado internamente por todos os métodos
-   * CRUD (D-10).
+   * Escape hatch honesto: devolve a `Collection<ModelType>` **crua** do
+   * driver oficial. Reaproveita o mesmo fail-loud pré-conexão de
+   * `MongoatError` ("Database not connected — call db.connect() first")
+   * usado internamente por todos os métodos CRUD.
    *
    * ATENÇÃO — bypass DELIBERADO e TOTAL: a `Collection` retornada não
    * passa pelo pipeline de hooks (pre/post nunca disparam para chamadas
@@ -787,13 +782,11 @@ export class Model<ModelType extends Document = Document> {
   }
 
   /**
-   * `insertMany` is special-cased instead of going through
-   * `runHooked`/`executeHooked` (Pitfall 1 / A4): pre hooks run PER
-   * DOCUMENT — `Promise.all` parallelizes ACROSS documents (preserved
-   * from the Fase 1 fix), while the pre hooks of the SAME document run
-   * sequentially via `runPreHooks`. Post hooks run ONCE for the whole
-   * batch, against a single `ctx.result` (`InsertManyResult`) — there is
-   * no per-document result to hand each post hook.
+   * `insertMany` runs pre hooks PER DOCUMENT — parallelized ACROSS
+   * documents, while the pre hooks of the SAME document run sequentially.
+   * Post hooks run ONCE for the whole batch, against a single `ctx.result`
+   * (`InsertManyResult`) — there is no per-document result to hand each
+   * post hook.
    */
   async insertMany(
     documents: OptionalUnlessRequiredId<ModelType>[],

@@ -147,7 +147,7 @@ function stripCodeExecutionOperators(value: unknown): void {
 /**
  * @public
  *
- * Opções de `sanitizeFilter` (D-07).
+ * Opções de `sanitizeFilter`.
  */
 export interface SanitizeFilterOptions {
   /**
@@ -162,9 +162,9 @@ export interface SanitizeFilterOptions {
 /**
  * @public
  *
- * Sanitiza um filtro de input não-confiável (SEC-01/D-06/D-07). OPT-IN —
- * o dev chama explicitamente antes de montar/passar o filtro a um método
- * do `Model`; nenhum método do `Model` chama isto automaticamente.
+ * Sanitiza um filtro de input não-confiável. OPT-IN — o dev chama
+ * explicitamente antes de montar/passar o filtro a um método do `Model`;
+ * nenhum método do `Model` chama isto automaticamente.
  *
  * SEMPRE neutraliza (qualquer profundidade, dentro de `$and`/`$or`/`$nor`/
  * arrays, inclusive dentro de `$expr`): `$where`, `$function`,

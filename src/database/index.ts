@@ -293,8 +293,8 @@ export class Database {
   /**
    * @public
    *
-   * Escape hatch honesto (D-08/API-03): devolve o `MongoClient` **cru** do
-   * driver oficial. `Database` nunca é envolvida em Proxy (só `Model` é,
+   * Escape hatch honesto: devolve o `MongoClient` **cru** do driver
+   * oficial. `Database` nunca é envolvida em Proxy (só `Model` é,
    * via `registerModel()`) — este getter já é "escape total" por natureza,
    * sem nenhum gating a contornar. `undefined` antes de `connect()`.
    *
@@ -311,8 +311,8 @@ export class Database {
   /**
    * @public
    *
-   * Escape hatch honesto (D-08/API-03): devolve o `Db` **cru** do driver
-   * oficial. Mesmo trade-off de `getClient()` — sem Proxy, sem gating,
+   * Escape hatch honesto: devolve o `Db` **cru** do driver oficial. Mesmo
+   * trade-off de `getClient()` — sem Proxy, sem gating,
    * bypass total e deliberado. `undefined` antes de `connect()`.
    *
    * ATENÇÃO — bypass DELIBERADO: o `Db` retornado é o objeto nativo do
