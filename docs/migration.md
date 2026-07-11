@@ -210,9 +210,9 @@ try {
 Any filter containing `$where` (at any depth) is rejected with
 `MongoatValidationError` (`code: FORBIDDEN_OPERATOR`) — it enables arbitrary
 server-side JS execution. An opt-in `sanitizeFilter(filter)` utility is provided to
-neutralize code-execution operators (`$where`, `$function`, `$accumulator`,
-`$expr`+`$function`) in untrusted input while preserving normal query operators
-(`$gt`, `$in`, …).
+neutralize the code-execution operators (`$where`, `$function`, `$accumulator`) at
+any depth in untrusted input — including nested inside `$expr`, `$and`/`$or`/`$nor`
+or arrays — while preserving normal query operators (`$gt`, `$in`, …).
 
 **Before:**
 
