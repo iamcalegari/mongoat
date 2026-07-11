@@ -91,34 +91,6 @@ describe('Database — KModelProxyHandler binding (QUAL-01)', () => {
     expect(() => model.insert({ name: 'x' })).toThrow(MongoatError);
   });
 
-  it('método não permitido lança MongoatError via Database.defineModel() (deprecated)', () => {
-    const model = Database.defineModel<Doc>({
-      collectionName: 'proxy_binding_guard_definemodel',
-      allowedMethods: [METHODS.FIND],
-      schema,
-    });
-
-    expect(() => model.insert({ name: 'x' })).toThrow(MongoatError);
-  });
-
-  it('defineModel() não produz duplo-Proxy — método permitido funciona com this correto', async () => {
-    const model = Database.defineModel<Doc>({
-      collectionName: 'proxy_binding_definemodel_ok',
-      allowedMethods: [METHODS.INSERT, METHODS.FIND],
-      schema,
-    });
-
-    expect(model.collectionName).toBe('proxy_binding_definemodel_ok');
-
-    await db.setupCollection(model as unknown as Model);
-
-    const inserted = await model.insert({ name: 'mongoat' });
-    expect(inserted.name).toBe('mongoat');
-
-    const found = await model.find({ name: 'mongoat' });
-    expect(found?.name).toBe('mongoat');
-  });
-
   it('propriedade não-função acessada via Proxy retorna o valor cru', () => {
     const model = new Model<Doc>({
       collectionName: 'proxy_binding_raw_prop',

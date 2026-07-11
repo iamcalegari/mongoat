@@ -10,7 +10,7 @@ import {
 
 import { MongoatConnectionError, MongoatError } from '@/errors';
 import { Model } from '@/model';
-import { DatabaseConfig, ModelSetup } from '@/types';
+import { DatabaseConfig } from '@/types';
 import { METHODS } from '@/utils/enums';
 
 const kClient = Symbol('kClient');
@@ -173,77 +173,6 @@ export class Database {
    */
   info() {
     return this[kDb]?.stats();
-  }
-
-  /**
-   * @deprecated Use the constructor of the `Model` class instead.
-   *
-   * Creates a new Model or returns an existing one if one with the same collection name already exists.
-   *
-   * @param collectionName - The name of the collection.
-   * @param schema - The schema of the collection. If `validity` is true, the schema is used to validate documents when they are inserted or updated.
-   * @param indexes - An array of indexes to create on the collection.
-   * @param allowedMethods - An array of methods that are allowed to be called on the model.
-   * If `validity` is true, the allowed methods are set to the following:
-   * - DELETE
-   * - FIND
-   * - FIND_BY_ID
-   * - FIND_MANY
-   * - INSERT
-   * - TOTAL
-   * - UPDATE
-   * - UPDATE_MANY
-   * @param documentDefaults - An object with key-value pairs of default values for each new document that is inserted into the collection.
-   * @param validationQueryExpressions - A function that returns an object with query expressions that are used to validate documents when they are inserted or updated.
-   * @param validity - Whether the model should be valid or not. If true, the model will validate documents when they are inserted or updated.
-   *
-   * @returns A model with the given properties.
-   */
-  static defineModel<ModelType extends Document>({
-    allowedMethods = [],
-    indexes = [],
-    schema,
-    collectionName,
-    documentDefaults = {},
-    validationQueryExpressions,
-    validity = false,
-  }: ModelSetup): Model<ModelType> {
-    // WR-03: sem early-return aqui — `if (!!model) return model;` retornava
-    // o model registrado ANTES de qualquer comparação de config,
-    // reintroduzindo o bug D-06 (config divergente silenciosamente
-    // descartada) pelo caminho deprecated. O construtor do Model já
-    // resolve: reusa se a config for igual, lança MongoatError se divergir.
-    const _allowedMethods = validity
-      ? [
-          METHODS.DELETE,
-          METHODS.FIND,
-          METHODS.FIND_BY_ID,
-          METHODS.FIND_MANY,
-          METHODS.INSERT,
-          METHODS.TOTAL,
-          METHODS.UPDATE,
-          METHODS.UPDATE_MANY,
-        ]
-      : allowedMethods;
-
-    // Model.create() → new Model(...) já registra e envolve a instância em
-    // Proxy dentro do próprio constructor (via registerModel()). Reaproveitar
-    // a instância já registrada evita o duplo-wrap de Proxy (Open Question 3
-    // do RESEARCH.md / Fix 3 do PATTERNS.md) — NÃO envolver o resultado em um
-    // segundo `new Proxy(...)`.
-    Model.create({
-      allowedMethods: _allowedMethods,
-      collectionName,
-      documentDefaults,
-      indexes,
-      schema,
-      validationQueryExpressions,
-      validity,
-    });
-
-    return Database[KModelMap].get(
-      collectionName
-    ) as unknown as Model<ModelType>;
   }
 
   /**

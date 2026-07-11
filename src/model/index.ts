@@ -416,13 +416,6 @@ export class Model<ModelType extends Document = Document> {
     ) as unknown as Model<ModelType>;
   }
 
-  /** @deprecated */
-  static create<ModelType extends Document>(
-    props: CreateModelProps<ModelType>
-  ): Model<ModelType> {
-    return new Model(props);
-  }
-
   private schemaValidatorBuilder({
     schema,
     validationQueryExpressions = {},
