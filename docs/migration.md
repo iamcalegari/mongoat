@@ -1,20 +1,20 @@
-# Migration guide — alpha → v1.0
+# Migration guide — alpha → 1.1.0
 
-Mongoat is currently published as **`1.0.34-alpha`**. The road to **v1.0.0**
+Mongoat is currently published as **`1.0.34-alpha`**. The road to **1.1.0**
 intentionally introduces a number of breaking changes to stabilize the public API
 before it is frozen under semantic versioning.
 
 > **This page is the consolidated, published version of the migration guide.**
 > It merges [`MIGRATION.md`](https://github.com/iamcalegari/mongoat/blob/main/MIGRATION.md)
-> and the `[Unreleased]` section of
+> and the `[1.1.0]` section of
 > [`CHANGELOG.md`](https://github.com/iamcalegari/mongoat/blob/main/CHANGELOG.md)
 > from the repository root into a single, navigable guide. Those root files remain
 > the editable source of truth during development — this site renders the
 > up-to-date, publish-ready copy.
 
-> **Status: living document.** v1.0.0 is not released yet. Sections tagged
+> **Status: living document.** 1.1.0 is not released yet. Sections tagged
 > _(in progress)_ describe changes that are still landing and may shift slightly
-> before the `v1.0.0-rc`. This guide is finalized before the RC.
+> before the `1.1.0-rc.0`. This guide is finalized before the RC.
 
 Each entry follows the same shape: **what changed**, **before**, **after**, and
 **how to migrate**.
@@ -25,6 +25,7 @@ Each entry follows the same shape: **what changed**, **before**, **after**, and
 2. [Errors](#2-errors)
 3. [Input validation _(in progress)_](#3-input-validation-in-progress)
 4. [Environment & build](#4-environment-build)
+5. [API surface](#5-api-surface)
 
 ---
 
@@ -261,3 +262,46 @@ Import everything from the package root; the `./database`, `./model`, `./utils`,
 
 Validation is server-side via `$jsonSchema`; the old `json-schema` runtime
 dependency is gone. No action needed unless you imported it transitively.
+
+---
+
+## 5. API surface
+
+### 5.1 `Database.defineModel()` and `Model.create()` removed — **BREAKING**
+
+The deprecated `Database.defineModel()` and `Model.create()` factory methods have
+been removed. `new Model(...)` has been the canonical registration API since the
+alpha line — it already covers the same behavior (config reuse for an identical
+collection, `MongoatError` on divergent re-registration, `allowedMethods` Proxy
+gating).
+
+**Before:**
+
+```ts
+const User = Database.defineModel<User>({
+  collectionName: 'users',
+  schema,
+  allowedMethods: [METHODS.FIND, METHODS.INSERT],
+});
+
+// or
+const User = Model.create<User>({
+  collectionName: 'users',
+  schema,
+  allowedMethods: [METHODS.FIND, METHODS.INSERT],
+});
+```
+
+**After:**
+
+```ts
+const User = new Model<User>({
+  collectionName: 'users',
+  schema,
+  allowedMethods: [METHODS.FIND, METHODS.INSERT],
+});
+```
+
+**How to migrate:** replace every `Database.defineModel(...)`/`Model.create(...)`
+call with `new Model(...)` passing the same properties object — the shape of the
+config object is unchanged.

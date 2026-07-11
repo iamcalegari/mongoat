@@ -151,21 +151,21 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 ### Phase 5: Estabilização de API e release v1.0
 
-**Goal**: A API do alpha é auditada e estabilizada deliberadamente, e então publicada como v1.0.0 com semver disciplinado e um pipeline de release automatizado.
+**Goal**: A API do alpha é auditada e estabilizada deliberadamente, e então publicada como 1.1.0 com semver disciplinado e um pipeline de release automatizado.
 **Mode:** mvp
 **Depends on**: Phase 4
 **Requirements**: REL-01, REL-03, REL-04
 **Success Criteria** (what must be TRUE):
 
-  1. A API pública é auditada (diff alpha→v1.0), as deprecações resolvidas e um `v1.0.0-rc` é publicado antes da tag final.
-  2. `v1.0.0` é publicada no npm com política semver documentada e as versões alpha anteriores deprecadas (`npm deprecate`).
+  1. A API pública é auditada (diff alpha→1.1.0), as deprecações resolvidas e um `1.1.0-rc.0` é publicado antes da tag final.
+  2. `1.1.0` é publicada no npm com política semver documentada e as versões alpha anteriores deprecadas (`npm deprecate`).
   3. Releases são conduzidas por um pipeline de changesets: CHANGELOG gerado, versionamento via PR e publicação npm automatizada no merge.
 
 **Plans**: 5 plans
 
 **Wave 1**
 
-- [ ] 05-01-PLAN.md — Auditoria/congelamento da API (remove os 2 @deprecated) + reconciliação de versão v1.0.0→1.1.0 (REL-03, D-06, D-01)
+- [ ] 05-01-PLAN.md — Auditoria/congelamento da API (remove os 2 @deprecated) + reconciliação de versão-alvo para 1.1.0 (REL-03, D-06, D-01)
 - [ ] 05-02-PLAN.md — Pipeline changesets + release.yml com provenance/OIDC + gate de Environment + NPM_TOKEN setup (REL-01, D-03, D-04)
 
 **Wave 2** *(blocked on Wave 1)*

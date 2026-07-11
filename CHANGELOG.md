@@ -8,12 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Breaking changes are marked **BREAKING**. For step-by-step upgrade instructions
 see [MIGRATION.md](./MIGRATION.md).
 
-## [Unreleased]
+## [1.1.0] - 2026-07-10
 
-> Work toward the first stable **v1.0.0**. Current published version: `1.0.34-alpha`.
+> Work toward the first stable **1.1.0**. Current published version: `1.0.34-alpha`.
 > This section tracks every change made on the road out of the alpha line. Some
 > items are still being implemented (marked _in progress_) and may shift before the
-> `v1.0.0-rc`.
+> `1.1.0-rc.0`.
 
 ### Added
 
@@ -55,6 +55,10 @@ see [MIGRATION.md](./MIGRATION.md).
 
 - **BREAKING** — Runtime dependency `json-schema` removed (validation is server-side
   via `$jsonSchema`).
+- **BREAKING** — Deprecated `Database.defineModel()` and `Model.create()` removed
+  from the public API. Use `new Model(...)` instead — it has been the canonical
+  registration API since the alpha line and covers the same behavior (config reuse,
+  divergent-config detection, Proxy method gating).
 
 ### Fixed
 
@@ -86,5 +90,5 @@ see [MIGRATION.md](./MIGRATION.md).
 Alpha line published to npm. See the git history for details. Versions `<= 1.0.34-alpha`
 predate this changelog.
 
-[Unreleased]: https://github.com/iamcalegari/mongoat/compare/v1.0.34-alpha...HEAD
+[1.1.0]: https://github.com/iamcalegari/mongoat/compare/v1.0.34-alpha...v1.1.0
 [1.0.34-alpha]: https://github.com/iamcalegari/mongoat/releases/tag/v1.0.34-alpha
