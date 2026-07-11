@@ -95,15 +95,15 @@ export const User = new Model<UserSchema>({
   schema,
   indexes,
   validity: true,
-  documentDefaults: {
-    insertedAt: new Date(),
-  },
 });
 
 // A pre-hook runs before every insert — see the "Register pre/post hooks"
 // how-to for the full ctx signature.
 User.pre(METHODS.INSERT, (ctx) => {
   ctx.document.password = 'hashedPassword';
+  // A fresh timestamp per insert. `insertedAt` lives in DefaultProperties, not
+  // UserSchema, so cast to reach it — see "Document defaults & timestamps".
+  (ctx.document as SchemaWithDefaults<UserSchema>).insertedAt = new Date();
 });
 ```
 
@@ -172,6 +172,8 @@ validation, hooks and method gating on top, never a different API surface.
 
 - [Register pre/post hooks](/how-to/hooks) — the `ctx`-based hook signature in
   depth, including `fireAndForget` post-hooks.
+- [Document defaults & timestamps](/how-to/document-defaults) — why the
+  timestamp above uses a hook, and how `documentDefaults` fills in static fields.
 - [Define indexes & validation](/how-to/indexes-validation) — `CreateIndexProps`
   and server-side `$jsonSchema` validation.
 - [Reference](/api/) — the full public API generated from the source.

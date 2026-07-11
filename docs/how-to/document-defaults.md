@@ -57,19 +57,25 @@ timestamp, a generated id, a value derived from the document — use a hook.
 
 ## Per-insert timestamps: use a pre-hook
 
-A pre-hook runs on every call, so it produces a fresh value each time. This is
-the correct way to stamp `insertedAt`:
+A pre-hook runs on every call, so it produces a fresh value each time — the
+correct way to stamp `insertedAt` per document.
+
+One typing detail: `insertedAt`/`updatedAt` are **not** part of your model's
+own interface — they live in `DefaultProperties`, surfaced through the
+`SchemaWithDefaults<T>` helper. So `ctx.document`, typed to your own fields,
+doesn't expose them directly; cast to `SchemaWithDefaults<YourSchema>` to set
+them:
 
 ```ts
-import { METHODS } from '@iamcalegari/mongoat';
+import { METHODS, SchemaWithDefaults } from '@iamcalegari/mongoat';
 
 User.pre(METHODS.INSERT, (ctx) => {
-  ctx.document.insertedAt = new Date(); // evaluated per insert
+  (ctx.document as SchemaWithDefaults<UserSchema>).insertedAt = new Date();
 });
 ```
 
-For `updatedAt` on writes, set it in the update itself (or in a
-`METHODS.UPDATE` pre-hook that mutates `ctx.update`):
+For `updatedAt` on writes, set it in the update itself (`$currentDate` stamps
+it server-side), or in a `METHODS.UPDATE` pre-hook that mutates `ctx.update`:
 
 ```ts
 await User.update(
