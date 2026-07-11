@@ -1,0 +1,10 @@
+{
+  "mode": "pre",
+  "tag": "rc",
+  "initialVersions": {
+    "@iamcalegari/mongoat": "1.0.34-alpha"
+  },
+  "changesets": [
+    "first-stable-1-1-0"
+  ]
+}
