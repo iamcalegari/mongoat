@@ -1,19 +1,19 @@
 ---
 gsd_state_version: 1.0
 milestone: v1.0
-milestone_name: "**Goal**: A API do alpha é auditada e estabilizada deliberadamente, e então publicada como v1.0.0 com semver disciplinado e um pipeline de release automatizado."
+milestone_name: "**Goal**: A API do alpha é auditada e estabilizada deliberadamente, e então publicada como 1.1.0 com semver disciplinado e um pipeline de release automatizado."
 current_phase: 5
-current_phase_name: Estabilização de API e release v1.0
-status: verifying
-stopped_at: Phase 5 context gathered
-last_updated: "2026-07-08T18:18:27.074Z"
-last_activity: 2026-07-08
-last_activity_desc: Phase 4 complete, transitioned to Phase 5
+current_phase_name: estabiliza-o-de-api-e-release-v1-0
+status: executing
+stopped_at: Completed 05-01-PLAN.md
+last_updated: "2026-07-11T02:04:03.419Z"
+last_activity: 2026-07-11
+last_activity_desc: Phase 5 execution started
 progress:
   total_phases: 8
   completed_phases: 4
-  total_plans: 19
-  completed_plans: 19
+  total_plans: 24
+  completed_plans: 20
   percent: 50
 ---
 
@@ -24,14 +24,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-03)
 
 **Core value:** Ser um ODM fino e extensível — produtividade de ODM sem abrir mão do controle e do acesso direto ao driver nativo do MongoDB.
-**Current focus:** Phase 4 — site-de-documenta-o
+**Current focus:** Phase 5 — estabiliza-o-de-api-e-release-v1-0
 
 ## Current Position
 
-Phase: 5 — Estabilização de API e release v1.0
-Plan: Not started
-Status: Phase complete — ready for verification
-Last activity: 2026-07-10 — Completed quick task 260708-lt1: fix logo dark mode + paleta verde do logo
+Phase: 5 (estabiliza-o-de-api-e-release-v1-0) — EXECUTING
+Plan: 2 of 5
+Status: Ready to execute
+Last activity: 2026-07-11 — Phase 5 execution started
 
 Progress: [░░░░░░░░░░] 0%
 
@@ -76,6 +76,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 04 P04 | 25min | 2 tasks | 3 files |
 | Phase 04 P05 | 12min | 1 tasks | 1 files |
 | Phase 04 P06 | 35min | 3 tasks | 3 files |
+| Phase 05 P01 | 20min | 2 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -131,6 +132,8 @@ Recent decisions affecting current work:
 - [Phase ?]: docs/migration.md é a versão publicada/consolidada; CHANGELOG.md e MIGRATION.md na raiz permanecem fonte editável (D-03) — Evita duplicação de manutenção; nota no topo da página explicita a relação
 - [Phase ?]: docs.yml: deploy Pages via GitHub Actions (configure/upload/deploy-pages), separado do ci.yml, permissions minimais
 - [Phase ?]: README enxuto em inglês apontando para o site (D-03); homepage no package.json → iamcalegari.github.io/mongoat
+- [Phase ?]: Database.defineModel/Model.create removidos por completo (D-06); new Model(...) e a unica via de registro/gating
+- [Phase ?]: CHANGELOG [Unreleased] renomeado para [1.1.0] - 2026-07-10; versao-alvo v1.0.0 reconciliada para 1.1.0 em CHANGELOG/MIGRATION/docs/ROADMAP (secao Fase 5)
 
 ### Pending Todos
 
@@ -162,6 +165,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-08T18:18:27.065Z
-Stopped at: Phase 5 context gathered
-Resume file: .planning/phases/05-estabiliza-o-de-api-e-release-v1-0/05-CONTEXT.md
+Last session: 2026-07-11T02:04:03.413Z
+Stopped at: Completed 05-01-PLAN.md
+Resume file: None
