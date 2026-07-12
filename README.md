@@ -146,6 +146,7 @@ The site is the source of truth for guides, API reference, and the migration gui
 - [How-to guides](https://iamcalegari.github.io/mongoat/how-to/hooks) — hooks, sanitizing untrusted filters, error handling, the native escape hatch, indexes & validation
 - [Reference](https://iamcalegari.github.io/mongoat/api/) — full public API, generated from source
 - [Explanation](https://iamcalegari.github.io/mongoat/explanation/thin-odm-philosophy) — design philosophy, Proxy gating, server-side validation
+- [Stability & versioning](https://iamcalegari.github.io/mongoat/explanation/versioning) — semver policy, what's covered by the public API contract
 - [Migration guide](https://iamcalegari.github.io/mongoat/migration) — upgrading from the alpha line to v1.0
 
 ## Contributing

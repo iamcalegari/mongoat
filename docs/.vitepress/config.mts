@@ -59,6 +59,7 @@ export default defineConfig({
       { text: 'How-to', link: '/how-to/hooks' },
       { text: 'Reference', link: '/api/' },
       { text: 'Explanation', link: '/explanation/thin-odm-philosophy' },
+      { text: 'Versioning', link: '/explanation/versioning' },
       { text: 'Migration', link: '/migration' },
     ],
 
@@ -92,6 +93,7 @@ export default defineConfig({
             { text: 'The thin ODM philosophy', link: '/explanation/thin-odm-philosophy' },
             { text: 'Why Proxy gating', link: '/explanation/proxy-gating' },
             { text: 'Server-side validation', link: '/explanation/server-side-validation' },
+            { text: 'Stability & versioning', link: '/explanation/versioning' },
           ],
         },
       ],
