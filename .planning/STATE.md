@@ -6,14 +6,14 @@ current_phase: 05
 current_phase_name: estabiliza-o-de-api-e-release-v1-0
 status: executing
 stopped_at: Completed 05-01-PLAN.md
-last_updated: "2026-07-12T05:34:49.522Z"
+last_updated: "2026-07-12T05:40:25.479Z"
 last_activity: 2026-07-12
 last_activity_desc: Phase 05 execution started
 progress:
   total_phases: 8
   completed_phases: 4
   total_plans: 24
-  completed_plans: 22
+  completed_plans: 23
   percent: 50
 ---
 
@@ -29,8 +29,8 @@ See: .planning/PROJECT.md (updated 2026-07-03)
 ## Current Position
 
 Phase: 05 (estabiliza-o-de-api-e-release-v1-0) — EXECUTING
-Plan: 1 of 5
-Status: Executing Phase 05
+Plan: 2 of 5
+Status: Ready to execute
 Last activity: 2026-07-12 — Phase 05 execution started
 
 Progress: [░░░░░░░░░░] 0%
@@ -77,6 +77,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 04 P05 | 12min | 1 tasks | 1 files |
 | Phase 04 P06 | 35min | 3 tasks | 3 files |
 | Phase 05 P01 | 20min | 2 tasks | 8 files |
+| Phase 05 P04 | 5min | 2 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -134,6 +135,7 @@ Recent decisions affecting current work:
 - [Phase ?]: README enxuto em inglês apontando para o site (D-03); homepage no package.json → iamcalegari.github.io/mongoat
 - [Phase ?]: Database.defineModel/Model.create removidos por completo (D-06); new Model(...) e a unica via de registro/gating
 - [Phase ?]: CHANGELOG [Unreleased] renomeado para [1.1.0] - 2026-07-10; versao-alvo v1.0.0 reconciliada para 1.1.0 em CHANGELOG/MIGRATION/docs/ROADMAP (secao Fase 5)
+- [Phase ?]: Task 1 (pre exit + version) ja havia sido executada fora do tracking GSD pelo commit 2d8f5d2 - tratada como concluida, apenas verificada, sem novo commit
 
 ### Pending Todos
 
@@ -165,6 +167,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-11T02:04:03.413Z
+Last session: 2026-07-12T05:39:21.797Z
 Stopped at: Completed 05-01-PLAN.md
 Resume file: None

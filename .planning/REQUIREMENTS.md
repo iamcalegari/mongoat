@@ -41,7 +41,7 @@
 - [ ] **REL-01**: Pipeline de release com changesets: CHANGELOG gerado, versionamento via PR, publicação npm automatizada no merge
 - [x] **REL-02**: Build dual CJS/ESM (tsdown) com `exports` map correto, validado por `are-the-types-wrong` como gate de CI
 - [x] **REL-03**: `v1.0.0-rc` publicado com auditoria de API (diff alpha→v1) antes da tag final
-- [ ] **REL-04**: `v1.0.0` estável publicada no npm com política semver documentada e versões alpha deprecadas (`npm deprecate`)
+- [x] **REL-04**: `v1.0.0` estável publicada no npm com política semver documentada e versões alpha deprecadas (`npm deprecate`)
 
 ### Schema Decorators (TC39)
 
@@ -116,7 +116,7 @@
 | REL-01 | Phase 5 | Pending |
 | REL-02 | Phase 1 | Complete |
 | REL-03 | Phase 5 | Complete |
-| REL-04 | Phase 5 | Pending |
+| REL-04 | Phase 5 | Complete |
 | DECO-01 | Phase 6 | Pending |
 | DECO-02 | Phase 6 | Pending |
 | DECO-03 | Phase 6 | Pending |
