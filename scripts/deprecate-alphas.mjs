@@ -15,7 +15,13 @@
 // Uso:
 //   node scripts/deprecate-alphas.mjs           # executa de verdade (IRREVERSÍVEL)
 //   DRY_RUN=1 node scripts/deprecate-alphas.mjs  # apenas imprime os comandos, sem executar nada
+//   NPM_OTP=123456 node scripts/deprecate-alphas.mjs  # OTP inicial via env (opcional)
+//
+// 2FA: a conta exige OTP para writes no registry (o TOTP expira em ~30s e o loop
+// leva mais que isso) — o script pergunta o código no início, reusa enquanto o
+// registry aceitar e re-pergunta quando expirar, retomando da versão que falhou.
 import { execFileSync } from 'node:child_process';
+import { createInterface } from 'node:readline/promises';
 
 const PACKAGE_NAME = '@iamcalegari/mongoat';
 const DEPRECATION_MESSAGE =
@@ -36,7 +42,24 @@ function getAlphaVersions(versions) {
   return versions.filter((v) => v.endsWith('-alpha'));
 }
 
-function deprecateVersion(version) {
+function isOtpError(err) {
+  const text = `${err?.stderr ?? ''}${err?.stdout ?? ''}${err?.message ?? ''}`;
+  return (
+    text.includes('EOTP') ||
+    text.includes('one-time pass') ||
+    text.includes('Two-factor authentication')
+  );
+}
+
+async function askOtp(rl, retrying) {
+  const prompt = retrying
+    ? '[deprecate-alphas] OTP expirado/recusado — digite o codigo 2FA atual: '
+    : '[deprecate-alphas] digite o codigo 2FA (Enter para tentar sem OTP): ';
+  const answer = await rl.question(prompt);
+  return answer.trim();
+}
+
+function deprecateVersion(version, otp) {
   const spec = `${PACKAGE_NAME}@${version}`;
   const args = ['deprecate', spec, DEPRECATION_MESSAGE];
 
@@ -45,12 +68,14 @@ function deprecateVersion(version) {
     return;
   }
 
+  if (otp) args.push(`--otp=${otp}`);
+
   console.log(`[deprecate-alphas] deprecating ${spec}...`);
-  execFileSync('npm', args, { stdio: 'inherit' });
+  execFileSync('npm', args, { stdio: 'pipe', encoding: 'utf8' });
   console.log(`[deprecate-alphas] done: ${spec}`);
 }
 
-function main() {
+async function main() {
   const versions = getPublishedVersions();
   const alphaVersions = getAlphaVersions(versions);
 
@@ -66,8 +91,38 @@ function main() {
     `[deprecate-alphas] ${alphaVersions.length} versao(oes) -alpha encontradas${DRY_RUN ? ' (DRY_RUN=1 — nenhum comando sera executado)' : ''}`
   );
 
-  for (const version of alphaVersions) {
-    deprecateVersion(version);
+  let rl = null;
+  let otp = process.env.NPM_OTP?.trim() || '';
+
+  if (!DRY_RUN) {
+    if (process.stdin.isTTY) {
+      rl = createInterface({ input: process.stdin, output: process.stdout });
+      if (!otp) otp = await askOtp(rl, false);
+    } else if (!otp) {
+      console.error(
+        '[deprecate-alphas] stdin nao e um TTY e NPM_OTP nao foi definido — rode num terminal interativo (writes exigem 2FA/OTP)'
+      );
+      process.exitCode = 1;
+      return;
+    }
+  }
+
+  try {
+    for (const version of alphaVersions) {
+      // Ate 3 tentativas por versao: OTP expira no meio do loop; outros erros
+      // (403 de permissao, rede) abortam imediatamente.
+      for (let attempt = 1; ; attempt++) {
+        try {
+          deprecateVersion(version, otp);
+          break;
+        } catch (err) {
+          if (DRY_RUN || !isOtpError(err) || attempt >= 3 || !rl) throw err;
+          otp = await askOtp(rl, true);
+        }
+      }
+    }
+  } finally {
+    rl?.close();
   }
 
   console.log(
@@ -75,4 +130,4 @@ function main() {
   );
 }
 
-main();
+await main();
