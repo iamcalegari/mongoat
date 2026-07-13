@@ -1,0 +1,54 @@
+# Deprecação das 34 versões 1.0.x-alpha no npm — write IRREVERSÍVEL no registry,
+# por isso roda no CI com o token granular bypass-2FA (o mesmo NPM_TOKEN do
+# release.yml) e atrás do Environment `npm-publish` (required reviewer): a
+# execução pausa até aprovação humana explícita, igual ao publish.
+#
+# Por que no CI e não no laptop: a conta exige 2FA para writes, e para tokens o
+# `--otp` é ignorado pelo registry — só um token com bypass-2FA (guardado como
+# secret, nunca no laptop) consegue executar o `npm deprecate` de forma
+# não-interativa. O script itera por VERSÃO EXATA (nunca range — ranges não
+# casam prereleases e deprecariam zero versões silenciosamente).
+#
+# Disparo manual (workflow_dispatch); o job faz um dry-run de auditoria (imprime
+# os 34 comandos), executa de verdade e confirma por amostragem — falhando se
+# alguma amostra não estiver deprecada.
+name: Deprecate alphas
+
+on:
+  workflow_dispatch:
+
+concurrency: ${{ github.workflow }}
+
+permissions:
+  contents: read
+
+jobs:
+  deprecate:
+    runs-on: ubuntu-latest
+    environment: npm-publish # gate humano (required reviewer) — write irreversível
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.x
+          registry-url: https://registry.npmjs.org
+
+      - name: Dry-run (auditoria — um npm deprecate por versão exata)
+        run: DRY_RUN=1 node scripts/deprecate-alphas.mjs
+
+      - name: Deprecate das versões 1.0.x-alpha (IRREVERSÍVEL)
+        run: node scripts/deprecate-alphas.mjs
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Confirmar por amostragem
+        run: |
+          for v in 1.0.0-alpha 1.0.17-alpha 1.0.34-alpha; do
+            msg=$(npm view "@iamcalegari/mongoat@${v}" deprecated)
+            if [ -z "$msg" ]; then
+              echo "FALHA: ${v} nao esta deprecada"
+              exit 1
+            fi
+            echo "OK ${v}: ${msg}"
+          done

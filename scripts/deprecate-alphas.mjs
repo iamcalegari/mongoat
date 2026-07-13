@@ -98,6 +98,9 @@ async function main() {
     if (process.stdin.isTTY) {
       rl = createInterface({ input: process.stdin, output: process.stdout });
       if (!otp) otp = await askOtp(rl, false);
+    } else if (process.env.CI === 'true') {
+      // GitHub Actions: NODE_AUTH_TOKEN e um token granular com bypass-2FA —
+      // nenhum OTP e necessario; um eventual erro de OTP aborta imediatamente.
     } else if (!otp) {
       console.error(
         '[deprecate-alphas] stdin nao e um TTY e NPM_OTP nao foi definido — rode num terminal interativo (writes exigem 2FA/OTP)'
