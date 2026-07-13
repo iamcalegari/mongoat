@@ -26,20 +26,21 @@ Ser um ODM fino e extensível: produtividade de ODM sem abrir mão do controle e
 - ✓ Bugs conhecidos de `.planning/codebase/CONCERNS.md` corrigidos (pre-hooks aguardados em `insertMany`, Proxy binding, tipo de `find()`, registro atômico, schema sem mutação) + 2 bugs extras descobertos e corrigidos — Validated in Phase 1
 - ✓ Build dual CJS/ESM via tsdown com `exports` map validado por are-the-types-wrong + publint; `json-schema` removida do runtime — Validated in Phase 1
 - ✓ Infra de testes vitest + testcontainers (MongoDB real em Docker), 20 testes de regressão/smoke — Validated in Phase 1
+- ✓ Hooks pre/post completos (múltiplos handlers, ordem de registro, semântica de erro assimétrica, fireAndForget, guard de recursão) — Validated in Phase 2
+- ✓ API thin nativa: options do driver repassadas em todos os métodos + escape hatch (`getCollection`/`getClient`/`getDb`) com retornos tipados — Validated in Phase 2
+- ✓ Suíte unit+integração (12 métodos, erro + concorrência) com coverage gate e CI GitHub Actions (matriz Node 20/22) — Validated in Phase 3
+- ✓ Hardening: `sanitizeFilter`, `$where` rejeitado, `toObjectId` fail-loud, erros sanitizados, `setupIndexes` incremental — Validated in Phase 3
+- ✓ Site de documentação VitePress + TypeDoc publicado (Diátaxis: tutorial, how-tos, explanation) + README renovado + guia de migração — Validated in Phase 4
+- ✓ Primeira versão estável publicada: npm **1.1.0** em `latest` com provenance (SLSA/OIDC), RC validado por smoke CJS+ESM, política semver publicada, 34 alphas deprecadas por versão exata — Validated in Phase 5
+- ✓ Pipeline de release automatizado com changesets + `release.yml` gated (Environment npm-publish com required reviewer) — Validated in Phase 5
 
 ### Active
 
 <!-- Escopo atual. Hipóteses até serem entregues e validadas. -->
 
-- [ ] Publicar v1.0.0 estável (sair do alpha; API estabilizada com semver disciplinado)
-- [ ] API de definição de schema ergonômica e type-safe — decorators `@Schema`/`@Description`/`@Pre`/`@Pattern`/`@Optional` (rascunho em `src/schema/index.ts`); substituir vs. coexistir com a API de objetos: **decidir na pesquisa**
-- [ ] Escape hatch nativo: expor `Collection`/`Db`/`MongoClient` para uso direto do driver
-- [ ] Options nativas do driver aceitas e repassadas em todos os métodos do Model
-- [ ] Sistema de plugins/middleware para estender Models (métodos customizados, hooks reutilizáveis)
-- [ ] Hooks pre/post completos em todos os métodos (hoje só `pre`, um handler por método)
-- [ ] Suíte de testes (unitários + integração) com CI
-- [ ] Pipeline de CI/CD com publicação automatizada no npm
-- [ ] Site de documentação dedicado com guias e referência de API
+- [ ] API de definição de schema ergonômica e type-safe — decorators TC39 `@Schema`/`@Description`/`@Pre`/`@Pattern`/`@Optional` coexistindo com a API de objetos (Fase 6)
+- [ ] Sistema de plugins/middleware para estender Models — `plugins[]` por model e `Model.plugin()` global com contrato selado (Fase 7)
+- [ ] Migrations versionadas (schema + dados, up/down, estado rastreado, CLI `mongoat migrate`) (Fase 8)
 
 ### Out of Scope
 
@@ -53,9 +54,10 @@ Ser um ODM fino e extensível: produtividade de ODM sem abrir mão do controle e
 
 - Brownfield: codebase pequeno (~1k linhas em `src/`), mapeado em `.planning/codebase/` (7 documentos, 2026-07-03)
 - `src/schema/index.ts` contém apenas um rascunho comentado da API de decorators — é a direção desejada pelo autor
-- Fase 1 completa (2026-07-07): base sem bugs conhecidos, build dual CJS/ESM (tsdown) e infra de testes vitest+testcontainers (20 testes verdes contra MongoDB real); code review advisory registrou 2 críticos + 11 warnings novos em `01-REVIEW.md` (backlog)
-- README marcado como work in progress
-- Publicado no npm como `@iamcalegari/mongoat@1.0.34-alpha` (acesso público)
+- Fases 1–5 completas (2026-07-07 → 2026-07-13): core sem bugs conhecidos, hooks pre/post + API thin, blindagem/testes/CI, site de docs e **release estável 1.1.0** — a "v1.0 do roadmap" está no ar
+- Publicado no npm como `@iamcalegari/mongoat@1.1.0` (`latest`, provenance SLSA); linha `1.0.x-alpha` deprecada no registry; RCs saem no dist-tag `rc`
+- Releases via changesets + `release.yml` gated (aprovação humana no Environment `npm-publish`); zero-clique adiado até o release.yml ganhar gate de testes (WR-05 de `05-REVIEW.md`)
+- Follow-ups advisory de `05-REVIEW.md` (0 críticos, 6 warnings): LICENSE ausente no tarball, actions não pinadas por SHA, `ModelSetup` órfão no barrel, `isSameConfig` ignora hooks
 - `CONCERNS.md` lista bugs conhecidos, riscos de segurança (`toObjectId` sem validação, stringify de erros expondo detalhes, filtros sem sanitização), áreas frágeis (registry estático sem thread-safety, casts sem null-check, mutação de schema em `includeAdditionalPropertiesFalse`) e lacunas (`CUSTOM_VALIDATION.UNIQUE` nunca implementado)
 - Dependências de runtime mínimas: `bson`, `json-schema` (0.4.0, antigo — avaliar remoção/substituição na pesquisa), `mongodb` v7
 
@@ -71,8 +73,10 @@ Ser um ODM fino e extensível: produtividade de ODM sem abrir mão do controle e
 
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
-| Decorators: substituir ou coexistir com a API de objetos | Definir com base na pesquisa (TS 5 standard decorators vs experimental, experiência de typegoose/papr) | — Pending |
-| Documentação em site dedicado (VitePress/Docusaurus ou similar) | Profissionalizar a lib para a v1.0 | — Pending |
+| Decorators: substituir ou coexistir com a API de objetos | Definido no roadmap: **coexistir** como cidadãs de primeira classe (Fase 6, TC39 standard, sem reflect-metadata) | ✓ Good |
+| Documentação em site dedicado (VitePress/Docusaurus ou similar) | Profissionalizar a lib para a v1.0 | ✓ Good — VitePress + TypeDoc no ar (Fase 4) |
+| Primeira estável é npm 1.1.0 (não 1.0.0) | Alphas eram 1.0.x-alpha; 1.0.0 seria numericamente menor no semver | ✓ Good |
+| Writes no registry (publish/deprecate) só via CI gated | Conta exige 2FA; token bypass-2FA vive só no CI, atrás de Environment com required reviewer | ✓ Good |
 | Manter arquitetura de Proxy | Já validada no uso atual; base do gating e da extensibilidade | ✓ Good |
 | Mínimo de dependências de runtime | Lib leve, menos superfície de risco e de manutenção | ✓ Good |
 
@@ -94,4 +98,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-07-07 after Phase 1 completion*
+*Last updated: 2026-07-13 after Phase 5 completion (release 1.1.0)*
