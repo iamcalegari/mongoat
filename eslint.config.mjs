@@ -34,5 +34,17 @@ export default tseslint.config(
         tsconfigRootDir: import.meta.dirname,
       },
     },
+  },
+  {
+    // Scripts Node standalone (smoke-rc, deprecate-alphas): o recommended puro
+    // não define ambiente algum, então os globals de runtime do Node precisam
+    // ser declarados aqui (sem isso: no-undef em process/console).
+    files: ['scripts/**/*.mjs'],
+    languageOptions: {
+      globals: {
+        process: 'readonly',
+        console: 'readonly',
+      },
+    },
   }
 );
