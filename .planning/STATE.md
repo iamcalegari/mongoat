@@ -2,19 +2,19 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: "**Goal**: A API do alpha é auditada e estabilizada deliberadamente, e então publicada como 1.1.0 com semver disciplinado e um pipeline de release automatizado."
-current_phase: 05
-current_phase_name: estabiliza-o-de-api-e-release-v1-0
+current_phase: 6
+current_phase_name: TC39
 status: executing
 stopped_at: Completed 05-01-PLAN.md
-last_updated: "2026-07-12T05:40:25.479Z"
-last_activity: 2026-07-12
-last_activity_desc: Phase 05 execution started
+last_updated: "2026-07-13T07:59:34.039Z"
+last_activity: 2026-07-13
+last_activity_desc: Phase 05 complete, transitioned to Phase 6
 progress:
   total_phases: 8
-  completed_phases: 4
+  completed_phases: 5
   total_plans: 24
-  completed_plans: 23
-  percent: 50
+  completed_plans: 24
+  percent: 63
 ---
 
 # Project State
@@ -28,10 +28,10 @@ See: .planning/PROJECT.md (updated 2026-07-03)
 
 ## Current Position
 
-Phase: 05 (estabiliza-o-de-api-e-release-v1-0) — EXECUTING
-Plan: 2 of 5
+Phase: 6 — API de schema com decorators (TC39)
+Plan: Not started
 Status: Ready to execute
-Last activity: 2026-07-12 — Phase 05 execution started
+Last activity: 2026-07-13 — Phase 05 complete, transitioned to Phase 6
 
 Progress: [░░░░░░░░░░] 0%
 
@@ -39,7 +39,7 @@ Progress: [░░░░░░░░░░] 0%
 
 **Velocity:**
 
-- Total plans completed: 16
+- Total plans completed: 21
 - Average duration: — min
 - Total execution time: 0.0 hours
 
@@ -50,6 +50,7 @@ Progress: [░░░░░░░░░░] 0%
 | 01 | 5 | - | - |
 | 3 | 5 | - | - |
 | 4 | 6 | - | - |
+| 05 | 5 | - | - |
 
 **Recent Trend:**
 

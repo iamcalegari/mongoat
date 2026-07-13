@@ -234,7 +234,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
 | 2. Sistema de hooks completo e API thin nativa | 3/3 | Complete   | 2026-07-07 |
 | 3. Blindagem — testes, CI e segurança | 5/5 | Complete    | 2026-07-08 |
 | 4. Site de documentação | 6/6 | Complete    | 2026-07-08 |
-| 5. Estabilização de API e release v1.0 | 5/5 | Complete   | 2026-07-13 |
+| 5. Estabilização de API e release v1.0 | 5/5 | Complete    | 2026-07-13 |
 | 6. API de schema com decorators (TC39) | 0/TBD | Not started | - |
 | 7. Sistema de plugins | 0/TBD | Not started | - |
 | 8. Migrations | 0/TBD | Not started | - |

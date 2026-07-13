@@ -38,7 +38,7 @@
 
 ### Release Engineering
 
-- [ ] **REL-01**: Pipeline de release com changesets: CHANGELOG gerado, versionamento via PR, publicação npm automatizada no merge
+- [x] **REL-01**: Pipeline de release com changesets: CHANGELOG gerado, versionamento via PR, publicação npm automatizada no merge
 - [x] **REL-02**: Build dual CJS/ESM (tsdown) com `exports` map correto, validado por `are-the-types-wrong` como gate de CI
 - [x] **REL-03**: `v1.0.0-rc` publicado com auditoria de API (diff alpha→v1) antes da tag final
 - [x] **REL-04**: `v1.0.0` estável publicada no npm com política semver documentada e versões alpha deprecadas (`npm deprecate`)
@@ -113,7 +113,7 @@
 | DOCS-02 | Phase 4 | Complete |
 | DOCS-03 | Phase 4 | Complete |
 | DOCS-04 | Phase 4 | Complete |
-| REL-01 | Phase 5 | Pending |
+| REL-01 | Phase 5 | Complete |
 | REL-02 | Phase 1 | Complete |
 | REL-03 | Phase 5 | Complete |
 | REL-04 | Phase 5 | Complete |
