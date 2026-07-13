@@ -43,12 +43,24 @@ jobs:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Confirmar por amostragem
+        # O registry é eventualmente consistente: logo após o PUT, a réplica de
+        # leitura pode ainda não refletir a deprecação (aconteceu no primeiro
+        # run com a última versão do loop) — daí o retry com backoff.
         run: |
           for v in 1.0.0-alpha 1.0.17-alpha 1.0.34-alpha; do
-            msg=$(npm view "@iamcalegari/mongoat@${v}" deprecated)
-            if [ -z "$msg" ]; then
-              echo "FALHA: ${v} nao esta deprecada"
+            ok=""
+            for attempt in 1 2 3 4; do
+              msg=$(npm view "@iamcalegari/mongoat@${v}" deprecated)
+              if [ -n "$msg" ]; then
+                echo "OK ${v}: ${msg}"
+                ok=1
+                break
+              fi
+              echo "aguardando replicacao de ${v} (tentativa ${attempt})..."
+              sleep 15
+            done
+            if [ -z "$ok" ]; then
+              echo "FALHA: ${v} nao esta deprecada apos retries"
               exit 1
             fi
-            echo "OK ${v}: ${msg}"
           done
