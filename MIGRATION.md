@@ -1,12 +1,11 @@
 # Migration Guide — alpha → 1.1.0
 
-Mongoat is currently published as **`1.0.34-alpha`**. The road to **1.1.0**
-intentionally introduces a number of breaking changes to stabilize the public API
-before it is frozen under semantic versioning.
+Mongoat **1.1.0** is the first stable release, published on npm under the
+`latest` dist-tag. It introduces a number of breaking changes relative to the
+`1.0.x-alpha` line (now deprecated on the registry) to stabilize the public API
+under semantic versioning.
 
-> **Status: living document.** 1.1.0 is not released yet. Sections tagged
-> _(in progress)_ describe changes that are still landing and may shift slightly
-> before the `1.1.0-rc.0`. This guide is finalized before the RC. See
+> **Status: final.** This guide covers the complete alpha → 1.1.0 migration. See
 > [CHANGELOG.md](./CHANGELOG.md) for the full list of changes.
 
 Each entry follows the same shape: **what changed**, **before**, **after**, and
@@ -16,7 +15,7 @@ Each entry follows the same shape: **what changed**, **before**, **after**, and
 
 1. [Hooks](#1-hooks)
 2. [Errors](#2-errors)
-3. [Input validation _(in progress)_](#3-input-validation-in-progress)
+3. [Input validation](#3-input-validation)
 4. [Environment & build](#4-environment--build)
 5. [API surface](#5-api-surface)
 
