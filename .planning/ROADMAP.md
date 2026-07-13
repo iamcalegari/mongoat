@@ -17,7 +17,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 2: Sistema de hooks completo e API thin nativa** - Hooks pre/post completos, options nativas em todos os métodos e escape hatch (completed 2026-07-07)
 - [x] **Phase 3: Blindagem — testes, CI e segurança** - Suíte unit+integração, GitHub Actions e hardening contra injeção (completed 2026-07-08)
 - [x] **Phase 4: Site de documentação** - README renovado + VitePress + TypeDoc + guia de migração do core v1.0 (antes do release) (completed 2026-07-08)
-- [ ] **Phase 5: Estabilização de API e release v1.0** - Auditoria alpha→v1.0, changesets, RC e publicação estável
+- [x] **Phase 5: Estabilização de API e release v1.0** - Auditoria alpha→v1.0, changesets, RC e publicação estável (completed 2026-07-13)
 - [ ] **Phase 6: API de schema com decorators (TC39)** - `@Schema`/`@Pre`/etc. coexistindo com a API de objetos (aditivo, minor 1.x)
 - [ ] **Phase 7: Sistema de plugins** - `plugins[]` por model e `Model.plugin()` global com contrato selado (aditivo, minor 1.x)
 - [ ] **Phase 8: Migrations** - schema + data migrations versionadas (up/down), estado rastreado e CLI (aditivo, minor 1.x)
@@ -161,7 +161,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   2. `1.1.0` é publicada no npm com política semver documentada e as versões alpha anteriores deprecadas (`npm deprecate`).
   3. Releases são conduzidas por um pipeline de changesets: CHANGELOG gerado, versionamento via PR e publicação npm automatizada no merge.
 
-**Plans**: 4/5 plans executed
+**Plans**: 5/5 plans complete
 
 **Wave 1**
 
@@ -178,7 +178,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 **Wave 4** *(blocked on Wave 3)*
 
-- [ ] 05-05-PLAN.md — Publicação estável 1.1.0 GATED (provenance) + deprecação das 34 alphas por versão exata (REL-04, REL-01, D-03, D-05)
+- [x] 05-05-PLAN.md — Publicação estável 1.1.0 GATED (provenance) + deprecação das 34 alphas por versão exata (REL-04, REL-01, D-03, D-05)
 
 ### Phase 6: API de schema com decorators (TC39)
 
@@ -234,7 +234,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
 | 2. Sistema de hooks completo e API thin nativa | 3/3 | Complete   | 2026-07-07 |
 | 3. Blindagem — testes, CI e segurança | 5/5 | Complete    | 2026-07-08 |
 | 4. Site de documentação | 6/6 | Complete    | 2026-07-08 |
-| 5. Estabilização de API e release v1.0 | 4/5 | In Progress|  |
+| 5. Estabilização de API e release v1.0 | 5/5 | Complete   | 2026-07-13 |
 | 6. API de schema com decorators (TC39) | 0/TBD | Not started | - |
 | 7. Sistema de plugins | 0/TBD | Not started | - |
 | 8. Migrations | 0/TBD | Not started | - |
