@@ -4,17 +4,17 @@ milestone: v1.0
 milestone_name: "**Goal**: A API do alpha é auditada e estabilizada deliberadamente, e então publicada como 1.1.0 com semver disciplinado e um pipeline de release automatizado."
 current_phase: 06
 current_phase_name: api-de-schema-com-decorators-tc39
-status: executing
-stopped_at: Completed 06-03-PLAN.md
-last_updated: "2026-07-14T02:39:53.404Z"
+status: verifying
+stopped_at: Completed 06-04-PLAN.md
+last_updated: "2026-07-14T02:57:44.448Z"
 last_activity: 2026-07-13
 last_activity_desc: Phase 06 execution started
 progress:
   total_phases: 8
-  completed_phases: 5
+  completed_phases: 6
   total_plans: 28
-  completed_plans: 27
-  percent: 63
+  completed_plans: 28
+  percent: 75
 ---
 
 # Project State
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-07-03)
 
 Phase: 06 (api-de-schema-com-decorators-tc39) — EXECUTING
 Plan: 4 of 4
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-07-13 — Phase 06 execution started
 
 Progress: [░░░░░░░░░░] 0%
@@ -82,6 +82,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 06 P01 | 17min | 3 tasks | 18 files |
 | Phase 06 P02 | 15min | 3 tasks | 6 files |
 | Phase 06 P03 | 5min | 3 tasks | 8 files |
+| Phase 06 P04 | 6min | 3 tasks | 10 files |
 
 ## Accumulated Context
 
@@ -150,6 +151,9 @@ Recent decisions affecting current work:
 - [Phase ?]: [Phase 06-03]: @Optional() registra em meta.optionalFields (não remove de required no momento em que roda) — filtragem só no Schema.compile, idempotente independente da ordem textual do decorator no campo (D-04)
 - [Phase ?]: [Phase 06-03]: detecção de classe decorada aninhada em type/items via typeof value === 'function' (sem kMongoatSchemaClass) — evita ciclo de import decorators<->compile
 - [Phase ?]: [Phase 06-03]: JSONSchema4Subset (src/types/model.ts) estendido com minimum/maximum/minLength/maxLength — fora do files_modified original do plano, necessário para os açúcares de constraint tiparem corretamente (Rule 2)
+- [Phase 06-04]: Pre/Post reaproveitam (...args: unknown[]) => unknown (mesmo shape de FieldMeta desde 06-01) em vez de overloads por posição — evita contravariância estrita do TS no call-site do decorator; dev tipa/faz cast dentro do corpo da função
+- [Phase 06-04]: @Post em campo lança com o code default VALIDATION_FAILED (não um code dedicado) — plano só exige documentar INVALID_HOOK_METHOD, code extra seria escopo além do pedido
+- [Phase 06-04]: extractDecoratorHooks nunca lança para classe sem metadata Mongoat (devolve {pre:[],post:[]}) — Model chama incondicionalmente para qualquer schema função, sem checar de antemão
 
 ### Pending Todos
 
@@ -181,6 +185,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-14T02:39:53.397Z
-Stopped at: Completed 06-03-PLAN.md
+Last session: 2026-07-14T02:57:44.441Z
+Stopped at: Completed 06-04-PLAN.md
 Resume file: None

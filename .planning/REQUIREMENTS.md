@@ -46,7 +46,7 @@
 ### Schema Decorators (TC39)
 
 - [x] **DECO-01**: Dev pode definir schema via decorators TC39 padrão (`@Schema`, `@Prop`/`@BsonType`, `@Description`, `@Optional`, `@Pattern`) sem `reflect-metadata` e sem flags experimentais no tsconfig
-- [ ] **DECO-02**: Dev pode registrar hooks no nível da classe via `@Pre`
+- [x] **DECO-02**: Dev pode registrar hooks no nível da classe via `@Pre`
 - [x] **DECO-03**: Classes decoradas compilam (`Schema.compile`) para o mesmo `ModelValidationSchema` da API de objetos; as duas APIs coexistem como cidadãs de primeira classe
 - [x] **DECO-04**: Construtor do Model aceita classe decorada ou objeto plano de forma transparente
 
@@ -118,7 +118,7 @@
 | REL-03 | Phase 5 | Complete |
 | REL-04 | Phase 5 | Complete |
 | DECO-01 | Phase 6 | Complete |
-| DECO-02 | Phase 6 | Pending |
+| DECO-02 | Phase 6 | Complete |
 | DECO-03 | Phase 6 | Complete |
 | DECO-04 | Phase 6 | Complete |
 | PLUG-01 | Phase 7 | Pending |
