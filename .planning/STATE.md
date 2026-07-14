@@ -2,18 +2,18 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: "**Goal**: A API do alpha é auditada e estabilizada deliberadamente, e então publicada como 1.1.0 com semver disciplinado e um pipeline de release automatizado."
-current_phase: 6
-current_phase_name: TC39
+current_phase: 06
+current_phase_name: api-de-schema-com-decorators-tc39
 status: executing
 stopped_at: Phase 6 context gathered
-last_updated: "2026-07-13T18:09:16.370Z"
+last_updated: "2026-07-14T02:14:04.930Z"
 last_activity: 2026-07-13
-last_activity_desc: Phase 05 complete, transitioned to Phase 6
+last_activity_desc: Phase 06 execution started
 progress:
   total_phases: 8
   completed_phases: 5
-  total_plans: 24
-  completed_plans: 24
+  total_plans: 28
+  completed_plans: 25
   percent: 63
 ---
 
@@ -24,14 +24,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-03)
 
 **Core value:** Ser um ODM fino e extensível — produtividade de ODM sem abrir mão do controle e do acesso direto ao driver nativo do MongoDB.
-**Current focus:** Phase 05 — estabiliza-o-de-api-e-release-v1-0
+**Current focus:** Phase 06 — api-de-schema-com-decorators-tc39
 
 ## Current Position
 
-Phase: 6 — API de schema com decorators (TC39)
-Plan: Not started
+Phase: 06 (api-de-schema-com-decorators-tc39) — EXECUTING
+Plan: 2 of 4
 Status: Ready to execute
-Last activity: 2026-07-13 — Phase 05 complete, transitioned to Phase 6
+Last activity: 2026-07-13 — Phase 06 execution started
 
 Progress: [░░░░░░░░░░] 0%
 
@@ -79,6 +79,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 04 P06 | 35min | 3 tasks | 3 files |
 | Phase 05 P01 | 20min | 2 tasks | 8 files |
 | Phase 05 P04 | 5min | 2 tasks | 3 files |
+| Phase 06 P01 | 17min | 3 tasks | 18 files |
 
 ## Accumulated Context
 
@@ -137,6 +138,9 @@ Recent decisions affecting current work:
 - [Phase ?]: Database.defineModel/Model.create removidos por completo (D-06); new Model(...) e a unica via de registro/gating
 - [Phase ?]: CHANGELOG [Unreleased] renomeado para [1.1.0] - 2026-07-10; versao-alvo v1.0.0 reconciliada para 1.1.0 em CHANGELOG/MIGRATION/docs/ROADMAP (secao Fase 5)
 - [Phase ?]: Task 1 (pre exit + version) ja havia sido executada fora do tracking GSD pelo commit 2d8f5d2 - tratada como concluida, apenas verificada, sem novo commit
+- [Phase 06-01]: Vite 8 (rolldown-vite) transforma com Oxc, que nao lowera decorators stage-3 — vitest.config.ts registra o MESMO plugin babel do build de producao filtrado a (src|test)/schema/**
+- [Phase 06-01]: arquivos decorados que passam pela cadeia babel->oxc usam ?: (nunca !:) — babel re-emite o ! junto do inicializador injetado e o Oxc rejeita no re-parse
+- [Phase 06-01]: SCHEMA_METADATA_KEY+compile vivem em compile.ts e FieldMeta/SchemaClass em src/types/schema.ts — import unidirecional decorators->compile, sem ciclo de modulos
 
 ### Pending Todos
 
@@ -168,6 +172,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-13T18:09:16.355Z
+Last session: 2026-07-14T02:13:13.437Z
 Stopped at: Phase 6 context gathered
 Resume file: .planning/phases/06-api-de-schema-com-decorators-tc39/06-CONTEXT.md
