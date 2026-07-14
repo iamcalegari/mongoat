@@ -67,6 +67,12 @@ export function compile(cls: SchemaClass): ModelValidationSchema {
   return {
     bsonType: 'object',
     properties: structuredClone(meta.properties),
-    required: [...meta.required],
+    // D-04: `required` filtrado contra `optionalFields` AQUI (compile), não
+    // no momento em que `@Optional()` roda — ver JSDoc de
+    // FieldMeta.optionalFields para o porquê (idempotência independente da
+    // ordem textual dos decorators no mesmo campo).
+    required: meta.required.filter(
+      (fieldName) => !meta.optionalFields.includes(fieldName)
+    ),
   } as ModelValidationSchema;
 }

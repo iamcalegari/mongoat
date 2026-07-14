@@ -24,6 +24,20 @@ export interface JSONSchema4Subset {
   additionalProperties?: boolean | JSONSchema4Subset;
   description?: string;
   enum?: unknown[];
+  /**
+   * D-02 (Fase 6): fragmentos usados pelos açúcares `@MaxLength`/`@MinLength`
+   * sobre `@Prop` — mesma semântica de `$jsonSchema` do MongoDB para strings.
+   */
+  maxLength?: number;
+  /**
+   * D-02 (Fase 6): fragmento usado pelo açúcar `@Max` sobre `@Prop`.
+   */
+  maximum?: number;
+  minLength?: number;
+  /**
+   * D-02 (Fase 6): fragmento usado pelo açúcar `@Min` sobre `@Prop`.
+   */
+  minimum?: number;
   pattern?: string;
 }
 

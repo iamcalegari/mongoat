@@ -1,8 +1,7 @@
 import './polyfill';
 
 import { MongoatValidationError } from '@/errors';
-import type { ModelValidationSchema } from '@/types/model';
-import type { FieldMeta } from '@/types/schema';
+import type { FieldMeta, PropFragment } from '@/types/schema';
 
 import { compile, SCHEMA_METADATA_KEY } from './compile';
 import { assertStandardDecoratorMode } from './guards';
@@ -29,6 +28,7 @@ function getOrInitMeta(metadata: Record<PropertyKey, unknown>): FieldMeta {
     metadata[SCHEMA_METADATA_KEY] = {
       properties: {},
       required: [],
+      optionalFields: [],
       fieldPreHooks: [],
       classPreHooks: [],
     } satisfies FieldMeta;
@@ -60,9 +60,9 @@ function getOrInitMeta(metadata: Record<PropertyKey, unknown>): FieldMeta {
  * }
  * ```
  */
-export function Prop(fragment: Partial<ModelValidationSchema>) {
+export function Prop(fragment: PropFragment) {
   // D-01: decorator canônico — os açúcares (@BsonType, @Description, ...)
-  // são implementados por cima dele em plano posterior da fase.
+  // são implementados por cima dele (src/schema/sugars.ts).
   return function (
     _value: undefined,
     context: ClassFieldDecoratorContext
@@ -74,16 +74,63 @@ export function Prop(fragment: Partial<ModelValidationSchema>) {
     );
     const fieldName = String(context.name);
 
+    // D-02/composição: MERGE no MESMO fragmento por campo (não replace) —
+    // múltiplos açúcares/`@Prop` no mesmo campo agregam um único fragmento
+    // (ex.: `@BsonType('string')` + `@Pattern('^x')` → `{ bsonType, pattern }`).
     // D-03: o fragmento entra como declarado (sem default mágico de
-    // bsonType); clone raso para desacoplar do objeto do dev.
-    meta.properties[fieldName] = { ...fragment };
+    // bsonType); clone raso do fragmento recebido desacopla do objeto do
+    // dev (mutação futura do objeto original do dev não vaza para cá).
+    meta.properties[fieldName] = {
+      ...(meta.properties[fieldName] ?? {}),
+      ...fragment,
+    };
 
-    // D-04: required por padrão (o @Optional de plano posterior remove).
+    // D-04: required por padrão — @Optional() (abaixo) não remove daqui
+    // diretamente; ver optionalFields para o porquê.
     if (!meta.required.includes(fieldName)) {
       meta.required.push(fieldName);
     }
     // Retorna void de propósito: nenhum decorator desta fase devolve um novo
     // inicializador de campo TC39 — tudo é só metadata.
+  };
+}
+
+/**
+ * @public
+ *
+ * D-04: marca o campo como opcional — removido de `required` no
+ * `Schema.compile` (fiel ao rascunho do autor). Diferente dos demais
+ * açúcares (`src/schema/sugars.ts`), `Optional` NÃO agrega um fragmento em
+ * `meta.properties` — apenas registra o nome do campo em
+ * `meta.optionalFields`, filtrado de `required` no compile (não no momento
+ * em que o decorator roda). Isso torna o resultado idêntico independente da
+ * ordem textual entre `@Optional()` e `@Prop`/um açúcar no mesmo campo —
+ * ver o JSDoc de `FieldMeta.optionalFields`.
+ *
+ * @example
+ * ```typescript
+ * class UserSchema {
+ *   @Optional()
+ *   @Prop({ bsonType: 'string' })
+ *   nickname?: string;
+ * }
+ * ```
+ */
+export function Optional() {
+  return function (
+    _value: undefined,
+    context: ClassFieldDecoratorContext
+  ): void {
+    assertStandardDecoratorMode(context); // D-16
+
+    const meta = getOrInitMeta(
+      context.metadata as unknown as Record<PropertyKey, unknown>
+    );
+    const fieldName = String(context.name);
+
+    if (!meta.optionalFields.includes(fieldName)) {
+      meta.optionalFields.push(fieldName);
+    }
   };
 }
 

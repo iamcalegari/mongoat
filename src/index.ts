@@ -6,7 +6,17 @@ export {
   MongoatValidationError,
 } from './errors';
 export { Model } from './model';
-export { Prop, Schema } from './schema';
+export { Optional, Prop, Schema } from './schema';
+export {
+  BsonType,
+  Description,
+  Enum,
+  Max,
+  MaxLength,
+  Min,
+  MinLength,
+  Pattern,
+} from './schema';
 export type {
   CreateIndexProps,
   CreateModelProps,
