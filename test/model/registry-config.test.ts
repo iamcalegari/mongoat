@@ -174,4 +174,66 @@ describe('Model — registro atômico com detecção de config divergente (D-06)
     ).toThrow(MongoatError);
   });
 
+  // WR-04 (05-REVIEW.md, fechado no Plano 06-02): `isSameConfig` nunca
+  // comparou `hooks` — funções não são comparáveis estruturalmente via
+  // `stableStringify`. Uma re-registração do MESMO collectionName que
+  // declara `props.hooks` costumava cair no early-return de config
+  // "idêntica" (allowedMethods/validator/documentDefaults/indexes batiam) e
+  // o hook era descartado em silêncio, sem nenhum aviso — o pior tipo de
+  // bug para um hook de segurança (ex.: hash de senha). Fix: o branch de
+  // re-registro agora falha alto com MODEL_CONFIG_CONFLICT sempre que o
+  // candidato declara hooks para uma collectionName já registrada, em vez
+  // de tentar comparar as funções.
+  it('new Model() com props.hooks presente na re-registração da mesma collectionName lança MongoatError/MODEL_CONFIG_CONFLICT em vez de descartar o hook (WR-04)', () => {
+    const first = new Model<Doc>({
+      collectionName: 'registry_config_hooks_conflict',
+      allowedMethods: [METHODS.FIND],
+      schema,
+    });
+
+    let caughtError: unknown;
+
+    try {
+      new Model<Doc>({
+        collectionName: 'registry_config_hooks_conflict',
+        allowedMethods: [METHODS.FIND],
+        schema,
+        hooks: {
+          [METHODS.FIND]: {
+            pre: [() => {}],
+          },
+        },
+      });
+    } catch (err) {
+      caughtError = err;
+    }
+
+    expect(caughtError).toBeInstanceOf(MongoatError);
+    expect((caughtError as MongoatError).code).toBe('MODEL_CONFIG_CONFLICT');
+    // O hook NÃO foi silenciosamente anexado à instância já registrada.
+    expect(first.hooks[METHODS.FIND].pre).toHaveLength(0);
+  });
+
+  it('new Model() SEM hooks e config idêntica continua reusando a instância existente mesmo quando a primeira registração declarou hooks', () => {
+    const first = new Model<Doc>({
+      collectionName: 'registry_config_hooks_reuse',
+      allowedMethods: [METHODS.FIND],
+      schema,
+      hooks: {
+        [METHODS.FIND]: {
+          pre: [() => {}],
+        },
+      },
+    });
+
+    const second = new Model<Doc>({
+      collectionName: 'registry_config_hooks_reuse',
+      allowedMethods: [METHODS.FIND],
+      schema,
+    });
+
+    expect(second).toBe(first);
+    // O hook declarado na primeira registração continua intacto.
+    expect(first.hooks[METHODS.FIND].pre).toHaveLength(1);
+  });
 });
