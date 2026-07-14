@@ -33,12 +33,12 @@ Ser um ODM fino e extensível: produtividade de ODM sem abrir mão do controle e
 - ✓ Site de documentação VitePress + TypeDoc publicado (Diátaxis: tutorial, how-tos, explanation) + README renovado + guia de migração — Validated in Phase 4
 - ✓ Primeira versão estável publicada: npm **1.1.0** em `latest` com provenance (SLSA/OIDC), RC validado por smoke CJS+ESM, política semver publicada, 34 alphas deprecadas por versão exata — Validated in Phase 5
 - ✓ Pipeline de release automatizado com changesets + `release.yml` gated (Environment npm-publish com required reviewer) — Validated in Phase 5
+- ✓ API de schema com decorators TC39 padrão (`@Schema`/`@Prop` + açúcares, `@Pre`/`@Post`, `Schema.compile`, Model aceita classe decorada) coexistindo com a API de objetos, sem `reflect-metadata` nem flags experimentais — Validated in Phase 6 (verificação 14/14 após gap closure 06-05)
 
 ### Active
 
 <!-- Escopo atual. Hipóteses até serem entregues e validadas. -->
 
-- [ ] API de definição de schema ergonômica e type-safe — decorators TC39 `@Schema`/`@Description`/`@Pre`/`@Pattern`/`@Optional` coexistindo com a API de objetos (Fase 6)
 - [ ] Sistema de plugins/middleware para estender Models — `plugins[]` por model e `Model.plugin()` global com contrato selado (Fase 7)
 - [ ] Migrations versionadas (schema + dados, up/down, estado rastreado, CLI `mongoat migrate`) (Fase 8)
 
@@ -54,7 +54,7 @@ Ser um ODM fino e extensível: produtividade de ODM sem abrir mão do controle e
 
 - Brownfield: codebase pequeno (~1k linhas em `src/`), mapeado em `.planning/codebase/` (7 documentos, 2026-07-03)
 - `src/schema/index.ts` contém apenas um rascunho comentado da API de decorators — é a direção desejada pelo autor
-- Fases 1–5 completas (2026-07-07 → 2026-07-13): core sem bugs conhecidos, hooks pre/post + API thin, blindagem/testes/CI, site de docs e **release estável 1.1.0** — a "v1.0 do roadmap" está no ar
+- Fases 1–6 completas (2026-07-07 → 2026-07-14): core sem bugs conhecidos, hooks pre/post + API thin, blindagem/testes/CI, site de docs, **release estável 1.1.0** e API de decorators TC39 (`src/schema/`, 168 testes) — próxima feature aditiva: plugins (Fase 7)
 - Publicado no npm como `@iamcalegari/mongoat@1.1.0` (`latest`, provenance SLSA); linha `1.0.x-alpha` deprecada no registry; RCs saem no dist-tag `rc`
 - Releases via changesets + `release.yml` gated (aprovação humana no Environment `npm-publish`); zero-clique adiado até o release.yml ganhar gate de testes (WR-05 de `05-REVIEW.md`)
 - Follow-ups advisory de `05-REVIEW.md` (0 críticos, 6 warnings): LICENSE ausente no tarball, actions não pinadas por SHA, `ModelSetup` órfão no barrel, `isSameConfig` ignora hooks
@@ -98,4 +98,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-07-13 after Phase 5 completion (release 1.1.0)*
+*Last updated: 2026-07-14 after Phase 6 completion (decorators TC39, gap closure 06-05, verificação 14/14)*
