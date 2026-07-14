@@ -18,7 +18,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 3: Blindagem — testes, CI e segurança** - Suíte unit+integração, GitHub Actions e hardening contra injeção (completed 2026-07-08)
 - [x] **Phase 4: Site de documentação** - README renovado + VitePress + TypeDoc + guia de migração do core v1.0 (antes do release) (completed 2026-07-08)
 - [x] **Phase 5: Estabilização de API e release v1.0** - Auditoria alpha→v1.0, changesets, RC e publicação estável (completed 2026-07-13)
-- [ ] **Phase 6: API de schema com decorators (TC39)** - `@Schema`/`@Pre`/etc. coexistindo com a API de objetos (aditivo, minor 1.x)
+- [x] **Phase 6: API de schema com decorators (TC39)** - `@Schema`/`@Pre`/etc. coexistindo com a API de objetos (aditivo, minor 1.x) (completed 2026-07-14)
 - [ ] **Phase 7: Sistema de plugins** - `plugins[]` por model e `Model.plugin()` global com contrato selado (aditivo, minor 1.x)
 - [ ] **Phase 8: Migrations** - schema + data migrations versionadas (up/down), estado rastreado e CLI (aditivo, minor 1.x)
 
@@ -193,7 +193,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. Uma classe decorada compila (`Schema.compile`) para o mesmo `ModelValidationSchema` da API de objetos; as duas APIs coexistem como cidadãs de primeira classe.
   4. O construtor do Model aceita de forma transparente tanto uma classe decorada quanto um objeto plano.
 
-**Plans**: 5 plans (06-01..06-04 completos; 06-05 fechamento de gaps pendente — verificação achou 2 gaps, 12/14 must-haves)
+**Plans**: 5/5 plans complete
 
 **Wave 1**
 
@@ -210,7 +210,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 **Wave 1 (fechamento de gaps)** *(pós-verificação — corrige código já entregue em 06-01..06-04)*
 
-- [ ] 06-05-PLAN.md — Fecha 2 gaps: @Pre de campo aguarda transform async + guarda campo ausente (CR-01/WR-05); Schema.compile omite `required` vazio em classe aninhada totalmente opcional (WR-06) (DECO-02, DECO-03)
+- [x] 06-05-PLAN.md — Fecha 2 gaps: @Pre de campo aguarda transform async + guarda campo ausente (CR-01/WR-05); Schema.compile omite `required` vazio em classe aninhada totalmente opcional (WR-06) (DECO-02, DECO-03)
 
 ### Phase 7: Sistema de plugins
 
@@ -252,6 +252,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
 | 3. Blindagem — testes, CI e segurança | 5/5 | Complete    | 2026-07-08 |
 | 4. Site de documentação | 6/6 | Complete    | 2026-07-08 |
 | 5. Estabilização de API e release v1.0 | 5/5 | Complete    | 2026-07-13 |
-| 6. API de schema com decorators (TC39) | 4/4 | Gaps found | - |
+| 6. API de schema com decorators (TC39) | 5/5 | Complete   | 2026-07-14 |
 | 7. Sistema de plugins | 0/TBD | Not started | - |
 | 8. Migrations | 0/TBD | Not started | - |

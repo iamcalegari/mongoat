@@ -4,16 +4,16 @@ milestone: v1.0
 milestone_name: "**Goal**: A API do alpha é auditada e estabilizada deliberadamente, e então publicada como 1.1.0 com semver disciplinado e um pipeline de release automatizado."
 current_phase: 06
 current_phase_name: api-de-schema-com-decorators-tc39
-status: gap_closure_planned
+status: executing
 stopped_at: Phase 06 gap closure planned (06-05-PLAN.md) — ready to execute
-last_updated: "2026-07-14T12:25:00.000Z"
+last_updated: "2026-07-14T12:38:12.171Z"
 last_activity: 2026-07-14
-last_activity_desc: Phase 06 gap closure planned (06-05)
+last_activity_desc: Completed 06-05-PLAN.md (gap closure)
 progress:
   total_phases: 8
   completed_phases: 5
   total_plans: 29
-  completed_plans: 28
+  completed_plans: 29
   percent: 63
 ---
 
@@ -28,10 +28,10 @@ See: .planning/PROJECT.md (updated 2026-07-03)
 
 ## Current Position
 
-Phase: 06 (api-de-schema-com-decorators-tc39) — GAP CLOSURE PLANNED
-Plan: 4 of 5 executed
-Status: Gap closure plan 06-05 verified and ready to execute (/gsd-execute-phase 6)
-Last activity: 2026-07-14 — Gap closure planned: 06-05-PLAN.md (CR-01/WR-05 await + WR-06 required vazio)
+Phase: 06 (api-de-schema-com-decorators-tc39) — EXECUTING
+Plan: 5 of 5
+Status: Phase complete — ready for re-verification (gaps closed by 06-05)
+Last activity: 2026-07-14 — Completed 06-05-PLAN.md (gap closure)
 
 Progress: [░░░░░░░░░░] 0%
 
@@ -83,6 +83,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 06 P02 | 15min | 3 tasks | 6 files |
 | Phase 06 P03 | 5min | 3 tasks | 8 files |
 | Phase 06 P04 | 6min | 3 tasks | 10 files |
+| Phase 06 P05 | 11min | 3 tasks | 4 files |
 
 ## Accumulated Context
 
