@@ -27,7 +27,6 @@ Decimal phases appear between their surrounding integers in numeric order.
 ### Phase 1: Fundação — Core sem bugs e build moderno
 
 **Goal**: A lib compila em formato dual CJS/ESM com `exports` map correto e não tem nenhum bug de correção conhecido — uma base confiável para tudo que vem depois.
-**Mode:** mvp
 **Depends on**: Nothing (first phase)
 **Requirements**: QUAL-01, QUAL-04, REL-02
 **Success Criteria** (what must be TRUE):
@@ -59,7 +58,6 @@ Decimal phases appear between their surrounding integers in numeric order.
 ### Phase 2: Sistema de hooks completo e API thin nativa
 
 **Goal**: O dev ganha um pipeline pre/post de hooks completo e controle total do driver nativo — repassando options em todos os métodos, com escape hatch para `Collection`/`Db`/`MongoClient` e tipos de retorno precisos.
-**Mode:** mvp
 **Depends on**: Phase 1
 **Requirements**: HOOK-01, HOOK-02, HOOK-03, HOOK-04, HOOK-05, API-01, API-02, API-03, API-04
 **Success Criteria** (what must be TRUE):
@@ -87,7 +85,6 @@ Decimal phases appear between their surrounding integers in numeric order.
 ### Phase 3: Blindagem — testes, CI e segurança
 
 **Goal**: O core agora completo é testado de ponta a ponta, verificado continuamente e blindado contra injeção e entrada insegura — o portão de qualidade para uma v1.0 estável.
-**Mode:** mvp
 **Depends on**: Phase 2
 **Requirements**: QUAL-02, QUAL-03, SEC-01, SEC-02, SEC-03, SEC-04
 **Success Criteria** (what must be TRUE):
@@ -120,7 +117,6 @@ Decimal phases appear between their surrounding integers in numeric order.
 ### Phase 4: Site de documentação
 
 **Goal**: A lib entra na v1.0 **bem documentada**: um site publicado + README renovado cobrindo o core estável (conexão, models, CRUD, hooks pre/post, validação `$jsonSchema`, segurança, escape hatch nativo), com referência de API TypeDoc e o guia de migração alpha→v1.0. Documentar o core primeiro também audita a API antes de congelá-la no release.
-**Mode:** mvp
 **Depends on**: Phase 3
 **Requirements**: DOCS-01, DOCS-02, DOCS-03, DOCS-04
 **Success Criteria** (what must be TRUE):
@@ -152,7 +148,6 @@ Decimal phases appear between their surrounding integers in numeric order.
 ### Phase 5: Estabilização de API e release v1.0
 
 **Goal**: A API do alpha é auditada e estabilizada deliberadamente, e então publicada como 1.1.0 com semver disciplinado e um pipeline de release automatizado.
-**Mode:** mvp
 **Depends on**: Phase 4
 **Requirements**: REL-01, REL-03, REL-04
 **Success Criteria** (what must be TRUE):
@@ -183,7 +178,6 @@ Decimal phases appear between their surrounding integers in numeric order.
 ### Phase 6: API de schema com decorators (TC39)
 
 **Goal**: O dev pode definir schemas com decorators TC39 padrão como alternativa de primeira classe à API de objetos, compilando para a mesma representação interna. Feature aditiva pós-v1.0 (minor 1.x).
-**Mode:** mvp
 **Depends on**: Phase 5
 **Requirements**: DECO-01, DECO-02, DECO-03, DECO-04
 **Success Criteria** (what must be TRUE):
@@ -215,7 +209,6 @@ Decimal phases appear between their surrounding integers in numeric order.
 ### Phase 7: Sistema de plugins
 
 **Goal**: O dev pode estender models com plugins reutilizáveis — por model e globais — através de um contrato de plugin tipado e selado. Feature aditiva pós-v1.0 (minor 1.x).
-**Mode:** mvp
 **Depends on**: Phase 5 (usa os hook arrays entregues na Phase 2; independente da Phase 6)
 **Requirements**: PLUG-01, PLUG-02, PLUG-03
 **Success Criteria** (what must be TRUE):
@@ -229,7 +222,6 @@ Decimal phases appear between their surrounding integers in numeric order.
 ### Phase 8: Migrations
 
 **Goal**: O dev ganha um sistema de **migrations versionadas** para evoluir schema (validators/índices) e dados de forma controlada e reversível — a capacidade que faltava para operar a lib em produção ao longo do tempo. Feature aditiva pós-v1.0 (minor 1.x); tirada de "Out of Scope" a pedido do autor.
-**Mode:** mvp
 **Depends on**: Phase 5 (construída sobre a API v1.0 estável; usa o escape hatch nativo e os models)
 **Requirements**: MIG-01, MIG-02, MIG-03
 **Success Criteria** (what must be TRUE):
