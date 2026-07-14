@@ -8,6 +8,7 @@ import {
 } from 'mongodb';
 
 import type { HookConfig, HookContextMap, OnHookError } from '@/types/hooks';
+import type { SchemaClass } from '@/types/schema';
 
 /**
  * Vendored subset of the JSON Schema Draft 4 `JSONSchema4` interface
@@ -44,7 +45,12 @@ export type DocumentDefaults<T extends Document> =
 
 export interface CreateModelProps<ModelType extends Document> {
   allowedMethods?: METHODS[];
-  collectionName: string;
+  /**
+   * Optional when `schema` is a class decorated with `@Schema('name')` — the
+   * decorated class provides a default `collectionName`. When provided
+   * here, it always overrides the class default (D-06).
+   */
+  collectionName?: string;
   documentDefaults?: DocumentDefaults<ModelType>;
   /**
    * Declarative pre/post hook registration — merged BEFORE any later
@@ -59,7 +65,12 @@ export interface CreateModelProps<ModelType extends Document> {
    * swallowed in total silence).
    */
   onHookError?: OnHookError<HookContextMap<ModelType>[METHODS]>;
-  schema: ModelValidationSchema;
+  /**
+   * Accepts either a plain `ModelValidationSchema` object or a class
+   * decorated with `@Schema`/`@Prop` — the two schema declaration styles
+   * are interchangeable and compile to the same validator.
+   */
+  schema: ModelValidationSchema | SchemaClass<ModelType>;
   validationQueryExpressions?: ValidationQueryExpressions;
   validity?: boolean;
 }

@@ -40,6 +40,7 @@ import {
   ModelValidationSchema,
   ValidationQueryExpressions,
 } from '@/types/model';
+import type { SchemaClass } from '@/types/schema';
 import {
   HookConfig,
   HookContextMap,
@@ -55,6 +56,8 @@ import {
   MongoatDriverError,
   MongoatValidationError,
 } from '@/errors';
+import { Schema } from '@/schema';
+import { kMongoatSchemaClass } from '@/schema/decorators';
 import { toObjectId } from '@/utils';
 
 const kDatabase = Symbol('kDatabase');
@@ -243,6 +246,20 @@ function isSameConfig(
   );
 }
 
+/**
+ * D-06/D-08: reads the default `collectionName` written on a decorated
+ * schema class by `@Schema('name')` (`kMongoatSchemaClass` marker). Returns
+ * `undefined` when the class carries no marker (never happens for a class
+ * that went through `@Schema`, since `Schema.compile` already throws
+ * `INVALID_DECORATED_CLASS` before this is reached) or when `@Schema()` was
+ * called without a `collectionName` argument.
+ */
+function getDefaultCollectionName(cls: SchemaClass): string | undefined {
+  return (cls as unknown as Record<symbol, { collectionName?: string }>)[
+    kMongoatSchemaClass
+  ]?.collectionName;
+}
+
 export class Model<ModelType extends Document = Document> {
   collectionName!: string;
 
@@ -259,6 +276,15 @@ export class Model<ModelType extends Document = Document> {
   allowedMethods!: METHODS[];
 
   documentDefaults!: DocumentDefaults<ModelType>;
+
+  /**
+   * D-08/D-12: reference to the decorated schema class this model was built
+   * from — `undefined` when the model was built from a plain
+   * `ModelValidationSchema` object. Used by `insert`/`insertMany`/
+   * `bulkWrite` to instantiate a FRESH instance per document (D-12),
+   * collecting its field initializers as per-insert defaults.
+   */
+  private schemaClass: SchemaClass<ModelType> | undefined;
 
   /**
    * Hook registry — one `{ pre: []; post: [] }` array pair per `METHODS`
@@ -330,13 +356,42 @@ export class Model<ModelType extends Document = Document> {
         ]
       : allowedMethods;
 
+    // D-08: `schema` accepts a plain `ModelValidationSchema` OR a class
+    // decorated with `@Schema`/`@Prop` — a decorated class is, at runtime,
+    // just a `function` (the constructor); a plain schema object is never
+    // callable and declares `bsonType` directly. Resolved BEFORE
+    // `schemaValidatorBuilder`, which keeps receiving only the plain
+    // `ModelValidationSchema` shape — it stays entirely unaware of
+    // decorators.
+    const isDecoratedSchemaClass = typeof schema === 'function';
+
+    const resolvedSchema = isDecoratedSchemaClass
+      ? Schema.compile(schema as SchemaClass<ModelType>)
+      : (schema as ModelValidationSchema);
+
+    // D-06: the class-level `@Schema('name')` collectionName is only a
+    // DEFAULT — an explicit `collectionName` in the model config always
+    // wins.
+    const resolvedCollectionName =
+      collectionName ??
+      (isDecoratedSchemaClass
+        ? getDefaultCollectionName(schema as SchemaClass<ModelType>)
+        : undefined);
+
+    if (!resolvedCollectionName) {
+      throw new MongoatValidationError(
+        'collectionName is required — provide it in the model config or via @Schema("name")',
+        { code: 'VALIDATION_FAILED' }
+      );
+    }
+
     // Built before the existing-registration check (still fully
     // synchronous — no `await` between this and `registerModel()` below,
     // D-07) so `isSameConfig` has the fully-resolved validator to compare
     // against when the collection is already registered (D-06).
     const { validationAction, validationLevel, validator } =
       this.schemaValidatorBuilder({
-        schema,
+        schema: resolvedSchema,
         validationQueryExpressions,
       });
 
@@ -347,7 +402,7 @@ export class Model<ModelType extends Document = Document> {
     // candidate config is compared against the registered one:
     // identical → reuse the existing (Proxy-wrapped) instance;
     // divergent → fail loudly instead of masking the mismatch.
-    const existing = Model[kDatabase].getModel(collectionName);
+    const existing = Model[kDatabase].getModel(resolvedCollectionName);
 
     if (existing) {
       if (
@@ -364,12 +419,15 @@ export class Model<ModelType extends Document = Document> {
       // Only the collectionName + the fact of divergence — never the
       // schema content itself (Information Disclosure, T-01-05-01).
       throw new MongoatValidationError(
-        `Model "${collectionName}" already registered with a different configuration`,
+        `Model "${resolvedCollectionName}" already registered with a different configuration`,
         { code: 'MODEL_CONFIG_CONFLICT' }
       );
     }
 
-    this.collectionName = collectionName;
+    this.collectionName = resolvedCollectionName;
+    this.schemaClass = isDecoratedSchemaClass
+      ? (schema as SchemaClass<ModelType>)
+      : undefined;
     this.indexes = indexes;
     this.allowedMethods = _allowedMethods;
     // WR-06: nunca guardar a referência do chamador — mutações posteriores
