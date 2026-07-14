@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { BsonType, Description, Prop, Schema } from '@/schema';
+import { BsonType, Description, Optional, Prop, Schema } from '@/schema';
 import { ModelValidationSchema } from '@/types';
 
 /**
@@ -150,5 +150,95 @@ describe('Compile recursivo de schemas aninhados/arrays (D-05)', () => {
     expect(stableStringify(Schema.compile(Order))).toBe(
       stableStringify(plainEquivalent)
     );
+  });
+
+  it('WR-06: classe aninhada totalmente opcional via @Prop({ type }) OMITE a chave required (vazia)', () => {
+    @Schema('nested-all-optional-type')
+    class AllOptionalNested {
+      @Optional()
+      @Prop({ bsonType: 'string' })
+      nickname?: string;
+
+      @Optional()
+      @Prop({ bsonType: 'int' })
+      age?: number;
+    }
+
+    @Schema('nested-parent-all-optional-type')
+    class ParentWithAllOptionalNested {
+      @Prop({ type: AllOptionalNested })
+      profile?: AllOptionalNested;
+    }
+
+    const compiled = Schema.compile(ParentWithAllOptionalNested);
+
+    expect(compiled.properties?.profile).toEqual({
+      bsonType: 'object',
+      properties: {
+        nickname: { bsonType: 'string' },
+        age: { bsonType: 'int' },
+      },
+      // Nenhuma chave `required` — deep-equal ao objeto plano equivalente
+      // que um dev escreveria à mão para um subschema totalmente opcional.
+    });
+    expect(compiled.properties?.profile).not.toHaveProperty('required');
+  });
+
+  it('WR-06: classe aninhada totalmente opcional via @Prop({ items }) OMITE a chave required (vazia) em items', () => {
+    @Schema('nested-all-optional-items')
+    class AllOptionalItem {
+      @Optional()
+      @Prop({ bsonType: 'string' })
+      label?: string;
+    }
+
+    @Schema('nested-parent-all-optional-items')
+    class ParentWithAllOptionalItems {
+      @Prop({ bsonType: 'array', items: AllOptionalItem })
+      tags?: AllOptionalItem[];
+    }
+
+    const compiled = Schema.compile(ParentWithAllOptionalItems);
+
+    expect(compiled.properties?.tags).toEqual({
+      bsonType: 'array',
+      items: {
+        bsonType: 'object',
+        properties: { label: { bsonType: 'string' } },
+      },
+    });
+    expect(
+      (compiled.properties?.tags as { items?: Record<string, unknown> })
+        ?.items
+    ).not.toHaveProperty('required');
+  });
+
+  it('não-regressão: subschema aninhado com pelo menos um campo required continua emitindo required', () => {
+    @Schema('nested-mixed-required')
+    class MixedNested {
+      @Prop({ bsonType: 'string' })
+      mandatory?: string;
+
+      @Optional()
+      @Prop({ bsonType: 'string' })
+      optionalField?: string;
+    }
+
+    @Schema('nested-parent-mixed-required')
+    class ParentWithMixedNested {
+      @Prop({ type: MixedNested })
+      details?: MixedNested;
+    }
+
+    const compiled = Schema.compile(ParentWithMixedNested);
+
+    expect(compiled.properties?.details).toEqual({
+      bsonType: 'object',
+      properties: {
+        mandatory: { bsonType: 'string' },
+        optionalField: { bsonType: 'string' },
+      },
+      required: ['mandatory'],
+    });
   });
 });

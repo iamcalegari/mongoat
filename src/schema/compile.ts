@@ -70,9 +70,26 @@ export function compile(cls: SchemaClass): ModelValidationSchema {
   // `type`/`items` (D-05), que `structuredClone` não sabe clonar
   // (`DataCloneError`).
   //
+  // D-04: `required` filtrado contra `optionalFields` AQUI (compile), não
+  // no momento em que `@Optional()` roda — ver JSDoc de
+  // FieldMeta.optionalFields para o porquê (idempotência independente da
+  // ordem textual dos decorators no mesmo campo).
+  const required = meta.required.filter(
+    (fieldName) => !meta.optionalFields.includes(fieldName)
+  );
+
   // D-03/DECO-03: devolve o ModelValidationSchema "cru" equivalente ao
   // objeto plano escrito à mão — additionalProperties/_id/required de _id
   // são responsabilidade do schemaValidatorBuilder no Model, não daqui.
+  //
+  // WR-06: `required` só é emitido quando o array filtrado é NÃO-vazio — o
+  // `$jsonSchema` do MongoDB REJEITA `required: []` num subschema aninhado
+  // (createCollection/collMod). No nível raiz o gap é mascarado porque o
+  // `schemaValidatorBuilder` do Model sempre anexa `_id` a `required`; uma
+  // classe decorada aninhada totalmente opcional (via `@Prop({ type })` ou
+  // `items:`) passa por este MESMO `compile()` recursivamente
+  // (`resolveNestedSchema` → `compile`), então a correção aqui propaga sem
+  // precisar tocar `compileProperty`/`resolveNestedSchema`.
   return {
     bsonType: 'object',
     properties: Object.fromEntries(
@@ -81,13 +98,7 @@ export function compile(cls: SchemaClass): ModelValidationSchema {
         compileProperty(fragment),
       ])
     ),
-    // D-04: `required` filtrado contra `optionalFields` AQUI (compile), não
-    // no momento em que `@Optional()` roda — ver JSDoc de
-    // FieldMeta.optionalFields para o porquê (idempotência independente da
-    // ordem textual dos decorators no mesmo campo).
-    required: meta.required.filter(
-      (fieldName) => !meta.optionalFields.includes(fieldName)
-    ),
+    ...(required.length > 0 ? { required } : {}),
   } as ModelValidationSchema;
 }
 
