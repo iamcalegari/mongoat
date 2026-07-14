@@ -193,7 +193,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. Uma classe decorada compila (`Schema.compile`) para o mesmo `ModelValidationSchema` da API de objetos; as duas APIs coexistem como cidadãs de primeira classe.
   4. O construtor do Model aceita de forma transparente tanto uma classe decorada quanto um objeto plano.
 
-**Plans**: 4/4 plans complete
+**Plans**: 5 plans (06-01..06-04 completos; 06-05 fechamento de gaps pendente — verificação achou 2 gaps, 12/14 must-haves)
 
 **Wave 1**
 
@@ -207,6 +207,10 @@ Decimal phases appear between their surrounding integers in numeric order.
 **Wave 3** *(blocked on Wave 2)*
 
 - [x] 06-04-PLAN.md — Hooks via decorator: @Pre (classe+campo), @Post (classe), ordem D-11 + INVALID_HOOK_METHOD (DECO-02)
+
+**Wave 1 (fechamento de gaps)** *(pós-verificação — corrige código já entregue em 06-01..06-04)*
+
+- [ ] 06-05-PLAN.md — Fecha 2 gaps: @Pre de campo aguarda transform async + guarda campo ausente (CR-01/WR-05); Schema.compile omite `required` vazio em classe aninhada totalmente opcional (WR-06) (DECO-02, DECO-03)
 
 ### Phase 7: Sistema de plugins
 
