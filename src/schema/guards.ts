@@ -1,4 +1,5 @@
 import { MongoatValidationError } from '@/errors';
+import { METHODS } from '@/utils/enums';
 
 /**
  * @public
@@ -26,6 +27,28 @@ export function assertStandardDecoratorMode(context: unknown): void {
         'supports standard TC39 decorators (TypeScript 5.x). ' +
         'See: https://iamcalegari.github.io/mongoat/',
       { code: 'LEGACY_DECORATORS_MODE' }
+    );
+  }
+}
+
+/**
+ * @internal
+ *
+ * D-14: valida `method` contra o enum `METHODS` na DECORAÇÃO de `@Pre`/
+ * `@Post` (não no compile/construção do Model) — um nome de método
+ * inexistente registraria um hook que NUNCA dispara, silenciosamente
+ * (T-06-04-02). Erro local: estoura já na avaliação da classe, com a stack
+ * apontando para a linha exata do decorator.
+ *
+ * Throws `MongoatValidationError` with code `INVALID_HOOK_METHOD`.
+ */
+export function assertKnownHookMethod(method: string): void {
+  const validMethods = Object.values(METHODS) as string[];
+
+  if (!validMethods.includes(method)) {
+    throw new MongoatValidationError(
+      `Unknown hook method "${method}" — must be one of: ${validMethods.join(', ')}`,
+      { code: 'INVALID_HOOK_METHOD' }
     );
   }
 }

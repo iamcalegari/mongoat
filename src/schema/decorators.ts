@@ -4,7 +4,7 @@ import { MongoatValidationError } from '@/errors';
 import type { FieldMeta, PropFragment } from '@/types/schema';
 
 import { compile, SCHEMA_METADATA_KEY } from './compile';
-import { assertStandardDecoratorMode } from './guards';
+import { assertKnownHookMethod, assertStandardDecoratorMode } from './guards';
 
 /**
  * @internal
@@ -31,6 +31,7 @@ function getOrInitMeta(metadata: Record<PropertyKey, unknown>): FieldMeta {
       optionalFields: [],
       fieldPreHooks: [],
       classPreHooks: [],
+      classPostHooks: [],
     } satisfies FieldMeta;
   }
 
@@ -131,6 +132,106 @@ export function Optional() {
     if (!meta.optionalFields.includes(fieldName)) {
       meta.optionalFields.push(fieldName);
     }
+  };
+}
+
+/**
+ * @public
+ *
+ * D-09: registra um hook `pre` no pipeline de hooks JÁ EXISTENTE da Fase 2
+ * (nenhum novo dispatch) — aplicável em CLASSE e em CAMPO:
+ * - Nível de CLASSE: `fn` recebe o `ctx` COMPLETO, mesmo contrato de
+ *   `.pre()`/`props.hooks` (`(ctx) => void | unknown | Promise<...>`).
+ * - Nível de CAMPO: açúcar que transforma SÓ o valor do campo — `fn` tem a
+ *   assinatura `(value, ctx) => novoValor`. NÃO retorna um novo
+ *   inicializador de campo TC39 (o mecanismo de field-initializer do TC39
+ *   nunca é usado aqui) — apenas grava metadata; o registro real no
+ *   pipeline acontece em `extractDecoratorHooks`
+ *   (`src/schema/compile.ts`), consumido pelo constructor do `Model`.
+ *
+ * D-11: a ORDEM de execução final por método é campo → classe → hooks do
+ * config do Model → `.pre()`/`.post()` encadeados — fixada no wiring do
+ * `Model`, não aqui (este decorator só ACUMULA metadata).
+ *
+ * D-14: `method` é validado contra o enum `METHODS` JÁ NA DECORAÇÃO — um
+ * nome de método inexistente estoura `MongoatValidationError` com
+ * `code: 'INVALID_HOOK_METHOD'` imediatamente, em vez de registrar um hook
+ * que nunca dispara.
+ *
+ * @example
+ * ```typescript
+ * class UserSchema {
+ *   @Pre('insert', (value, ctx) => hashPassword(value))
+ *   @Prop({ bsonType: 'string' })
+ *   password!: string;
+ * }
+ * ```
+ */
+export function Pre(method: string, fn: (...args: unknown[]) => unknown) {
+  return function (
+    _value: unknown,
+    context: ClassDecoratorContext | ClassFieldDecoratorContext
+  ): void {
+    assertStandardDecoratorMode(context); // D-16
+    assertKnownHookMethod(method); // D-14
+
+    const meta = getOrInitMeta(
+      context.metadata as unknown as Record<PropertyKey, unknown>
+    );
+
+    if (context.kind === 'field') {
+      meta.fieldPreHooks.push({ field: String(context.name), method, fn });
+      return;
+    }
+
+    meta.classPreHooks.push({ method, fn });
+    // Retorna void de propósito — mesma disciplina de `Prop`/`Optional`:
+    // decorators desta fase só acumulam metadata, nunca alteram o
+    // valor/inicializador do campo ou substituem a classe.
+  };
+}
+
+/**
+ * @public
+ *
+ * D-10: simétrico a `@Pre`, mas SÓ no nível de CLASSE — post por campo não
+ * tem semântica clara (não há um "valor de campo" simétrico ao resultado de
+ * uma operação inteira). `fn` recebe o `ctx` completo, mesmo contrato de
+ * `.post()`/`props.hooks`; aplicar `@Post` a um campo lança
+ * `MongoatValidationError`.
+ *
+ * D-14: `method` é validado contra o enum `METHODS` já na decoração — mesmo
+ * guard de `@Pre`.
+ *
+ * @example
+ * ```typescript
+ * @Post('insert', (ctx) => auditLog(ctx))
+ * @Schema('users')
+ * class UserSchema {
+ *   @Prop({ bsonType: 'string' })
+ *   username!: string;
+ * }
+ * ```
+ */
+export function Post(method: string, fn: (...args: unknown[]) => unknown) {
+  return function (
+    _value: unknown,
+    context: ClassDecoratorContext | ClassFieldDecoratorContext
+  ): void {
+    assertStandardDecoratorMode(context); // D-16
+    assertKnownHookMethod(method); // D-14
+
+    if (context.kind === 'field') {
+      throw new MongoatValidationError(
+        '@Post is only supported at the class level — per-field post hooks have no clear semantics'
+      );
+    }
+
+    const meta = getOrInitMeta(
+      context.metadata as unknown as Record<PropertyKey, unknown>
+    );
+
+    meta.classPostHooks.push({ method, fn });
   };
 }
 

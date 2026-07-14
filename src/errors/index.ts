@@ -45,7 +45,9 @@ export class MongoatError extends Error {
  * (ex.: `INVALID_OBJECT_ID`, `FORBIDDEN_OPERATOR`, `MODEL_CONFIG_CONFLICT`,
  * `INVALID_DECORATED_CLASS` — classe sem campo decorado/não decorada com
  * `@Schema`, `LEGACY_DECORATORS_MODE` — decorator invocado sob
- * `experimentalDecorators`).
+ * `experimentalDecorators`, `INVALID_HOOK_METHOD` — `@Pre`/`@Post`
+ * declarado com um nome de método que não existe no enum de métodos
+ * suportados, detectado já na decoração da classe).
  */
 export class MongoatValidationError extends MongoatError {
   constructor(message: string, options?: { cause?: unknown; code?: string }) {

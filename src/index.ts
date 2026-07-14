@@ -6,7 +6,7 @@ export {
   MongoatValidationError,
 } from './errors';
 export { Model } from './model';
-export { Optional, Prop, Schema } from './schema';
+export { Optional, Post, Pre, Prop, Schema } from './schema';
 export {
   BsonType,
   Description,

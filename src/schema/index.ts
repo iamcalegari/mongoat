@@ -1,4 +1,4 @@
-export { Optional, Prop, Schema } from './decorators';
+export { Optional, Post, Pre, Prop, Schema } from './decorators';
 export {
   BsonType,
   Description,
