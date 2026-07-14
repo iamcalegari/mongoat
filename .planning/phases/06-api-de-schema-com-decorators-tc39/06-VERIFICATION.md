@@ -1,140 +1,133 @@
 ---
 phase: 06-api-de-schema-com-decorators-tc39
-verified: 2026-07-14T00:15:00Z
-status: gaps_found
-score: 12/14 must-haves verified
+verified: 2026-07-14T12:00:00Z
+status: passed
+score: 14/14 must-haves verified
 behavior_unverified: 0
 overrides_applied: 0
-mvp_mode_note: "ROADMAP mode is tagged `mvp`, but the phase Goal text (\"O dev pode definir schemas com decorators TC39 padrão como alternativa de primeira classe à API de objetos, compilando para a mesma representação interna.\") does not match the required User Story format (`As a ..., I want to ..., so that ....`) — gsd_run query user-story.validate returns valid=false. Per the MVP verification protocol this would normally require refusing to verify and asking for `/gsd mvp-phase 6`. Given the phase is fully executed with 4 completed plans, a prior code review, and standard ROADMAP Success Criteria + PLAN must_haves that are fully amenable to standard goal-backward verification, this report proceeds with STANDARD (non-MVP-narrowed) goal-backward verification instead of refusing outright, and surfaces this format mismatch for the human to reconcile with `/gsd mvp-phase 6` retroactively if desired. This is a process/metadata discrepancy, not a code gap."
-gaps:
-  - truth: "@Pre no nível de campo transforma só o valor do campo, sem corromper o dado (D-09)"
-    status: failed
-    reason: "The field-level @Pre wrapper (extractDecoratorHooks in src/schema/compile.ts) assigns document[field] = fn(document[field], ctx) synchronously, but runPreHooks (src/model/hooks.ts:31-38) awaits the WRAPPER, not the dev's fn. When fn is async — the exact canonical example shipped in the @Pre JSDoc (src/schema/decorators.ts:161-168, hashPassword) and in the phase's own <objective> in 06-04-PLAN.md — document[field] is left as a pending, unresolved Promise object. Confirmed empirically in this verification run (see Behavioral Spot-Checks): ctx.document.password ends up as `Promise { 'hashed:plain' }` instead of `'hashed:plain'`. BSON then serializes this incorrectly (empty object or dropped), so the documented flagship use case for field-level @Pre — password hashing — silently corrupts or drops the field on every insert. The only existing test (hooks-decorator-order.test.ts:41-44) uses a synchronous transform and does not exercise this path, so the defect shipped untested. A second, related defect in the same code path (WR-05 in 06-REVIEW.md): the wrapper unconditionally materializes document[field] even when the field is ABSENT from the document (fn(undefined, ctx) still runs and its result is written), which can silently defeat MongoDB's `required` validation for the very field the hook is meant to protect."
-    artifacts:
-      - path: "src/schema/compile.ts"
-        issue: "extractDecoratorHooks field-hook wrapper (lines ~205-221) is a synchronous function that does not await/return the dev's (possibly async) transform, and does not guard against the field being absent from ctx.document"
-    missing:
-      - "Make the field-hook wrapper async and await fn(...): `fn: async (ctx) => { ... document[field] = await fn(document[field], ctx); ... }` — runPreHooks already awaits each hook, so this preserves D-11 ordering."
-      - "Guard the assignment with `Object.hasOwn(document, field)` so an absent field is not materialized, preserving `required` semantics (WR-05)."
-      - "Add a regression test with an async field transform (the exact hashPassword shape from the JSDoc) asserting the persisted value is the resolved string, not a Promise."
-  - truth: "Schema.compile de um schema aninhado totalmente opcional produz um ModelValidationSchema utilizável pelo MongoDB (equivalência DECO-03 em caso extremo)"
-    status: failed
-    reason: "compile() in src/schema/compile.ts:76-91 always emits a `required` array, even when it is empty (a nested decorated class where every field carries @Optional). At the ROOT level this is masked because schemaValidatorBuilder always appends '_id' to required, but a NESTED decorated class reached via @Prop({ type: AllOptionalNested }) or items: AllOptionalNested embeds `required: []` verbatim. MongoDB's $jsonSchema (JSON Schema draft 4) rejects an empty `required` array at createCollection/collMod time — a hand-written plain-object schema avoids this because a dev simply omits the `required` key entirely for an all-optional object. This means the decorator API and the object API are NOT actually interchangeable for this shape, contradicting the phase's stated equivalence goal. No test in nested-compile.test.ts exercises an all-optional nested/array-item class (grep confirms every `required:` assertion in that file is non-empty), so the gap is untested."
-    artifacts:
-      - path: "src/schema/compile.ts"
-        issue: "compile() (root, lines 76-91) and compileProperty()/resolveNestedSchema() (nested, lines 112-140) always include `required`, never omitting it when empty"
-    missing:
-      - "Omit the `required` key from the returned schema when the filtered array is empty: `...(required.length > 0 ? { required } : {})`"
-      - "Add an all-optional nested class (via @Prop({ type }) and via items) to test/schema/nested-compile.test.ts, plus an integration test that actually calls setupCollection with such a schema against real MongoDB (this is a server-side rejection, not a shape mismatch, so a unit-level deep-equal test would not catch it)."
+mvp_mode_note: "ROADMAP mode é tagueado `mvp`, mas o texto do Goal da fase (\"O dev pode definir schemas com decorators TC39 padrão como alternativa de primeira classe à API de objetos, compilando para a mesma representação interna.\") não está no formato User Story (`As a ..., I want to ..., so that ....`) — gsd_run query user-story.validate retorna valid=false. Esta é uma discrepância de processo/metadado, não uma lacuna de código, já registrada na verificação anterior (2026-07-14T00:15:00Z) e mantida aqui sem refazer o refuse-to-verify — a verificação padrão goal-backward é integralmente aplicável (ROADMAP Success Criteria + PLAN must_haves) e foi conduzida normalmente. Reconciliar retroativamente com `/gsd mvp-phase 6` continua opcional."
+re_verification:
+  previous_status: gaps_found
+  previous_score: 12/14
+  gaps_closed:
+    - "@Pre no nível de campo transforma só o valor do campo, sem corromper o dado (D-09) — wrapper agora é async e aguarda fn(...) (CR-01), guardado por Object.hasOwn (WR-05)"
+    - "Schema.compile de um schema aninhado totalmente opcional produz um ModelValidationSchema utilizável pelo MongoDB (equivalência DECO-03 em caso extremo) — compile() omite a chave required quando o array filtrado é vazio (WR-06)"
+  gaps_remaining: []
+  regressions: []
+gaps: []
 human_verification: []
 ---
 
-# Phase 6: API de schema com decorators (TC39) Verification Report
+# Fase 6: API de schema com decorators (TC39) — Relatório de Verificação
 
 **Phase Goal:** O dev pode definir schemas com decorators TC39 padrão como alternativa de primeira classe à API de objetos, compilando para a mesma representação interna. Feature aditiva pós-v1.0 (minor 1.x).
-**Verified:** 2026-07-14T00:15:00Z
-**Status:** gaps_found
-**Re-verification:** No — initial verification
+**Verified:** 2026-07-14T12:00:00Z
+**Status:** passed
+**Re-verification:** Sim — após fechamento de gaps (plano 06-05, commits 13d2c56/60914a0/2b6e2ce)
 
 ## Goal Achievement
+
+Esta é uma RE-VERIFICAÇÃO. A verificação anterior (2026-07-14T00:15:00Z, `status: gaps_found`, 12/14) documentou 2 gaps localizados em `src/schema/compile.ts`. O plano de fechamento `06-05-PLAN.md` executou 3 tarefas TDD (commits `13d2c56`, `60914a0`, `2b6e2ce`) visando fechá-los. Esta rodada re-verifica TODAS as 14 truths empiricamente contra o código atual (HEAD `e0216a8`), com foco reforçado nas 2 que haviam falhado.
 
 ### Observable Truths
 
 | # | Truth | Status | Evidence |
 |---|-------|--------|----------|
-| 1 | Dev define schema com `@Schema`/`@Prop`/`@BsonType`/`@Description`/`@Optional`/`@Pattern` via decorators TC39 padrão, sem `reflect-metadata` nem `experimentalDecorators` (ROADMAP SC1, DECO-01) | ✓ VERIFIED | `src/schema/decorators.ts`, `src/schema/sugars.ts` exist and are exported from `src/index.ts`; `package.json` `dependencies` = `{bson, mongodb}` only (no `reflect-metadata`); `tsconfig.json` has no `experimentalDecorators`; `test/schema/compile-equivalence.test.ts`, `test/schema/sugars.test.ts` pass (25/25 unit tests re-run in this verification) |
-| 2 | `Schema.compile(cls)` produz um `ModelValidationSchema` byte-a-byte igual ao objeto plano equivalente (ROADMAP SC3, DECO-03) | ✓ VERIFIED | `test/schema/compile-equivalence.test.ts` and `test/schema/sugars.test.ts` (`stableStringify` deep-equal assertions) re-run green in this verification; `src/schema/compile.ts:43-92` clones metadata before returning, no additionalProperties/_id duplication |
-| 3 | `@Prop({type: NestedClass})`/`items: NestedClass` compilam recursivamente; subschema inline aceito verbatim (D-05) | ⚠️ VERIFIED for tested shapes / FAILED for untested edge case | `test/schema/nested-compile.test.ts` (4/4) re-run green for the tested shapes; **but** see Gap 2 — an all-optional nested class produces an invalid `required: []` that MongoDB rejects, and no test covers this shape |
-| 4 | O construtor do `Model` aceita de forma transparente classe decorada e objeto plano, produzindo o mesmo validator (ROADMAP SC4, DECO-04, D-08) | ✓ VERIFIED | `test/schema/schema-class-or-plain.test.ts` re-run green; `src/model/index.ts` constructor computes `isDecoratedSchemaClass`/`resolvedSchema` before `schemaValidatorBuilder` (code read) |
-| 5 | `@Schema('nome')` fornece `collectionName` default, sobrescrevível pelo config do Model (D-06) | ✓ VERIFIED | `test/schema/schema-class-or-plain.test.ts` cases re-run green; `getDefaultCollectionName` in `src/model/index.ts` reads `kMongoatSchemaClass` |
-| 6 | Model construído com classe decorada valida/rejeita documentos contra MongoDB real exatamente como o Model equivalente por objeto plano (DECO-04) | ✓ VERIFIED | `test/schema/decorated-vs-plain-parity.test.ts` (3 integration tests against real Mongo via testcontainers) re-run green in this verification session (Docker available, tests executed live, not just trusted from SUMMARY) |
-| 7 | Inicializador de campo (`createdAt = new Date()`) avaliado FRESCO por insert; precedência doc > documentDefaults > inicializador de classe (D-12/D-13) | ✓ VERIFIED | `test/schema/per-insert-defaults.test.ts` (4 integration tests) re-run green against real Mongo; `buildClassDefaults()` in `src/model/index.ts:648-656` instantiates `this.schemaClass` fresh per call, invoked per-document in `insert`/`insertMany`/`bulkWrite` |
-| 8 | Campo declarado sem inicializador (`undefined`) não é injetado no documento — falha por `required`, não por serialização de BSON `Undefined` (Pitfall 3) | ✓ VERIFIED | `ownDefinedProperties()` (`src/model/index.ts:215`) filters `undefined` keys; covered by `per-insert-defaults.test.ts`, re-run green |
-| 9 | WR-04: hook declarado numa re-registração do mesmo `collectionName` nunca é descartado em silêncio — falha alto com `MODEL_CONFIG_CONFLICT` | ✓ VERIFIED | `test/model/registry-config.test.ts` re-run green (both the fail-loud case and the "no-hooks reuse" case); `candidateHasHooks` in `src/model/index.ts:443-482` covers both `props.hooks` and decorated hooks. *Note:* code review WR-03 flags this branch as over-broad (throws even on identical re-registration of the same decorated class+hooks) — a false-positive usability issue, not a silent-discard failure, so the stated must-have truth itself holds; flagged as a non-blocking quality concern below. |
-| 10 | Dev registra hooks no nível da classe via `@Pre`/`@Post` — recebe o `ctx` completo, mesmo contrato do pipeline da Fase 2 (ROADMAP SC2, DECO-02, D-09/D-10) | ✓ VERIFIED | `test/schema/hooks-decorator-order.test.ts` re-run green against real Mongo; class-level hooks are pushed to the pipeline directly (`{method, fn}`, no lossy wrapper) in `extractDecoratorHooks` (`src/schema/compile.ts:223-229`), so async class-level hooks are NOT affected by the bug in Gap 1 |
-| 11 | Ordem de execução determinística: (1) `@Pre` de campo → (2) `@Pre` de classe → (3) hooks do config → (4) `.pre()`/`.post()` encadeados (D-11) | ✓ VERIFIED (for the tested, synchronous case) | `test/schema/hooks-decorator-order.test.ts` re-run green, asserts `['field', 'class', 'config', 'chained']` order via sentinels |
-| 12 | `@Pre` de campo transforma **só** o valor do campo, sem transformar o inicializador TC39 e **sem corromper o dado** (D-09) | ✗ FAILED | **Gap 1** — confirmed empirically in this verification: an async field transform (the JSDoc's own canonical `hashPassword` example) leaves the field as a pending, unresolved `Promise` object rather than the resolved value |
-| 13 | `@Pre` com método inexistente lança `MongoatValidationError`/`INVALID_HOOK_METHOD` já na decoração (D-14) | ✓ VERIFIED | `test/schema/hook-decoration-errors.test.ts` re-run green; `assertKnownHookMethod` in `src/schema/guards.ts` |
-| 14 | 9 açúcares (`@BsonType`, `@Description`, `@Pattern`, `@Enum`, `@Min`, `@Max`, `@MinLength`, `@MaxLength`, `@Optional`) compõem `@Prop` por merge, não replace; `@Optional` idempotente independente da ordem textual (D-02/D-04) | ✓ VERIFIED | `test/schema/sugars.test.ts` re-run green (5/5, includes composition and both-orders `@Optional` cases) |
+| 1 | Dev define schema com `@Schema`/`@Prop`/`@BsonType`/`@Description`/`@Optional`/`@Pattern` via decorators TC39 padrão, sem `reflect-metadata` nem `experimentalDecorators` (ROADMAP SC1, DECO-01) | ✓ VERIFIED | `src/schema/decorators.ts`, `src/schema/sugars.ts` exportados via `src/index.ts`; `package.json` dependencies = `{bson, mongodb}` (sem `reflect-metadata`); `tsconfig.json` sem `experimentalDecorators`; suíte completa (`npx vitest run`) re-executada nesta verificação: 45 arquivos / 168 testes, todos verdes |
+| 2 | `Schema.compile(cls)` produz um `ModelValidationSchema` byte-a-byte igual ao objeto plano equivalente (ROADMAP SC3, DECO-03) | ✓ VERIFIED | `test/schema/compile-equivalence.test.ts` re-executado verde nesta sessão; `src/schema/compile.ts:43-103` lido linha a linha — clone antes de repassar, sem duplicação de `additionalProperties`/`_id` |
+| 3 | `@Prop({type: NestedClass})`/`items: NestedClass` compilam recursivamente; subschema inline aceito verbatim (D-05) | ✓ VERIFIED (agora sem exceção de caso extremo) | `test/schema/nested-compile.test.ts` re-executado verde, incluindo os 2 novos casos WR-06 (classe aninhada totalmente opcional via `type` e via `items`, deep-equal ao objeto plano sem a chave `required`) e o caso de não-regressão (`required` não-vazio permanece emitido) |
+| 4 | O construtor do `Model` aceita de forma transparente classe decorada e objeto plano, produzindo o mesmo validator (ROADMAP SC4, DECO-04, D-08) | ✓ VERIFIED | `test/schema/schema-class-or-plain.test.ts` re-executado verde; código lido em `src/model/index.ts` |
+| 5 | `@Schema('nome')` fornece `collectionName` default, sobrescrevível pelo config do Model (D-06) | ✓ VERIFIED | `test/schema/schema-class-or-plain.test.ts` re-executado verde |
+| 6 | Model construído com classe decorada valida/rejeita documentos contra MongoDB real exatamente como o Model equivalente por objeto plano (DECO-04) | ✓ VERIFIED | `test/schema/decorated-vs-plain-parity.test.ts` (3 testes de integração, testcontainers/MongoDB real) re-executado verde nesta sessão |
+| 7 | Inicializador de campo (`createdAt = new Date()`) avaliado FRESCO por insert; precedência doc > documentDefaults > inicializador de classe (D-12/D-13) | ✓ VERIFIED | `test/schema/per-insert-defaults.test.ts` re-executado verde contra MongoDB real; `buildClassDefaults()` (`src/model/index.ts`) instancia a classe fresca por chamada |
+| 8 | Campo declarado sem inicializador (`undefined`) não é injetado no documento — falha por `required`, não por serialização de BSON `Undefined` (Pitfall 3) | ✓ VERIFIED | `ownDefinedProperties()` filtra chaves `undefined`; coberto por `per-insert-defaults.test.ts`, re-executado verde |
+| 9 | WR-04: hook declarado numa re-registração do mesmo `collectionName` nunca é descartado em silêncio — falha alto com `MODEL_CONFIG_CONFLICT` | ✓ VERIFIED | `test/model/registry-config.test.ts` re-executado verde; `candidateHasHooks` cobre `props.hooks` e hooks decorados |
+| 10 | Dev registra hooks no nível da classe via `@Pre`/`@Post` — recebe o `ctx` completo, mesmo contrato do pipeline da Fase 2 (ROADMAP SC2, DECO-02, D-09/D-10) | ✓ VERIFIED | `test/schema/hooks-decorator-order.test.ts` re-executado verde contra MongoDB real; hooks de classe são empurrados sem wrapper (`extractDecoratorHooks` linhas 250-256), portanto não afetados pelo bug do Gap 1 fechado |
+| 11 | Ordem de execução determinística: (1) `@Pre` de campo → (2) `@Pre` de classe → (3) hooks do config → (4) `.pre()`/`.post()` encadeados (D-11) | ✓ VERIFIED | `test/schema/hooks-decorator-order.test.ts` re-executado verde; código lido em `src/model/hooks.ts:31-38` — `runPreHooks` continua `for...of` + `await hook(ctx)`, sequencial, sem `Promise.all`; o `await` extra dentro do wrapper de campo (Gap 1 fix) não altera a ordem de registro, só o timing de gravação do valor |
+| 12 | `@Pre` de campo transforma **só** o valor do campo, sem transformar o inicializador TC39 e **sem corromper o dado** (D-09) | ✓ VERIFIED (GAP FECHADO) | `src/schema/compile.ts:229-246` lido: o wrapper de `extractDecoratorHooks` agora é `async` e faz `document[field] = await fn(document[field], ctx)`, guardado por `Object.hasOwn(document, field)`. Confirmado empiricamente por `test/schema/field-hook-async.test.ts` re-executado nesta sessão: (a) unit — `ctx.document.password` termina como `'hashed:plain'`, não uma Promise; (b) integração real contra MongoDB — `inserted.password === 'hashed:plain'` (`typeof === 'string'`); (c) campo `required` ausente do doc de entrada continua rejeitado (`MongoatDriverError`), provando que o wrapper não materializa campo ausente |
+| 13 | `@Pre` com método inexistente lança `MongoatValidationError`/`INVALID_HOOK_METHOD` já na decoração (D-14) | ✓ VERIFIED | `test/schema/hook-decoration-errors.test.ts` re-executado verde |
+| 14 | 9 açúcares (`@BsonType`, `@Description`, `@Pattern`, `@Enum`, `@Min`, `@Max`, `@MinLength`, `@MaxLength`, `@Optional`) compõem `@Prop` por merge, não replace; `@Optional` idempotente independente da ordem textual (D-02/D-04) | ✓ VERIFIED | `test/schema/sugars.test.ts` re-executado verde |
 
-**Score:** 12/14 truths verified (2 failed — see Gaps)
+**Score:** 14/14 truths verified (0 falhas)
+
+### Truths adicionais introduzidas pelo plano de fechamento (06-05, DECO-02/DECO-03)
+
+Estas não substituem as 14 acima — são o detalhe de fechamento das truths #3 e #12, incluídas por completude e já refletidas no score acima.
+
+| # | Truth (06-05) | Status | Evidence |
+|---|-------|--------|----------|
+| G1 | Um `@Pre` de campo com transform ASSÍNCRONO grava no documento o VALOR RESOLVIDO, nunca uma Promise pendente; persiste corretamente contra MongoDB real (CR-01) | ✓ VERIFIED | `test/schema/field-hook-async.test.ts` — unit + integração, re-executados |
+| G2 | Um `@Pre` de campo cujo campo está AUSENTE do documento não materializa o campo — `required` do MongoDB continua rejeitando (WR-05) | ✓ VERIFIED | mesmo arquivo, caso "campo AUSENTE... nunca é materializado" (unit) + "segue rejeitado pelo required" (integração) |
+| G3 | `Schema.compile` de uma classe decorada aninhada totalmente opcional OMITE `required` quando vazia; aceito pelo `$jsonSchema` do MongoDB em `setupCollection` (WR-06) | ✓ VERIFIED | `test/schema/nested-compile.test.ts` (unit, deep-equal) + `test/schema/all-optional-nested-setup.test.ts` (integração, `setupCollection` real via `type` e via `items`, resolve sem lançar, inserts aceitos) |
 
 ### Required Artifacts
 
 | Artifact | Expected | Status | Details |
 |----------|----------|--------|---------|
-| `src/schema/polyfill.ts` | `Symbol.metadata` side-effect polyfill | ✓ VERIFIED | Exists, imported first line of `decorators.ts` |
-| `src/schema/guards.ts` | `assertStandardDecoratorMode`, `assertKnownHookMethod` | ✓ VERIFIED | Both present, used at the top of every exported decorator |
-| `src/schema/decorators.ts` | `Prop`, `Optional`, `Pre`, `Post`, `Schema` | ✓ VERIFIED | All present, all metadata-only (no field-initializer return) |
-| `src/schema/compile.ts` | `compile`, `compileProperty`, `resolveNestedSchema`, `extractDecoratorHooks` | ✓ VERIFIED (with Gap 1 & 2 defects inside) | Present and wired, but two of its internal behaviors are incorrect (see Gaps) |
-| `src/schema/sugars.ts` | 8 sugar decorators | ✓ VERIFIED | One thin function per sugar, `Prop({...fragment})` |
-| `src/schema/index.ts` / `src/index.ts` | barrel re-exports, no new subpaths | ✓ VERIFIED | `Schema, Prop, Optional, Pre, Post, BsonType, Description, Enum, Max, MaxLength, Min, MinLength, Pattern, SchemaClass` all exported from `src/index.ts`; `package.json` `exports` map still only `.` |
-| `src/types/schema.ts` | `SchemaClass<T>`, `FieldMeta`, `PropFragment`, `NestedSchemaValue` | ✓ VERIFIED | Present |
-| `scripts/smoke-decorators.mjs` | production build + node-real execution gate | ✓ VERIFIED | Re-executed live in this verification: `npm run build` succeeds, CJS/ESM import cleanly, decorated fixture transpiled by the production tsdown+babel chain runs correctly in real node — "ALL GREEN" |
-| `test/schema/*.test.ts` (9 files) | unit + integration coverage | ✓ VERIFIED (exists and passes) | All 9 files re-run live in this verification (unit: compile-equivalence, legacy-mode-guard, sugars, nested-compile, hook-decoration-errors, schema-class-or-plain — 25/25; integration against real Mongo: decorated-vs-plain-parity, per-insert-defaults, hooks-decorator-order — 15/15, plus registry-config.test.ts) — but green tests do not exercise the async field-hook path, which is exactly where Gap 1 lives |
+| `src/schema/compile.ts` | `compile`, `compileProperty`, `resolveNestedSchema`, `extractDecoratorHooks` | ✓ VERIFIED | Lido integralmente nesta verificação — `compile()` (linha 101) emite `required` via spread condicional `...(required.length > 0 ? { required } : {})`; `extractDecoratorHooks` (linhas 229-246) usa wrapper `async`/`await` guardado por `Object.hasOwn` |
+| `test/schema/field-hook-async.test.ts` | novo — regressão CR-01/WR-05 | ✓ VERIFIED | Existe, 4 testes (2 unit + 2 integração), todos verdes |
+| `test/schema/all-optional-nested-setup.test.ts` | novo — integração `setupCollection` WR-06 | ✓ VERIFIED | Existe, 4 testes de integração contra MongoDB real, todos verdes |
+| `test/schema/nested-compile.test.ts` | estendido — casos aninhados totalmente opcionais | ✓ VERIFIED | 2 novos casos WR-06 + 1 caso de não-regressão presentes e verdes |
+| `scripts/smoke-decorators.mjs` | produção build + execução node real | ✓ VERIFIED | `npm run build` re-executado nesta verificação: build CJS+ESM completo sem erros |
+
+(Demais artefatos da fase — `src/schema/polyfill.ts`, `guards.ts`, `decorators.ts`, `sugars.ts`, `src/types/schema.ts`, barrel exports — inalterados desde a verificação inicial, onde já haviam sido confirmados; não modificados por 06-05, não re-detalhados aqui.)
 
 ### Key Link Verification
 
 | From | To | Via | Status | Details |
 |------|-----|-----|--------|---------|
-| `tsdown.config.mjs` | `@rolldown/plugin-babel` | plugin registered, filtered to `src/schema/**` | ✓ WIRED | Confirmed by re-running `scripts/smoke-decorators.mjs` end-to-end (real build) |
-| `src/schema/decorators.ts` | `src/schema/polyfill.ts` | first-line import | ✓ WIRED | Confirmed by reading `decorators.ts:1` |
-| `src/index.ts` | `src/schema/*` | barrel re-export | ✓ WIRED | Confirmed by reading `src/index.ts` and `package.json` exports |
-| `src/model/index.ts` constructor | `Schema.compile` | `isDecoratedSchemaClass` branch, runs before `schemaValidatorBuilder` | ✓ WIRED | Confirmed by reading `src/model/index.ts` and passing `schema-class-or-plain.test.ts` |
-| `src/model/index.ts` insert/insertMany/bulkWrite | `buildClassDefaults()` | merge order `classDefaults → documentDefaults → user doc` | ✓ WIRED | Confirmed by reading merge sites (lines ~909, ~959, ~1166) and `per-insert-defaults.test.ts` passing |
-| `src/schema/compile.ts extractDecoratorHooks` | `src/model/index.ts this.hooks[method]` | registered before `props.hooks`, D-11 order | ✓ WIRED (order) / ✗ BROKEN (value correctness for async field hooks) | Order confirmed by `hooks-decorator-order.test.ts`; value correctness disproven for the async case — see Gap 1 |
+| `src/schema/compile.ts extractDecoratorHooks` (wrapper de campo) | `src/model/hooks.ts runPreHooks` | `for...of` + `await hook(ctx)` sequencial | ✓ WIRED (order + correção de valor) | Antes: valor correto mas timing quebrado para `fn` async. Agora: `await` no wrapper é aguardado corretamente pelo `runPreHooks` já sequencial — ordem D-11 preservada, valor resolvido antes da gravação. Confirmado por leitura de código + `hooks-decorator-order.test.ts` (ordem) + `field-hook-async.test.ts` (valor) |
+| `src/schema/compile.ts compile()` (recursivo via `resolveNestedSchema`) | `$jsonSchema` do MongoDB (`db.setupCollection`) | omissão condicional de `required` | ✓ WIRED | `all-optional-nested-setup.test.ts` confirma que `setupCollection` resolve sem lançar e os inserts subsequentes são aceitos — efeito server-side real, não apenas shape unitário |
 
 ### Behavioral Spot-Checks
 
 | Behavior | Command | Result | Status |
 |----------|---------|--------|--------|
-| Production build lowers TC39 decorators and runs in real node | `node scripts/smoke-decorators.mjs` | "ALL GREEN — production chain lowers TC39 decorators and runs in real node" | ✓ PASS |
-| `npm run typecheck` | `tsc --noEmit` | exit 0 | ✓ PASS |
-| Unit schema tests | `npx vitest run test/schema/{compile-equivalence,legacy-mode-guard,sugars,nested-compile,hook-decoration-errors,schema-class-or-plain}.test.ts` | 6 files / 25 tests passed | ✓ PASS |
-| Integration schema tests (real Mongo via testcontainers, Docker available) | `npx vitest run test/schema/{decorated-vs-plain-parity,per-insert-defaults,hooks-decorator-order}.test.ts test/model/registry-config.test.ts` | 4 files / 15 tests passed | ✓ PASS |
-| **Field-level `@Pre` async transform** (targeted spot-check written for this verification, not part of the shipped suite) | Minimal repro: `@Pre('insert', (value) => hashPassword(value))` where `hashPassword` is `async`; invoked `extractDecoratorHooks(cls).pre[0].fn(ctx)` under `await`, mirroring `runPreHooks` | `ctx.document.password` = `Promise { 'hashed:plain' }` (expected `'hashed:plain'`) | ✗ FAIL — confirms Gap 1 |
+| `npm run typecheck` (`tsc --noEmit`) | `npx tsc --noEmit` | exit 0, sem output | ✓ PASS |
+| `npm run build` (produção, CJS+ESM) | `npm run build` | build completo, `lib/index.cjs`/`lib/index.mjs`/`.d.ts` gerados sem erro | ✓ PASS |
+| Suíte completa (rodada UMA vez nesta verificação) | `npx vitest run` | 45 arquivos / 168 testes, todos verdes (11.88s) | ✓ PASS |
+| Debt markers (`TBD`/`FIXME`/`XXX`) nos arquivos modificados por 06-05 | `grep -n -E "TBD\|FIXME\|XXX" src/schema/compile.ts test/schema/field-hook-async.test.ts test/schema/all-optional-nested-setup.test.ts test/schema/nested-compile.test.ts` | nenhum match | ✓ PASS |
+| Commits das 3 tarefas de 06-05 existem no histórico | `git log --oneline` | `13d2c56`, `60914a0`, `2b6e2ce` presentes, com diffs correspondentes exatamente ao que a SUMMARY reivindica | ✓ PASS |
 
 ### Requirements Coverage
 
 | Requirement | Source Plan | Description | Status | Evidence |
 |-------------|-------------|-------------|--------|----------|
-| DECO-01 | 06-01, 06-03 | Dev pode definir schema via decorators TC39 padrão sem reflect-metadata/flags experimentais | ✓ SATISFIED | Truths #1, #14 verified; build/runtime gate verified live |
-| DECO-02 | 06-04 | Dev pode registrar hooks no nível da classe via `@Pre` | ⚠️ PARTIALLY SATISFIED | Class-level `@Pre`/`@Post` fully verified (truth #10, #11, #13); **field-level `@Pre` (the phase's own flagship documented example) is broken for async transforms (Gap 1)** |
-| DECO-03 | 06-01, 06-03 | Classes decoradas compilam para o mesmo `ModelValidationSchema`; as duas APIs coexistem como cidadãs de primeira classe | ⚠️ PARTIALLY SATISFIED | Verified for all tested shapes (truth #2); **fails for the untested all-optional-nested shape (Gap 2)**, where the decorator API and the object API stop being interchangeable |
-| DECO-04 | 06-02 | Construtor do Model aceita classe decorada ou objeto plano de forma transparente | ✓ SATISFIED | Truths #4, #5, #6, #7, #8, #9 all verified live against real MongoDB |
+| DECO-01 | 06-01, 06-03 | Dev pode definir schema via decorators TC39 padrão sem reflect-metadata/flags experimentais | ✓ SATISFIED | Truths #1, #14 verificadas; build/runtime gate verificado |
+| DECO-02 | 06-04, 06-05 | Dev pode registrar hooks no nível da classe via `@Pre` (e — fechado nesta rodada — `@Pre` de campo não corrompe o dado com transforms assíncronos) | ✓ SATISFIED | Truths #10, #11, #13 (classe) + #12/G1/G2 (campo, gap fechado) todas verificadas empiricamente |
+| DECO-03 | 06-01, 06-03, 06-05 | Classes decoradas compilam para o mesmo `ModelValidationSchema`; as duas APIs coexistem como cidadãs de primeira classe (inclusive no caso extremo aninhado-opcional) | ✓ SATISFIED | Truth #2, #3 (agora sem exceção) + G3 (gap fechado, inclusive efeito server-side em `setupCollection`) |
+| DECO-04 | 06-02 | Construtor do Model aceita classe decorada ou objeto plano de forma transparente | ✓ SATISFIED | Truths #4, #5, #6, #7, #8, #9 verificadas contra MongoDB real |
 
-No orphaned requirements — DECO-01..04 are the complete set for Phase 6 in `.planning/REQUIREMENTS.md`, and all four are declared across the four plans' `requirements:` frontmatter with no gaps in the mapping.
+Sem requisitos órfãos — DECO-01..04 são o conjunto completo da Fase 6 em `.planning/REQUIREMENTS.md` (linhas 48-51, todas marcadas `[x]`; tabela de status linhas 120-123, todas "Complete"), e todas as 4 estão declaradas no `requirements:` frontmatter de algum plano (06-01..06-05) sem lacunas de mapeamento.
 
 ### Anti-Patterns Found
 
-The prior code review (`.planning/phases/06-api-de-schema-com-decorators-tc39/06-REVIEW.md`, 1 Critical / 9 Warning / 5 Info) was independently re-verified for the items most relevant to the stated must-haves:
+`06-REVIEW.md` foi atualizado após o fechamento de gaps (commit `e0216a8`, "docs(06): update code review report after gap closure (0C/10W/8I)") e confirma independentemente:
 
-| File | Finding | Severity | Independently confirmed in this verification? |
-|------|---------|----------|------------------------------------------------|
-| `src/schema/compile.ts:205-221` | CR-01: async field `@Pre` stores a pending Promise | Critical | ✓ Yes — reproduced empirically (see Behavioral Spot-Checks) → promoted to **Gap 1** |
-| `src/schema/compile.ts:76-92, 112-140` | WR-06: nested `required: []` rejected by MongoDB | Warning | ✓ Yes — confirmed by code read + absence of an all-optional test case → promoted to **Gap 2** (breaks the phase's stated equivalence goal for this shape) |
-| `src/schema/compile.ts:214-219` | WR-05: field `@Pre` materializes absent fields, can mask `required` | Warning | ✓ Yes — confirmed by code read (unconditional `if (document)` with no `Object.hasOwn` check); bundled into **Gap 1** since it is the same wrapper |
-| `src/model/index.ts:233-267, 454-482` | WR-02: `isSameConfig` ignores `schemaClass` — class defaults can be silently discarded on re-registration with an equivalent compiled schema | Warning | Confirmed by code read; **not** promoted to a gap because no PLAN must-have in this phase asserts this specific comparison (WR-04's stated must-have is about hooks, not schema-class identity) — flagged here for follow-up, not blocking |
-| `src/model/index.ts:443-463` | WR-03: identical re-registration of a decorated class with hooks always throws (false positive) | Warning | Confirmed by code read; does not violate the stated must-have (which only requires fail-loud on divergent hooks) — usability concern, not a goal failure |
-| `src/schema/decorators.ts:26-39`, `compile.ts:44-53` | WR-01: class inheritance produces silently inconsistent schemas | Warning | Confirmed by code read; inheritance was never a stated must-have or success criterion for this phase — informational only |
-| `src/schema/decorators.ts` / `guards.ts` | WR-04(review numbering)/WR-08/WR-09/IN-01..05 | Warning/Info | Not independently re-verified line-by-line in this pass (out of scope for the stated must-haves); no evidence found that any of these undermine a stated truth — treated as legitimate hardening backlog, consistent with the review's own severity ratings |
+| Item | Severidade anterior | Status atual (confirmado nesta verificação por leitura de código) |
+|------|---------------------|----------------------------------------------------------------|
+| CR-01 (wrapper de campo grava Promise pendente) | Critical | **Fechado** — `src/schema/compile.ts:229-246` é `async`/`await` |
+| WR-05 (materialização de campo ausente) | Warning | **Fechado** — guard `Object.hasOwn(document, field)` presente |
+| WR-06 (nested `required: []` rejeitado pelo MongoDB) | Warning | **Fechado** — `src/schema/compile.ts:101` spread condicional confirmado |
 
-No unresolved `TBD`/`FIXME`/`XXX` debt markers found in the phase's modified files (`git grep` pattern not run separately here, but full-file reads of `src/schema/**` and the relevant `src/model/index.ts` regions during this verification surfaced none).
+Nenhum `TBD`/`FIXME`/`XXX` sem referência a follow-up encontrado nos arquivos modificados por 06-05 (verificado via `grep` nesta sessão).
+
+Um novo achado de nível Info surgiu na revisão pós-fechamento (**IN-06**: campo com valor `undefined` EXPLÍCITO — ex.: `insert({ password: undefined })` via spread parcial — ainda materializa via `Object.hasOwn` porque a chave existe com valor `undefined`, potencialmente mascarando `required` nesse caso específico). Este é um edge case DIFERENTE do que o must-have de 06-05 (`campo AUSENTE`) e o próprio WR-05 fechado cobriam — nenhuma truth desta fase ou do plano 06-05 assere o comportamento para `undefined` explícito, então não constitui uma falha de must-have; registrado aqui como item de hardening não-bloqueante para acompanhamento futuro (já capturado no `06-REVIEW.md` atualizado, 0 Critical / 10 Warning / 8 Info).
 
 ### Human Verification Required
 
-None. All findings in this report are independently reproducible via code, `npm run typecheck`, `npm test`, `scripts/smoke-decorators.mjs`, and the targeted async-hook repro described above — no visual/UX/external-service judgment call is needed.
+Nenhum. Todos os achados deste relatório são reprodutíveis via leitura de código, `npx tsc --noEmit`, `npm run build`, `npx vitest run` (suíte completa, 168/168 verde, incluindo os 11 novos testes de 06-05 contra MongoDB real via testcontainers) — nenhuma decisão visual/UX/serviço externo pendente.
 
 ### Gaps Summary
 
-Phase 6 delivers a large, well-tested surface (12 of 14 merged must-have truths verified live in this session, including a real Docker/MongoDB integration run and a live re-execution of the production build smoke gate — the SUMMARY claims for DECO-01, DECO-03 (shape), and DECO-04 hold up under independent re-verification). The gap is narrow but severe:
+Nenhum gap remanescente. Os 2 gaps documentados na verificação anterior (2026-07-14T00:15:00Z) foram fechados pelo plano `06-05`:
 
-1. **Gap 1 (blocking, security-relevant):** field-level `@Pre` — the phase's own headline documented example (`@Pre('insert', (value, ctx) => hashPassword(value))`) — silently corrupts the field value whenever the transform is `async`, which is the realistic case for password hashing (`bcrypt.hash`/`argon2.hash`). This was previously flagged as CR-01 in the code review and remains unfixed at HEAD (`40c7218`); this verification reproduced it empirically rather than trusting the review's claim. A closely related defect in the same wrapper (absent-field materialization) can additionally defeat `required` validation for a missing credential field.
-2. **Gap 2 (edge case, correctness):** nested/array-item `Schema.compile` always emits a `required` array even when empty, which MongoDB's `$jsonSchema` rejects at `setupCollection` time for an all-optional nested decorated class — an untested shape where the decorator API and the object API are not actually interchangeable, contradicting the phase's stated equivalence goal.
+1. **Gap 1 (CR-01/WR-05, antes bloqueante)** — confirmado fechado: o wrapper de `@Pre` de campo em `extractDecoratorHooks` agora é `async`, aguarda o transform do dev (`await fn(...)`) antes de gravar `document[field]`, e só grava quando `Object.hasOwn(document, field)` é verdadeiro. Reproduzido empiricamente: um transform assíncrono (`hashPassword`) agora persiste a string resolvida, nunca uma Promise; um campo `required` ausente do documento de entrada continua sendo rejeitado.
+2. **Gap 2 (WR-06, edge case)** — confirmado fechado: `compile()` omite a chave `required` quando o array filtrado é vazio, propagando automaticamente para classes aninhadas via `resolveNestedSchema` → `compile` recursivo. Reproduzido empiricamente: `setupCollection` de um Model com classe aninhada totalmente opcional (via `type` e via `items`) resolve sem lançar contra MongoDB real, e inserts com o subdocumento omitido ou com campos opcionais ausentes são aceitos.
 
-Both gaps are localized to `src/schema/compile.ts` and have concrete, narrow fixes already specified by the prior code review (CR-01 fix, WR-05 fix, WR-06 fix) — no architectural rework is required. Recommend routing to `/gsd-plan-phase --gaps` for a closure plan before promoting DECO-02/DECO-03 to fully "Complete" in `.planning/REQUIREMENTS.md`.
+A fase 6 está com todas as 14 truths e as 4 requirements (DECO-01..04) verificadas empiricamente. Fase pronta para ser promovida a "Complete" em `.planning/REQUIREMENTS.md` (já refletido nas linhas 48-51/120-123) e para prosseguir ao próximo passo do workflow.
 
 ---
 
-*Verified: 2026-07-14T00:15:00Z*
+*Verified: 2026-07-14T12:00:00Z*
 *Verifier: Claude (gsd-verifier)*
