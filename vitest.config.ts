@@ -1,3 +1,4 @@
+import babel from '@rolldown/plugin-babel';
 import { defineConfig } from 'vitest/config';
 import tsconfigPaths from 'vite-tsconfig-paths';
 
@@ -17,7 +18,20 @@ import tsconfigPaths from 'vite-tsconfig-paths';
  * em memória.
  */
 export default defineConfig({
-  plugins: [tsconfigPaths()],
+  plugins: [
+    tsconfigPaths(),
+    // Decorators TC39 stage-3 na suíte: o Vite 8 (rolldown-vite) transforma
+    // com Oxc, que ainda NÃO lowera decorators stage-3 (o parser aceita a
+    // sintaxe, mas não há transform) — sem este plugin, qualquer arquivo de
+    // teste com `@Schema`/`@Prop` quebra com SyntaxError ao ser executado.
+    // Usa a MESMA cadeia babel do build de produção (tsdown.config.mjs):
+    // @babel/plugin-proposal-decorators version '2023-11' — semântica de
+    // lowering idêntica entre suíte e bundle publicado.
+    babel({
+      include: /(?:src|test)[\\/]schema[\\/].*\.ts$/,
+      plugins: [['@babel/plugin-proposal-decorators', { version: '2023-11' }]],
+    }),
+  ],
   resolve: {
     tsconfigPaths: true,
   },
