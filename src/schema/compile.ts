@@ -1,6 +1,11 @@
 import { MongoatValidationError } from '@/errors';
 import type { ModelValidationSchema } from '@/types/model';
-import type { FieldMeta, SchemaClass } from '@/types/schema';
+import type {
+  FieldMeta,
+  NestedSchemaValue,
+  PropFragment,
+  SchemaClass,
+} from '@/types/schema';
 
 /**
  * @internal
@@ -59,14 +64,23 @@ export function compile(cls: SchemaClass): ModelValidationSchema {
   // Clone-antes-de-repassar: o metadata é compartilhado por todos os
   // consumidores da classe — devolver as referências cruas deixaria uma
   // mutação downstream contaminar compilações futuras (mesma disciplina do
-  // structuredClone em schemaValidatorBuilder).
+  // structuredClone em schemaValidatorBuilder). `compileProperty` clona por
+  // campo (não `structuredClone(meta.properties)` de uma vez) — necessário
+  // agora que um fragmento pode conter uma CLASSE decorada aninhada em
+  // `type`/`items` (D-05), que `structuredClone` não sabe clonar
+  // (`DataCloneError`).
   //
   // D-03/DECO-03: devolve o ModelValidationSchema "cru" equivalente ao
   // objeto plano escrito à mão — additionalProperties/_id/required de _id
   // são responsabilidade do schemaValidatorBuilder no Model, não daqui.
   return {
     bsonType: 'object',
-    properties: structuredClone(meta.properties),
+    properties: Object.fromEntries(
+      Object.entries(meta.properties).map(([fieldName, fragment]) => [
+        fieldName,
+        compileProperty(fragment),
+      ])
+    ),
     // D-04: `required` filtrado contra `optionalFields` AQUI (compile), não
     // no momento em que `@Optional()` roda — ver JSDoc de
     // FieldMeta.optionalFields para o porquê (idempotência independente da
@@ -75,4 +89,52 @@ export function compile(cls: SchemaClass): ModelValidationSchema {
       (fieldName) => !meta.optionalFields.includes(fieldName)
     ),
   } as ModelValidationSchema;
+}
+
+/**
+ * D-05: compila um único fragmento de campo (`meta.properties[nome]`) em um
+ * `ModelValidationSchema` de property. `type`/`items` são chaves
+ * Mongoat-only (nunca chegam ao `$jsonSchema` final como tal) — quando
+ * presentes, são resolvidas recursivamente (`resolveNestedSchema`) e o
+ * resultado substitui/complementa o fragmento; as demais chaves (bsonType,
+ * description, pattern, enum, minimum, maximum, ...) seguem verbatim.
+ *
+ * `type` é tratado como "o shape completo desta property É o subschema
+ * resolvido" — por isso o resultado de `resolveNestedSchema(type)` é
+ * mesclado por cima do restante do fragmento (ex.: um `@Description` no
+ * mesmo campo de um `@Prop({ type: Nested })` sobrevive; um `bsonType`
+ * eventualmente declarado ao lado é sobrescrito pelo `bsonType: 'object'`
+ * vindo do compile recursivo — o objeto aninhado sempre "vence" o shape).
+ * `items`, por outro lado, só popula a chave `items` do resultado — o
+ * `bsonType: 'array'` do array em si continua vindo do fragmento declarado
+ * pelo dev (ex.: `@Prop({ bsonType: 'array', items: Nested })`).
+ */
+function compileProperty(fragment: PropFragment): ModelValidationSchema {
+  const { items, type, ...rest } = fragment;
+  const compiled = structuredClone(rest) as ModelValidationSchema;
+
+  if (type !== undefined) {
+    Object.assign(compiled, resolveNestedSchema(type));
+  }
+
+  if (items !== undefined) {
+    compiled.items = resolveNestedSchema(items);
+  }
+
+  return compiled;
+}
+
+/**
+ * D-05: resolve um valor de `type`/`items` — ou uma classe decorada
+ * (compilada recursivamente via `compile`) ou um subschema JSON Schema
+ * inline (objeto plano, aceito VERBATIM como escape hatch, sem
+ * recompilação, só clonado para preservar a disciplina de "nunca devolver
+ * uma referência mutável do dev").
+ */
+function resolveNestedSchema(
+  value: NestedSchemaValue
+): ModelValidationSchema {
+  return typeof value === 'function'
+    ? compile(value)
+    : (structuredClone(value) as ModelValidationSchema);
 }
