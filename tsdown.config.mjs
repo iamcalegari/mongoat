@@ -1,3 +1,4 @@
+import babel from '@rolldown/plugin-babel';
 import { defineConfig } from 'tsdown';
 
 // Config em `.mjs` (JavaScript ESM puro), carregado com `--config-loader
@@ -18,4 +19,20 @@ export default defineConfig({
   outDir: 'lib',
   dts: true,
   clean: true,
+  plugins: [
+    // Rolldown/Oxc ainda NÃO fazem lowering de decorators TC39 stage-3 (o
+    // parser aceita a sintaxe, mas não há transform — só decorators legados
+    // de `experimentalDecorators` são suportados; ver oxc-project/oxc#9170).
+    // Sem este plugin, qualquer sintaxe `@Decorator` em `src/schema/**`
+    // sairia crua no bundle e quebraria com SyntaxError em node real.
+    // O filtro `include` restringe o Babel a `src/schema/**` — o resto do
+    // codebase não usa decorators e continua passando só pelo Oxc.
+    // `version: '2023-11'` é a revisão da proposta stage-3 compatível com o
+    // que o TypeScript 5.x emite (NUNCA usar 'legacy', que é a proposta
+    // stage-1 antiga, divergente do TS moderno).
+    babel({
+      include: /src[\\/]schema[\\/].*\.ts$/,
+      plugins: [['@babel/plugin-proposal-decorators', { version: '2023-11' }]],
+    }),
+  ],
 });

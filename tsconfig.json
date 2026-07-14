@@ -6,7 +6,7 @@
     "alwaysStrict": true,
     "target": "ES2023",
     "skipLibCheck": true,
-    "lib": ["ES2023"],
+    "lib": ["ES2023", "ESNext.Decorators"],
 
     // We don't make use of tslib helpers, all syntax used is supported by target engine
     "importHelpers": false,

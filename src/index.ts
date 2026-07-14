@@ -6,6 +6,7 @@ export {
   MongoatValidationError,
 } from './errors';
 export { Model } from './model';
+export { Prop, Schema } from './schema';
 export type {
   CreateIndexProps,
   CreateModelProps,

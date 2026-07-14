@@ -76,6 +76,10 @@ yarn.lock
 # GSD research web-fetch cache (not versioned)
 .planning/research/.cache/
 
+# smoke-decorators.mjs transient fixture/output dirs
+scripts/.smoke-tmp/
+scripts/.smoke-out/
+
 # secrets
 .config
 
