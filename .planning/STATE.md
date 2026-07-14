@@ -5,15 +5,15 @@ milestone_name: "**Goal**: A API do alpha é auditada e estabilizada deliberadam
 current_phase: 06
 current_phase_name: api-de-schema-com-decorators-tc39
 status: executing
-stopped_at: Completed 06-02-PLAN.md
-last_updated: "2026-07-14T02:28:49.918Z"
+stopped_at: Completed 06-03-PLAN.md
+last_updated: "2026-07-14T02:39:53.404Z"
 last_activity: 2026-07-13
 last_activity_desc: Phase 06 execution started
 progress:
   total_phases: 8
   completed_phases: 5
   total_plans: 28
-  completed_plans: 26
+  completed_plans: 27
   percent: 63
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-07-03)
 ## Current Position
 
 Phase: 06 (api-de-schema-com-decorators-tc39) — EXECUTING
-Plan: 3 of 4
+Plan: 4 of 4
 Status: Ready to execute
 Last activity: 2026-07-13 — Phase 06 execution started
 
@@ -81,6 +81,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 05 P04 | 5min | 2 tasks | 3 files |
 | Phase 06 P01 | 17min | 3 tasks | 18 files |
 | Phase 06 P02 | 15min | 3 tasks | 6 files |
+| Phase 06 P03 | 5min | 3 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -145,6 +146,10 @@ Recent decisions affecting current work:
 - [Phase ?]: [Phase 06-02]: Hidratação de defaults por-insert (D-12) escopada só no nível raiz — classes decoradas aninhadas não são instanciadas recursivamente para colher inicializadores; nested defaults seguem via documentDefaults do config
 - [Phase ?]: [Phase 06-02]: candidateHasHooks deixado extensível — hoje só examina props.hooks, preparado para o Plano 06-04 também marcar true quando a classe decorada declarar @Pre/@Post
 - [Phase ?]: [Phase 06-02]: WR-04 fechado com uma flag categórica (candidateHasHooks) em vez de tentar comparar hooks estruturalmente — funções não são comparáveis via stableStringify
+- [Phase ?]: [Phase 06-03]: Prop() mudou de replace para merge em meta.properties[campo] — pré-requisito estrutural para composição de múltiplos açúcares no mesmo campo (D-02)
+- [Phase ?]: [Phase 06-03]: @Optional() registra em meta.optionalFields (não remove de required no momento em que roda) — filtragem só no Schema.compile, idempotente independente da ordem textual do decorator no campo (D-04)
+- [Phase ?]: [Phase 06-03]: detecção de classe decorada aninhada em type/items via typeof value === 'function' (sem kMongoatSchemaClass) — evita ciclo de import decorators<->compile
+- [Phase ?]: [Phase 06-03]: JSONSchema4Subset (src/types/model.ts) estendido com minimum/maximum/minLength/maxLength — fora do files_modified original do plano, necessário para os açúcares de constraint tiparem corretamente (Rule 2)
 
 ### Pending Todos
 
@@ -176,6 +181,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-14T02:28:49.911Z
-Stopped at: Completed 06-02-PLAN.md
+Last session: 2026-07-14T02:39:53.397Z
+Stopped at: Completed 06-03-PLAN.md
 Resume file: None
