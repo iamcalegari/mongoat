@@ -39,10 +39,13 @@ export class MongoatError extends Error {
  *
  * Erro de validação: schema/ObjectId inválido, filtro proibido
  * (`$where`/operadores de execução de código), configuração de model
- * divergente no registro.
+ * divergente no registro, uso incorreto dos decorators de schema.
  *
  * `code` default: `'VALIDATION_FAILED'` — override pontual disponível
- * (ex.: `INVALID_OBJECT_ID`, `FORBIDDEN_OPERATOR`, `MODEL_CONFIG_CONFLICT`).
+ * (ex.: `INVALID_OBJECT_ID`, `FORBIDDEN_OPERATOR`, `MODEL_CONFIG_CONFLICT`,
+ * `INVALID_DECORATED_CLASS` — classe sem campo decorado/não decorada com
+ * `@Schema`, `LEGACY_DECORATORS_MODE` — decorator invocado sob
+ * `experimentalDecorators`).
  */
 export class MongoatValidationError extends MongoatError {
   constructor(message: string, options?: { cause?: unknown; code?: string }) {

@@ -95,7 +95,7 @@ describe('Schema.compile — equivalência com a API de objetos (DECO-03)', () =
 
     const compiled = Schema.compile(LooseSchema);
     const freeProperty = (
-      compiled.properties as Record<string, Record<string, unknown>>
+      compiled.properties as unknown as Record<string, Record<string, unknown>>
     ).free;
 
     expect(freeProperty).toEqual({ description: 'x' });
@@ -126,14 +126,14 @@ describe('Schema.compile — equivalência com a API de objetos (DECO-03)', () =
     }
 
     const first = Schema.compile(ClonedSchema);
-    (first.properties as Record<string, Record<string, unknown>>).name.mutated =
+    (first.properties as unknown as Record<string, Record<string, unknown>>).name.mutated =
       true;
     first.required?.push('injected' as never);
 
     const second = Schema.compile(ClonedSchema);
 
     expect(
-      (second.properties as Record<string, Record<string, unknown>>).name
+      (second.properties as unknown as Record<string, Record<string, unknown>>).name
     ).toEqual({ bsonType: 'string' });
     expect(second.required).toEqual(['name']);
   });

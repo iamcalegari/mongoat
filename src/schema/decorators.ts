@@ -2,7 +2,9 @@ import './polyfill';
 
 import { MongoatValidationError } from '@/errors';
 import type { ModelValidationSchema } from '@/types/model';
+import type { FieldMeta } from '@/types/schema';
 
+import { compile, SCHEMA_METADATA_KEY } from './compile';
 import { assertStandardDecoratorMode } from './guards';
 
 /**
@@ -13,31 +15,6 @@ import { assertStandardDecoratorMode } from './guards';
  * object" without instanceof checks or extra imports.
  */
 export const kMongoatSchemaClass = Symbol('kMongoatSchemaClass');
-
-/**
- * @internal
- *
- * Key under which Mongoat stores its schema metadata inside
- * `context.metadata` / `Class[Symbol.metadata]`.
- */
-export const SCHEMA_METADATA_KEY = 'mongoat:schema';
-
-/**
- * @internal
- *
- * Shape of the metadata entry accumulated by the field decorators and read
- * back by the class decorator and the compiler.
- */
-export interface FieldMeta {
-  properties: Record<string, Partial<ModelValidationSchema>>;
-  required: string[];
-  fieldPreHooks: {
-    field: string;
-    method: string;
-    fn: (...args: unknown[]) => unknown;
-  }[];
-  classPreHooks: { method: string; fn: (...args: unknown[]) => unknown }[];
-}
 
 /**
  * Initializes (once per class) and returns the Mongoat metadata entry.
@@ -157,3 +134,7 @@ export function Schema(collectionName?: string) {
     };
   };
 }
+
+// D-15: símbolo único — `Schema` é a função-decorator E carrega o estático
+// `Schema.compile` (API pública de introspecção/debug/testes, D-07).
+Schema.compile = compile;

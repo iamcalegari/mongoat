@@ -137,7 +137,41 @@ if (JSON.stringify([...meta.required].sort()) !== JSON.stringify(['free', 'name'
   throw new Error('SMOKE FAIL: required list wrong: ' + JSON.stringify(meta.required));
 }
 
-console.log('[smoke-decorators]   decorated class executed in real node — metadata OK');
+// Schema.compile devolve o mesmo shape que o objeto plano equivalente
+// escrito à mão (comparação estrutural com chaves ordenadas).
+function stableStringify(value: unknown): string {
+  return JSON.stringify(value, (_key, val) =>
+    val && typeof val === 'object' && !Array.isArray(val)
+      ? Object.keys(val as Record<string, unknown>)
+          .sort()
+          .reduce((acc: Record<string, unknown>, key) => {
+            acc[key] = (val as Record<string, unknown>)[key];
+            return acc;
+          }, {})
+      : val
+  );
+}
+
+const compiled = (Schema as unknown as {
+  compile: (cls: unknown) => unknown;
+}).compile(SmokeSchema);
+
+const plainEquivalent = {
+  bsonType: 'object',
+  properties: {
+    name: { bsonType: 'string' },
+    free: { description: 'no bsonType on purpose' },
+  },
+  required: ['name', 'free'],
+};
+
+if (stableStringify(compiled) !== stableStringify(plainEquivalent)) {
+  throw new Error(
+    'SMOKE FAIL: Schema.compile shape mismatch: ' + JSON.stringify(compiled)
+  );
+}
+
+console.log('[smoke-decorators]   decorated class executed in real node — metadata + Schema.compile OK');
 `;
 
 const fixturePath = path.join(tmpDir, 'consumer.ts');

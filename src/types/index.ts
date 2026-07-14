@@ -17,3 +17,4 @@ export type {
   SchemaWithDefaults,
   ValidationQueryExpressions,
 } from './model';
+export type { SchemaClass } from './schema';

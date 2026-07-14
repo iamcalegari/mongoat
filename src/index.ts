@@ -21,6 +21,7 @@ export type {
   ModelValidationSchema,
   OnHookError,
   PostHookEntry,
+  SchemaClass,
   SchemaWithDefaults,
   ValidationQueryExpressions,
 } from './types';
