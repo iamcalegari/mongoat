@@ -18,7 +18,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 3: Blindagem — testes, CI e segurança** - Suíte unit+integração, GitHub Actions e hardening contra injeção (completed 2026-07-08)
 - [x] **Phase 4: Site de documentação** - README renovado + VitePress + TypeDoc + guia de migração do core v1.0 (antes do release) (completed 2026-07-08)
 - [x] **Phase 5: Estabilização de API e release v1.0** - Auditoria alpha→v1.0, changesets, RC e publicação estável (completed 2026-07-13)
-- [x] **Phase 6: API de schema com decorators (TC39)** - `@Schema`/`@Pre`/etc. coexistindo com a API de objetos (aditivo, minor 1.x) (completed 2026-07-14)
+- [ ] **Phase 6: API de schema com decorators (TC39)** - `@Schema`/`@Pre`/etc. coexistindo com a API de objetos (aditivo, minor 1.x)
 - [ ] **Phase 7: Sistema de plugins** - `plugins[]` por model e `Model.plugin()` global com contrato selado (aditivo, minor 1.x)
 - [ ] **Phase 8: Migrations** - schema + data migrations versionadas (up/down), estado rastreado e CLI (aditivo, minor 1.x)
 
@@ -248,6 +248,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
 | 3. Blindagem — testes, CI e segurança | 5/5 | Complete    | 2026-07-08 |
 | 4. Site de documentação | 6/6 | Complete    | 2026-07-08 |
 | 5. Estabilização de API e release v1.0 | 5/5 | Complete    | 2026-07-13 |
-| 6. API de schema com decorators (TC39) | 4/4 | Complete   | 2026-07-14 |
+| 6. API de schema com decorators (TC39) | 4/4 | Gaps found | - |
 | 7. Sistema de plugins | 0/TBD | Not started | - |
 | 8. Migrations | 0/TBD | Not started | - |
