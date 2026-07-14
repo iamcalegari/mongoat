@@ -199,6 +199,25 @@ function cloneDocumentDefaults<T>(value: T): T {
 }
 
 /**
+ * D-12/Pitfall 3: `useDefineForClassFields` (default at the project's ES2022+
+ * compile target) makes EVERY declared class field an own property — even
+ * one without an initializer, which then holds `undefined`. Spreading a
+ * freshly-instantiated decorated schema class straight into a document
+ * would inject those `undefined` keys; the `mongodb` driver does NOT ignore
+ * `undefined` by default (`ignoreUndefined: false`) and serializes them as
+ * the deprecated BSON `Undefined` type, which confuses `$jsonSchema`
+ * validation (a genuinely-missing required field would fail for the WRONG
+ * reason — a type/serialization mismatch instead of `required`). Filtering
+ * `undefined` values out here means an unset field is simply ABSENT from
+ * the merged document, and the server correctly rejects it via `required`.
+ */
+function ownDefinedProperties(instance: object): Record<string, unknown> {
+  return Object.fromEntries(
+    Object.entries(instance).filter(([, value]) => value !== undefined)
+  );
+}
+
+/**
  * Lightweight structural comparison used by the `Model` constructor to
  * detect a divergent re-registration of an already-registered
  * `collectionName` (D-06). Compares the fields that define a model's
@@ -404,7 +423,34 @@ export class Model<ModelType extends Document = Document> {
     // divergent → fail loudly instead of masking the mismatch.
     const existing = Model[kDatabase].getModel(resolvedCollectionName);
 
+    // WR-04 (Pitfall 4/05-REVIEW.md): functions are not structurally
+    // comparable via `stableStringify` — `isSameConfig` never compared
+    // `hooks`, so a re-registration of an already-registered
+    // `collectionName` that declared hooks used to fall through the
+    // "identical config" early-return (allowedMethods/validator/
+    // documentDefaults/indexes matching) and the hook was silently
+    // discarded. `candidateHasHooks` is left extensible on purpose — Plano
+    // 06-04 will also set it `true` when the decorated class declares
+    // `@Pre`/`@Post`, not just when `props.hooks` is present.
+    const candidateHasHooks = Boolean(
+      props.hooks &&
+        Object.values(props.hooks).some(
+          (config) =>
+            (config?.pre?.length ?? 0) > 0 || (config?.post?.length ?? 0) > 0
+        )
+    );
+
     if (existing) {
+      if (candidateHasHooks) {
+        // Fail loud instead of comparing (functions have no structural
+        // equality worth trusting) — a hook re-declared on an existing
+        // collectionName is NEVER silently dropped.
+        throw new MongoatValidationError(
+          `Model "${resolvedCollectionName}" already registered — hooks declared on a re-registration are never silently discarded`,
+          { code: 'MODEL_CONFIG_CONFLICT' }
+        );
+      }
+
       if (
         isSameConfig(existing as unknown as Model<Document>, {
           allowedMethods: _allowedMethods,
@@ -554,6 +600,28 @@ export class Model<ModelType extends Document = Document> {
     }
 
     return collection;
+  }
+
+  /**
+   * @private
+   *
+   * D-12: instantiates `this.schemaClass` FRESH (a new instance) and
+   * strips `undefined` keys (Pitfall 3, `ownDefinedProperties`) — the
+   * lowest-precedence layer of the per-insert defaults merge (D-13). Called
+   * once per DOCUMENT (not once per call) by `insert`/`insertMany`/
+   * `bulkWrite`, so a field initializer like `createdAt = new Date()` is
+   * evaluated fresh for every document, never reused/frozen across inserts.
+   * Returns `{}` when the model was built from a plain schema object (no
+   * `schemaClass`).
+   */
+  private buildClassDefaults(): Record<string, unknown> {
+    if (!this.schemaClass) {
+      return {};
+    }
+
+    return ownDefinedProperties(
+      new (this.schemaClass as unknown as new () => object)()
+    );
   }
 
   /**
@@ -801,7 +869,13 @@ export class Model<ModelType extends Document = Document> {
     // aninhados entre todos os documentos (e com o próprio model). Feito
     // ANTES do ctx ser montado, então os pre-hooks veem/mutam a cópia já
     // mesclada com os defaults (não o objeto original do chamador).
+    //
+    // D-13: precedência doc do usuário > documentDefaults do config >
+    // inicializadores da classe decorada — `classDefaults` entra com a
+    // MENOR precedência (spreadado primeiro), `document` do chamador com a
+    // MAIOR (spreadado por último).
     const mergedDocument = {
+      ...this.buildClassDefaults(),
       ...cloneDocumentDefaults(this.documentDefaults),
       ...document,
     } as OptionalUnlessRequiredId<ModelType>;
@@ -845,7 +919,13 @@ export class Model<ModelType extends Document = Document> {
   ): Promise<InsertManyResult<ModelType>> {
     // WR-06: clone por documento — cada doc precisa da própria instância
     // dos defaults aninhados.
+    //
+    // D-12: `buildClassDefaults()` instancia `this.schemaClass` FRESCO por
+    // DOCUMENTO (não uma vez para o batch inteiro) — cada doc do array
+    // precisa do próprio `createdAt`/inicializador, não um valor
+    // compartilhado congelado no momento da chamada.
     const _documents = documents.map((doc) => ({
+      ...this.buildClassDefaults(),
       ...cloneDocumentDefaults(this.documentDefaults),
       ...doc,
     })) as OptionalUnlessRequiredId<ModelType>[];
@@ -1051,6 +1131,8 @@ export class Model<ModelType extends Document = Document> {
             ...insertOperation.insertOne,
             document: {
               // WR-06: clone por operação (ver comentário em insert()).
+              // D-12: instância fresca da classe decorada POR operação.
+              ...this.buildClassDefaults(),
               ...cloneDocumentDefaults(this.documentDefaults),
               ...insertOperation.insertOne.document,
             },
