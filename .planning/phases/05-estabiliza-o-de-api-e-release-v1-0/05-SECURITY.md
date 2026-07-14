@@ -71,6 +71,7 @@ Registro consolidado dos `<threat_model>` dos 5 planos (IDs repetidos entre plan
 | Audit Date | Threats Total | Closed | Open | Run By |
 |------------|---------------|--------|------|--------|
 | 2026-07-13 | 10 | 10 | 0 | /gsd-secure-phase (orquestrador, short-circuit L1: register de plan-time + threats_open 0 + evidência de execução real e verificação independente 10/10) |
+| 2026-07-14 | 10 | 10 | 0 | /gsd-secure-phase re-audit (State A): register dos 5 PLANs re-extraído e conferido 1:1 com este arquivo; mitigações re-verificadas por grep no código atual — `release.yml` (push:main, Environment npm-publish, id-token:write, NPM_CONFIG_PROVENANCE, token só em `env:`), `deprecate-alphas.yml` (workflow_dispatch + Environment gate), `scripts/deprecate-alphas.mjs` (versão exata, guard de matching zero), barrel sem `defineModel`/`Model.create`, `changesets/action@v1` org oficial. Nenhuma regressão. |
 
 ---
 
