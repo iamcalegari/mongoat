@@ -138,3 +138,95 @@ function resolveNestedSchema(
     ? compile(value)
     : (structuredClone(value) as ModelValidationSchema);
 }
+
+/**
+ * @internal
+ *
+ * Um hook decorado já normalizado para o formato de `HookFn` do pipeline da
+ * Fase 2 (`(ctx) => ...`) — `method` carrega em qual `this.hooks[method]`
+ * o `Model` deve registrá-lo.
+ */
+export interface ExtractedHookEntry {
+  method: string;
+  fn: (ctx: unknown) => unknown;
+}
+
+/**
+ * @internal
+ *
+ * Resultado de `extractDecoratorHooks` — `pre` já vem na ORDEM final D-11
+ * (campo antes de classe); `post` só contém hooks de classe (D-10).
+ */
+export interface ExtractedDecoratorHooks {
+  pre: ExtractedHookEntry[];
+  post: ExtractedHookEntry[];
+}
+
+/**
+ * @internal
+ *
+ * D-11/DECO-02: extrai os hooks decorados (`@Pre`/`@Post`) de uma classe
+ * decorada, normalizados para o formato de hook do pipeline da Fase 2 —
+ * consumido pelo constructor do `Model` (`src/model/index.ts`) para
+ * registrar em `this.hooks[method].pre`/`.post` ANTES de `props.hooks`.
+ *
+ * `@Pre` de campo NUNCA transforma o inicializador TC39 do campo — é
+ * embrulhado aqui num `HookFn` de pipeline que aplica
+ * `ctx.document[field] = fn(ctx.document[field], ctx)`, reaproveitando o
+ * MESMO dispatch de `runPreHooks` já usado por `props.hooks`/`.pre()`
+ * (D-11, ver Anti-Patterns do 06-RESEARCH.md).
+ *
+ * Devolve `{ pre: [], post: [] }` (nunca lança) quando `cls` não carrega
+ * metadata Mongoat — chamado incondicionalmente pelo `Model` para qualquer
+ * `schema` que seja uma função, sem precisar checar de antemão se é uma
+ * classe decorada "completa".
+ */
+export function extractDecoratorHooks(
+  cls: SchemaClass
+): ExtractedDecoratorHooks {
+  const metadata =
+    typeof cls === 'function'
+      ? (
+          cls as unknown as {
+            [Symbol.metadata]?: Record<PropertyKey, unknown> | null;
+          }
+        )[Symbol.metadata]
+      : undefined;
+
+  const meta = metadata?.[SCHEMA_METADATA_KEY] as FieldMeta | undefined;
+
+  if (!meta) {
+    return { pre: [], post: [] };
+  }
+
+  // D-11: campo ANTES de classe — a ordem deste array É a ordem de push em
+  // `this.hooks[method].pre` no constructor do `Model` (que preserva ordem
+  // de registro, nunca reordena).
+  const fieldPre: ExtractedHookEntry[] = meta.fieldPreHooks.map(
+    ({ field, method, fn }) => ({
+      method,
+      fn: (ctx: unknown) => {
+        const document = (ctx as { document?: Record<string, unknown> })
+          .document;
+
+        // Sem `ctx.document` (ex.: método sem documento, como find/delete)
+        // não há valor de campo para transformar — no-op silencioso, nunca
+        // um erro (o dev pode legitimamente reaproveitar o mesmo `method`
+        // string em contextos sem documento).
+        if (document) {
+          document[field] = fn(document[field], ctx);
+        }
+      },
+    })
+  );
+
+  const classPre: ExtractedHookEntry[] = meta.classPreHooks.map(
+    ({ method, fn }) => ({ method, fn })
+  );
+
+  const classPost: ExtractedHookEntry[] = meta.classPostHooks.map(
+    ({ method, fn }) => ({ method, fn })
+  );
+
+  return { pre: [...fieldPre, ...classPre], post: classPost };
+}

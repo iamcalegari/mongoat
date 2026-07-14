@@ -57,6 +57,7 @@ import {
   MongoatValidationError,
 } from '@/errors';
 import { Schema } from '@/schema';
+import { extractDecoratorHooks } from '@/schema/compile';
 import { kMongoatSchemaClass } from '@/schema/decorators';
 import { toObjectId } from '@/utils';
 
@@ -423,21 +424,31 @@ export class Model<ModelType extends Document = Document> {
     // divergent → fail loudly instead of masking the mismatch.
     const existing = Model[kDatabase].getModel(resolvedCollectionName);
 
-    // WR-04 (Pitfall 4/05-REVIEW.md): functions are not structurally
-    // comparable via `stableStringify` — `isSameConfig` never compared
-    // `hooks`, so a re-registration of an already-registered
-    // `collectionName` that declared hooks used to fall through the
-    // "identical config" early-return (allowedMethods/validator/
-    // documentDefaults/indexes matching) and the hook was silently
-    // discarded. `candidateHasHooks` is left extensible on purpose — Plano
-    // 06-04 will also set it `true` when the decorated class declares
-    // `@Pre`/`@Post`, not just when `props.hooks` is present.
+    // D-11/DECO-02 (Plano 06-04): hooks decorados (`@Pre`/`@Post`) extraídos
+    // ANTES do branch de re-registro abaixo — `extractDecoratorHooks`
+    // devolve arrays vazios (nunca lança) para um `schema` não-decorado.
+    const decoratedHooks = isDecoratedSchemaClass
+      ? extractDecoratorHooks(schema as SchemaClass<ModelType>)
+      : { pre: [], post: [] };
+
+    // WR-04 (Pitfall 4/05-REVIEW.md, fechado no Plano 06-02, estendido no
+    // 06-04): functions are not structurally comparable via
+    // `stableStringify` — `isSameConfig` never compared `hooks`, so a
+    // re-registration of an already-registered `collectionName` that
+    // declared hooks used to fall through the "identical config"
+    // early-return (allowedMethods/validator/documentDefaults/indexes
+    // matching) and the hook was silently discarded. `candidateHasHooks`
+    // now ALSO covers hooks declared via `@Pre`/`@Post` on a decorated
+    // schema class, not just `props.hooks`.
     const candidateHasHooks = Boolean(
-      props.hooks &&
-        Object.values(props.hooks).some(
-          (config) =>
-            (config?.pre?.length ?? 0) > 0 || (config?.post?.length ?? 0) > 0
-        )
+      decoratedHooks.pre.length > 0 ||
+        decoratedHooks.post.length > 0 ||
+        (props.hooks &&
+          Object.values(props.hooks).some(
+            (config) =>
+              (config?.pre?.length ?? 0) > 0 ||
+              (config?.post?.length ?? 0) > 0
+          ))
     );
 
     if (existing) {
@@ -484,6 +495,26 @@ export class Model<ModelType extends Document = Document> {
     this.validationLevel = validationLevel;
     this.methods = Object.values(METHODS);
     this.onHookError = props.onHookError ?? defaultOnHookError;
+
+    // D-11 (Plano 06-04): hooks decorados (`@Pre`/`@Post`) registrados
+    // ANTES de `props.hooks` (abaixo) — que por sua vez roda antes de
+    // qualquer `.pre()`/`.post()` encadeável chamado pelo dev depois que o
+    // construtor retorna. `extractDecoratorHooks` já devolve `pre` na
+    // ordem final campo→classe (D-11 (1)→(2)) — o push abaixo só preserva
+    // essa ordem, nunca reordena.
+    for (const { method, fn } of decoratedHooks.pre as unknown as {
+      method: METHODS;
+      fn: HookFn<HookContextMap<ModelType>[METHODS]>;
+    }[]) {
+      this.hooks[method].pre.push(fn);
+    }
+
+    for (const { method, fn } of decoratedHooks.post as unknown as {
+      method: METHODS;
+      fn: HookFn<HookContextMap<ModelType>[METHODS]>;
+    }[]) {
+      this.hooks[method].post.push({ fn });
+    }
 
     // D-01/D-02: hooks declarados no construtor populam a registry ANTES
     // de qualquer `.pre()`/`.post()` encadeável chamado depois (que só
