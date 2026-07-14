@@ -171,10 +171,12 @@ export interface ExtractedDecoratorHooks {
  * registrar em `this.hooks[method].pre`/`.post` ANTES de `props.hooks`.
  *
  * `@Pre` de campo NUNCA transforma o inicializador TC39 do campo — é
- * embrulhado aqui num `HookFn` de pipeline que aplica
- * `ctx.document[field] = fn(ctx.document[field], ctx)`, reaproveitando o
- * MESMO dispatch de `runPreHooks` já usado por `props.hooks`/`.pre()`
- * (D-11, ver Anti-Patterns do 06-RESEARCH.md).
+ * embrulhado aqui num `HookFn` de pipeline ASSÍNCRONO que faz
+ * `document[field] = await fn(document[field], ctx)` (CR-01: `fn` do dev
+ * pode ser `async`), só quando `Object.hasOwn(document, field)` (WR-05: um
+ * campo ausente nunca é materializado), reaproveitando o MESMO dispatch de
+ * `runPreHooks` já usado por `props.hooks`/`.pre()` (D-11, ver Anti-Patterns
+ * do 06-RESEARCH.md).
  *
  * Devolve `{ pre: [], post: [] }` (nunca lança) quando `cls` não carrega
  * metadata Mongoat — chamado incondicionalmente pelo `Model` para qualquer
@@ -205,7 +207,15 @@ export function extractDecoratorHooks(
   const fieldPre: ExtractedHookEntry[] = meta.fieldPreHooks.map(
     ({ field, method, fn }) => ({
       method,
-      fn: (ctx: unknown) => {
+      // CR-01: o wrapper precisa ser `async` e `await` o retorno de `fn` —
+      // `fn` do dev pode ser uma função `async` (exemplo-bandeira do JSDoc
+      // de `@Pre`: `hashPassword`). `runPreHooks` (src/model/hooks.ts) já
+      // aguarda CADA hook em sequência (`for...of` + `await hook(ctx)`),
+      // então um wrapper async aqui é aguardado corretamente e a ordem D-11
+      // (campo → classe → config → encadeado) é preservada — sem o `await`
+      // aqui, uma `fn` async deixaria uma Promise pendente gravada no
+      // documento, que o BSON serializa como um objeto vazio (CR-01).
+      fn: async (ctx: unknown) => {
         const document = (ctx as { document?: Record<string, unknown> })
           .document;
 
@@ -213,8 +223,14 @@ export function extractDecoratorHooks(
         // não há valor de campo para transformar — no-op silencioso, nunca
         // um erro (o dev pode legitimamente reaproveitar o mesmo `method`
         // string em contextos sem documento).
-        if (document) {
-          document[field] = fn(document[field], ctx);
+        //
+        // WR-05: `Object.hasOwn` (não apenas `document` truthy) — um campo
+        // AUSENTE do documento (chave nunca escrita, não apenas `undefined`)
+        // não pode ser materializado por `fn(undefined, ctx)`, sob pena de
+        // mascarar a validação `required` do `$jsonSchema` do MongoDB para
+        // esse campo.
+        if (document && Object.hasOwn(document, field)) {
+          document[field] = await fn(document[field], ctx);
         }
       },
     })
