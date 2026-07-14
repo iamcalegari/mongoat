@@ -193,7 +193,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. Uma classe decorada compila (`Schema.compile`) para o mesmo `ModelValidationSchema` da API de objetos; as duas APIs coexistem como cidadãs de primeira classe.
   4. O construtor do Model aceita de forma transparente tanto uma classe decorada quanto um objeto plano.
 
-**Plans**: 1/4 plans executed
+**Plans**: 2/4 plans executed
 
 **Wave 1**
 
@@ -201,7 +201,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 **Wave 2** *(blocked on Wave 1)*
 
-- [ ] 06-02-PLAN.md — Model aceita classe decorada + collectionName default + defaults por-insert (undefined-safe) + WR-04 (DECO-04)
+- [x] 06-02-PLAN.md — Model aceita classe decorada + collectionName default + defaults por-insert (undefined-safe) + WR-04 (DECO-04)
 - [ ] 06-03-PLAN.md — Açúcares (@BsonType/@Description/@Pattern/@Optional/@Enum/@Min/@Max/@MinLength/@MaxLength) + compile recursivo nested/arrays (DECO-01, DECO-03)
 
 **Wave 3** *(blocked on Wave 2)*
@@ -248,6 +248,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
 | 3. Blindagem — testes, CI e segurança | 5/5 | Complete    | 2026-07-08 |
 | 4. Site de documentação | 6/6 | Complete    | 2026-07-08 |
 | 5. Estabilização de API e release v1.0 | 5/5 | Complete    | 2026-07-13 |
-| 6. API de schema com decorators (TC39) | 1/4 | In Progress|  |
+| 6. API de schema com decorators (TC39) | 2/4 | In Progress|  |
 | 7. Sistema de plugins | 0/TBD | Not started | - |
 | 8. Migrations | 0/TBD | Not started | - |

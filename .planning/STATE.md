@@ -5,15 +5,15 @@ milestone_name: "**Goal**: A API do alpha é auditada e estabilizada deliberadam
 current_phase: 06
 current_phase_name: api-de-schema-com-decorators-tc39
 status: executing
-stopped_at: Phase 6 context gathered
-last_updated: "2026-07-14T02:14:04.930Z"
+stopped_at: Completed 06-02-PLAN.md
+last_updated: "2026-07-14T02:28:49.918Z"
 last_activity: 2026-07-13
 last_activity_desc: Phase 06 execution started
 progress:
   total_phases: 8
   completed_phases: 5
   total_plans: 28
-  completed_plans: 25
+  completed_plans: 26
   percent: 63
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-07-03)
 ## Current Position
 
 Phase: 06 (api-de-schema-com-decorators-tc39) — EXECUTING
-Plan: 2 of 4
+Plan: 3 of 4
 Status: Ready to execute
 Last activity: 2026-07-13 — Phase 06 execution started
 
@@ -80,6 +80,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 05 P01 | 20min | 2 tasks | 8 files |
 | Phase 05 P04 | 5min | 2 tasks | 3 files |
 | Phase 06 P01 | 17min | 3 tasks | 18 files |
+| Phase 06 P02 | 15min | 3 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -141,6 +142,9 @@ Recent decisions affecting current work:
 - [Phase 06-01]: Vite 8 (rolldown-vite) transforma com Oxc, que nao lowera decorators stage-3 — vitest.config.ts registra o MESMO plugin babel do build de producao filtrado a (src|test)/schema/**
 - [Phase 06-01]: arquivos decorados que passam pela cadeia babel->oxc usam ?: (nunca !:) — babel re-emite o ! junto do inicializador injetado e o Oxc rejeita no re-parse
 - [Phase 06-01]: SCHEMA_METADATA_KEY+compile vivem em compile.ts e FieldMeta/SchemaClass em src/types/schema.ts — import unidirecional decorators->compile, sem ciclo de modulos
+- [Phase ?]: [Phase 06-02]: Hidratação de defaults por-insert (D-12) escopada só no nível raiz — classes decoradas aninhadas não são instanciadas recursivamente para colher inicializadores; nested defaults seguem via documentDefaults do config
+- [Phase ?]: [Phase 06-02]: candidateHasHooks deixado extensível — hoje só examina props.hooks, preparado para o Plano 06-04 também marcar true quando a classe decorada declarar @Pre/@Post
+- [Phase ?]: [Phase 06-02]: WR-04 fechado com uma flag categórica (candidateHasHooks) em vez de tentar comparar hooks estruturalmente — funções não são comparáveis via stableStringify
 
 ### Pending Todos
 
@@ -172,6 +176,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-14T02:13:13.437Z
-Stopped at: Phase 6 context gathered
-Resume file: .planning/phases/06-api-de-schema-com-decorators-tc39/06-CONTEXT.md
+Last session: 2026-07-14T02:28:49.911Z
+Stopped at: Completed 06-02-PLAN.md
+Resume file: None
