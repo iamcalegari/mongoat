@@ -271,16 +271,22 @@ async function runWithErrorBoundary(fn: () => Promise<void>): Promise<number> {
 }
 
 export async function handleCreate(argv: string[]): Promise<number> {
-  const { values, positionals } = parseArgs({
-    args: argv,
-    allowPositionals: true,
-    options: {
-      dir: { type: 'string' },
-      js: { type: 'boolean', default: false },
-    },
-  });
-
   return runWithErrorBoundary(async () => {
+    // WR-02: `parseArgs` moved INSIDE the error boundary — `node:util`
+    // `parseArgs` throws synchronously on an unknown/invalid flag
+    // (`ERR_PARSE_ARGS_UNKNOWN_OPTION`); left outside, that throw becomes a
+    // rejected promise with no `.catch()` at the top-level dispatch site,
+    // crashing with an unhandled promise rejection instead of the clean
+    // `Error [CODE]: message` this boundary is designed to produce.
+    const { values, positionals } = parseArgs({
+      args: argv,
+      allowPositionals: true,
+      options: {
+        dir: { type: 'string' },
+        js: { type: 'boolean', default: false },
+      },
+    });
+
     const [name] = positionals;
 
     if (!name) {
@@ -306,18 +312,20 @@ export async function handleUp(
   argv: string[],
   deps: CliDeps = defaultDeps
 ): Promise<number> {
-  const { values } = parseArgs({
-    args: argv,
-    options: {
-      'dir': { type: 'string' },
-      'collection': { type: 'string' },
-      'allow-no-transaction': { type: 'boolean', default: false },
-    },
-  });
-
-  const config = buildConfig(values);
-
+  // WR-02: `parseArgs`/`buildConfig` moved INSIDE the error boundary (see
+  // `handleCreate`'s comment for the full rationale).
   return runWithErrorBoundary(async () => {
+    const { values } = parseArgs({
+      args: argv,
+      options: {
+        'dir': { type: 'string' },
+        'collection': { type: 'string' },
+        'allow-no-transaction': { type: 'boolean', default: false },
+      },
+    });
+
+    const config = buildConfig(values);
+
     warnAllowNoTransaction(config.allowNoTransaction);
     await ensureTsCapableRuntime(config);
     await withConnectedDatabase(deps, (database) =>
@@ -331,19 +339,20 @@ export async function handleDown(
   argv: string[],
   deps: CliDeps = defaultDeps
 ): Promise<number> {
-  const { values, positionals } = parseArgs({
-    args: argv,
-    allowPositionals: true,
-    options: {
-      'dir': { type: 'string' },
-      'collection': { type: 'string' },
-      'allow-no-transaction': { type: 'boolean', default: false },
-    },
-  });
-
-  const config = buildConfig(values);
-
+  // WR-02: `parseArgs`/`buildConfig` moved INSIDE the error boundary (see
+  // `handleCreate`'s comment for the full rationale).
   return runWithErrorBoundary(async () => {
+    const { values, positionals } = parseArgs({
+      args: argv,
+      allowPositionals: true,
+      options: {
+        'dir': { type: 'string' },
+        'collection': { type: 'string' },
+        'allow-no-transaction': { type: 'boolean', default: false },
+      },
+    });
+
+    const config = buildConfig(values);
     const version = assertValidVersionArg(positionals[0], 'down');
 
     warnAllowNoTransaction(config.allowNoTransaction);
@@ -359,19 +368,20 @@ export async function handleTo(
   argv: string[],
   deps: CliDeps = defaultDeps
 ): Promise<number> {
-  const { values, positionals } = parseArgs({
-    args: argv,
-    allowPositionals: true,
-    options: {
-      'dir': { type: 'string' },
-      'collection': { type: 'string' },
-      'allow-no-transaction': { type: 'boolean', default: false },
-    },
-  });
-
-  const config = buildConfig(values);
-
+  // WR-02: `parseArgs`/`buildConfig` moved INSIDE the error boundary (see
+  // `handleCreate`'s comment for the full rationale).
   return runWithErrorBoundary(async () => {
+    const { values, positionals } = parseArgs({
+      args: argv,
+      allowPositionals: true,
+      options: {
+        'dir': { type: 'string' },
+        'collection': { type: 'string' },
+        'allow-no-transaction': { type: 'boolean', default: false },
+      },
+    });
+
+    const config = buildConfig(values);
     const version = assertValidVersionArg(positionals[0], 'to');
 
     warnAllowNoTransaction(config.allowNoTransaction);
@@ -412,17 +422,18 @@ export async function handleStatus(
   argv: string[],
   deps: CliDeps = defaultDeps
 ): Promise<number> {
-  const { values } = parseArgs({
-    args: argv,
-    options: {
-      dir: { type: 'string' },
-      collection: { type: 'string' },
-    },
-  });
-
-  const config = buildConfig(values);
-
+  // WR-02: `parseArgs`/`buildConfig` moved INSIDE the error boundary (see
+  // `handleCreate`'s comment for the full rationale).
   return runWithErrorBoundary(async () => {
+    const { values } = parseArgs({
+      args: argv,
+      options: {
+        dir: { type: 'string' },
+        collection: { type: 'string' },
+      },
+    });
+
+    const config = buildConfig(values);
     const rows = await withConnectedDatabase(deps, (database) =>
       getStatus(database, config)
     );
@@ -473,7 +484,19 @@ const isMainModule =
   pathToFileURL(__filename).href === pathToFileURL(process.argv[1]).href;
 
 if (isMainModule) {
-  dispatch(process.argv.slice(2)).then((code) => {
-    process.exitCode = code;
-  });
+  // WR-02: defense-in-depth `.catch()` at the true top-level boundary — on
+  // top of moving `parseArgs` inside `runWithErrorBoundary` in every
+  // handler above, this ensures ANY rejection that somehow escapes a
+  // handler (present or future) still exits cleanly instead of surfacing
+  // as an unhandled promise rejection / raw stack trace.
+  dispatch(process.argv.slice(2))
+    .then((code) => {
+      process.exitCode = code;
+    })
+    .catch((err: unknown) => {
+      process.stderr.write(
+        `Error: ${err instanceof Error ? err.message : String(err)}\n`
+      );
+      process.exitCode = 1;
+    });
 }
