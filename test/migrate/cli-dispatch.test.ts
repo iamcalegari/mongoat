@@ -1,0 +1,106 @@
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
+vi.mock('@/migrate', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/migrate')>();
+
+  return {
+    ...actual,
+    getStatus: vi.fn(),
+  };
+});
+
+import type { CliDeps } from '@/bin/mongoat';
+import { dispatch, handleStatus, handleTo } from '@/bin/mongoat';
+import type { Database } from '@/database';
+import { getStatus } from '@/migrate';
+
+/**
+ * MIG-03/T-08-01 — CLI subcommand dispatch, `status` table output, and
+ * version-argument validation. `getStatus` (and the `Database` connection)
+ * are mocked/faked — no real DB round-trip needed for these behaviors.
+ */
+describe('mongoat CLI dispatch', () => {
+  let stdoutSpy: ReturnType<typeof vi.spyOn>;
+  let stderrSpy: ReturnType<typeof vi.spyOn>;
+
+  beforeEach(() => {
+    stdoutSpy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
+    stderrSpy = vi.spyOn(process.stderr, 'write').mockImplementation(() => true);
+  });
+
+  afterEach(() => {
+    stdoutSpy.mockRestore();
+    stderrSpy.mockRestore();
+    vi.mocked(getStatus).mockReset();
+  });
+
+  it('an unknown subcommand exits non-zero and lists available commands on stderr', async () => {
+    const exitCode = await dispatch(['bogus-subcommand']);
+
+    expect(exitCode).not.toBe(0);
+
+    const stderrOutput = stderrSpy.mock.calls.map((call) => call[0]).join('');
+    expect(stderrOutput).toContain('Unknown command');
+    expect(stderrOutput).toContain('create');
+    expect(stderrOutput).toContain('status');
+  });
+
+  it('a missing subcommand exits non-zero', async () => {
+    const exitCode = await dispatch([]);
+
+    expect(exitCode).not.toBe(0);
+  });
+
+  it('status invokes getStatus and prints a "version | name | applied" table', async () => {
+    vi.mocked(getStatus).mockResolvedValue([
+      {
+        version: '20260101090000',
+        name: 'first',
+        applied: true,
+        appliedAt: new Date('2026-01-01T09:00:00Z'),
+      },
+      { version: '20260101100000', name: 'second', applied: false },
+    ]);
+
+    const fakeDatabase = {
+      connect: vi.fn().mockResolvedValue(undefined),
+      disconnect: vi.fn().mockResolvedValue(undefined),
+    } as unknown as Database;
+    const deps: CliDeps = { createDatabase: () => fakeDatabase };
+
+    const exitCode = await handleStatus([], deps);
+
+    expect(exitCode).toBe(0);
+    expect(getStatus).toHaveBeenCalledTimes(1);
+    expect(fakeDatabase.connect).toHaveBeenCalledTimes(1);
+    expect(fakeDatabase.disconnect).toHaveBeenCalledTimes(1);
+
+    const stdoutOutput = stdoutSpy.mock.calls.map((call) => call[0]).join('');
+    expect(stdoutOutput).toContain('version | name | applied');
+    expect(stdoutOutput).toContain('20260101090000 | first | applied');
+    expect(stdoutOutput).toContain('20260101100000 | second | pending');
+  });
+
+  it('a malformed "to <version>" argument is rejected before touching the DB', async () => {
+    const createDatabase = vi.fn();
+    const deps: CliDeps = { createDatabase };
+
+    const exitCode = await handleTo(['../../evil'], deps);
+
+    expect(exitCode).toBe(1);
+    expect(createDatabase).not.toHaveBeenCalled();
+
+    const stderrOutput = stderrSpy.mock.calls.map((call) => call[0]).join('');
+    expect(stderrOutput).toContain('INVALID_MIGRATION_VERSION');
+  });
+
+  it('a missing "to" version argument is rejected before touching the DB', async () => {
+    const createDatabase = vi.fn();
+    const deps: CliDeps = { createDatabase };
+
+    const exitCode = await handleTo([], deps);
+
+    expect(exitCode).toBe(1);
+    expect(createDatabase).not.toHaveBeenCalled();
+  });
+});
