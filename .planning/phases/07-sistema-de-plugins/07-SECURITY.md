@@ -1,11 +1,12 @@
 ---
 phase: 07
 slug: sistema-de-plugins
-status: issues_found
+status: verified
 # threats_open = count of OPEN threats at or above workflow.security_block_on severity (the blocking gate)
-threats_open: 1
+threats_open: 0
 asvs_level: 1
 created: 2026-07-15
+updated: 2026-07-15
 ---
 
 # Phase 07 — Security
@@ -30,10 +31,10 @@ created: 2026-07-15
 
 | Threat ID | Category | Component | Severity | Disposition | Mitigation (verificada) | Status |
 |-----------|----------|-----------|----------|-------------|-------------------------|--------|
-| T-07-01 | Tampering | `registerPluginStatic` / `RESERVED_NAMES` (`src/model/plugins.ts:33-67`, `:140-165`) | high | mitigate | Colisão contra membros nomeados do `Model.prototype` (`find`, `getCollection`, `rawInsert`, ...) lança `STATIC_COLLISION` — verificado por grep e por `plugins-static-collision.test.ts`/`plugins-resolve.test.ts`. **PORÉM a guarda NÃO cobre `__proto__`/`constructor`/`prototype`** — bypass de prototype-pollution reproduzido empiricamente. | **open** |
+| T-07-01 | Tampering | `registerPluginStatic` / `RESERVED_NAMES` + `FORBIDDEN_STATIC_KEYS` (`src/model/plugins.ts`) | high | mitigate | Colisão contra membros nomeados do `Model.prototype` **e** contra as chaves de prototype-pollution `__proto__`/`constructor`/`prototype` (novo `FORBIDDEN_STATIC_KEYS`) lança `STATIC_COLLISION` antes de qualquer atribuição; assignment via `Object.defineProperty` (nunca aciona o setter `__proto__`). Verificado por `plugins-static-collision.test.ts` (`__proto__`/`constructor`/`prototype` colidem + `find`/`insert` sobrevivem). Corrigido em `79bf050`. | closed |
 | T-07-02 | Elevation of Privilege | `setup()` in-process / escape hatch `this.getCollection()` | high | accept | Parte controlável mitigada: `PluginContext` nunca expõe referência viva de schema/validator/allowedMethods — `buildPluginContext` entrega `structuredClone` + cópia congelada (`src/model/plugins.ts:182-199`; `src/types/plugin.ts:14-48`). Limitação in-process = mesma classe de qualquer dep npm; risco aceito e registrado. | closed |
 | T-07-03 | Tampering / Info Disclosure | `buildPluginContext.schema` / `onHookError` | high/low | mitigate/accept | `ctx.schema = structuredClone(target.validator.$jsonSchema)` (`src/model/plugins.ts:185`) — mutar a cópia nunca alcança o validator; asserido em `plugins-resolve.test.ts:195-210` e `plugins-context-seal.test.ts`. `defaultOnHookError` loga só `err`, nunca `ctx` (`src/model/hooks.ts:19-21`). | closed |
-| T-07-04 | Denial of Service (config) | model meio-configurado registrado após erro de plugin | high | mitigate | Fail-loud: `applyPlugins` roda ANTES de `registerModel` (`src/model/index.ts:583-587` → `:625`); um `setup()` que **lança** aborta `new Model(...)` com `PLUGIN_SETUP_FAILED`; `plugins-fail-loud.test.ts:72` prova `db.getModel(name) === undefined`. Ver ressalva em T-07-01 (o caminho `__proto__` NÃO lança, então NÃO dispara este fail-loud). | closed |
+| T-07-04 | Denial of Service (config) | model meio-configurado registrado após erro de plugin | high | mitigate | Fail-loud: `applyPlugins` roda ANTES de `registerModel` (`src/model/index.ts:583-587` → `:625`); um `setup()` que **lança** aborta `new Model(...)` com `PLUGIN_SETUP_FAILED`; `plugins-fail-loud.test.ts:72` prova `db.getModel(name) === undefined`. Após o fix de T-07-01 (`79bf050`), o caminho `__proto__`/`constructor`/`prototype` também lança → `PLUGIN_SETUP_FAILED` → aborta a construção (não há mais registro silencioso de model corrompido). | closed |
 | T-07-05 | Tampering (state) | `Model.plugin()` chamado tarde → globais inconsistentes | high | mitigate | `Model.plugin()` verifica `kPluginsLocked` e lança `PLUGIN_REGISTERED_TOO_LATE` (`src/model/index.ts:1297-1308`); trava setada na 1ª construção incl. early-return de reuso (`:526`, `:615`); `plugins-global-lock.test.ts` cobre os dois caminhos + Pitfall 5. | closed |
 | T-07-06 | Tampering (test isolation) | estado global vazando entre suites | low | mitigate | `Model[kResetPlugins]()` limpa lista + destrava (`src/model/index.ts:1323-1326`); Symbol `kResetPlugins` exportado de `@/model` (ausente do barrel `src/index.ts`); `plugins-reset.test.ts` verifica. | closed |
 | T-07-07 | Tampering (type-safety) | consumidor tipando statics via `any`/cast | low | mitigate | Exemplo canônico `declare module '@/model' { interface Model ... }` (`examples/plugins/augmentation.ts:64-77`), `.paginate(1, 10)` sem `as`/`any` no call-site; `npx tsc --noEmit` sobre `examples/` guarda a regressão. | closed |
@@ -45,9 +46,9 @@ created: 2026-07-15
 
 ---
 
-## Open Threats (blocking — severidade ≥ block_on `high`)
+## Resolved Threats (previamente blocking — fechadas nesta sessão)
 
-### T-07-01 — bypass de prototype-pollution em `registerPluginStatic` (high, mitigate → INADEQUADA)
+### T-07-01 — bypass de prototype-pollution em `registerPluginStatic` (high, mitigate → RESOLVIDA em `79bf050`)
 
 **Afirmação da mitigação (plan-time):** "Static colidindo com QUALQUER membro do `Model.prototype` (incl. privados `rawInsert`/`executeHooked`) lança `STATIC_COLLISION` na resolução; nunca sobrescreve silenciosamente."
 
@@ -72,14 +73,14 @@ RESERVED_NAMES.has("find")        = true
 
 **Interação com T-07-04 (fail-loud):** como o caminho `__proto__` **não lança**, `applyPlugins` não envolve nada em `PLUGIN_SETUP_FAILED` e a construção NÃO aborta — um model silenciosamente corrompido chega até `registerModel` e é registrado. É exatamente o oposto do "nunca sobrescreve silenciosamente" prometido, e é a classe de ataque (prototype pollution) que a lista `RESERVED_NAMES` existe para prevenir. Confirmado independentemente pelo code review (`07-REVIEW.md`, WR-01).
 
-**Severidade:** high. **Bloqueia** (block_on = high). Conta como `threats_open: 1`.
+**Severidade:** high. Era bloqueante (block_on = high) — **resolvida** em `79bf050`; não conta mais para `threats_open`.
 
-**Remediação exigida (implementação — fora do escopo deste auditor):**
-1. Rejeitar explicitamente `__proto__`, `constructor`, `prototype` na guarda de `registerPluginStatic` (ex.: um `FORBIDDEN_KEYS` verificado junto de `RESERVED_NAMES`), lançando `STATIC_COLLISION`.
-2. Trocar a atribuição por bracket por `Object.defineProperty(target, name, { value: fn, writable: true, enumerable: true, configurable: true })` para nunca acionar setters herdados.
-3. Adicionar caso de teste em `plugins-static-collision.test.ts` cobrindo `ctx.static('__proto__', ...)` e `ctx.static('constructor', ...)` → `PLUGIN_SETUP_FAILED` com `.cause.code === 'STATIC_COLLISION'` e `model.find` intacto.
+**Remediação aplicada (`79bf050`, via `/gsd-code-review 7 --fix`):**
+1. ✅ Novo `FORBIDDEN_STATIC_KEYS = { '__proto__', 'constructor', 'prototype' }` verificado junto de `RESERVED_NAMES` em `registerPluginStatic` → lança `STATIC_COLLISION` ANTES de qualquer atribuição.
+2. ✅ Atribuição trocada de `target[name] = fn` para `Object.defineProperty(target, name, { value: fn, writable: true, enumerable: true, configurable: true })` — nunca aciona setters herdados (defesa em profundidade contra chaves que escapem da guarda).
+3. ✅ `plugins-static-collision.test.ts` cobre `ctx.static('__proto__'/'constructor'/'prototype', ...)` → `STATIC_COLLISION` e prova que `model.find`/`model.insert` sobrevivem. Suíte 209 → **214** verde, `tsc`/`eslint` limpos.
 
-Aplicar via `/gsd-execute-phase` (ou fix dedicado) e re-rodar `/gsd-secure-phase`. **Auditor não modifica arquivos de implementação.**
+Re-auditado por reprodução dirigida + testes (ASVS L1). **Auditor não modifica arquivos de implementação; o fix foi aplicado pelo fluxo `code-review-fix`.**
 
 ---
 
@@ -111,6 +112,7 @@ Nenhum. Nenhum SUMMARY da Fase 07 (`07-01`..`07-04`) contém seção `## Threat 
 | Audit Date | Threats Total | Closed | Open | Run By |
 |------------|---------------|--------|------|--------|
 | 2026-07-15 | 8 | 7 | 1 | gsd-security-auditor (ASVS L1) — mitigações verificadas por grep + testes (`plugins-*.test.ts`) + reprodução empírica do bypass T-07-01 (`tsx` contra `src/model/plugins.ts`). T-07-01 OPEN-blocking; corroborado por 07-REVIEW WR-01. |
+| 2026-07-15 | 8 | 8 | 0 | Re-auditoria pós-fix (orquestrador, ASVS L1) — T-07-01 fechada por `79bf050` (`FORBIDDEN_STATIC_KEYS` + `Object.defineProperty`); novos testes em `plugins-static-collision.test.ts` provam `STATIC_COLLISION` para `__proto__`/`constructor`/`prototype` e sobrevivência de `find`/`insert`. Suíte 214/214. `threats_open: 0`. |
 
 ---
 
@@ -118,7 +120,7 @@ Nenhum. Nenhum SUMMARY da Fase 07 (`07-01`..`07-04`) contém seção `## Threat 
 
 - [x] Toda ameaça tem disposição (mitigate / accept / transfer)
 - [x] Riscos aceitos documentados no Accepted Risks Log
-- [ ] `threats_open: 0` — **NÃO** confirmado (`threats_open: 1`, T-07-01 bloqueia)
-- [ ] `status: verified` — **NÃO** setado (`status: issues_found`)
+- [x] `threats_open: 0` — confirmado (T-07-01 fechada em `79bf050` e re-auditada)
+- [x] `status: verified`
 
-**Aprovação:** BLOQUEADA — T-07-01 (high) precisa de mitigação implementada e re-auditoria antes de shippar.
+**Aprovação:** LIBERADA — 8/8 ameaças fechadas (6 mitigadas + 2 aceitas). T-07-01 mitigada, testada (214/214) e re-auditada.
