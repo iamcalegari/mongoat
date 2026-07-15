@@ -2,18 +2,18 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: "**Goal**: A API do alpha é auditada e estabilizada deliberadamente, e então publicada como 1.1.0 com semver disciplinado e um pipeline de release automatizado."
-current_phase: 7
-current_phase_name: Sistema de plugins
-status: planned
+current_phase: 07
+current_phase_name: sistema-de-plugins
+status: executing
 stopped_at: Phase 7 planned (4 plans, waves 1-3) — ready to execute
-last_updated: "2026-07-15T11:59:00.000Z"
+last_updated: "2026-07-15T12:27:46.419Z"
 last_activity: 2026-07-15
-last_activity_desc: Phase 7 planned — 4 plans in 3 waves, ready to execute
+last_activity_desc: Phase 07 execution started
 progress:
   total_phases: 8
   completed_phases: 6
-  total_plans: 29
-  completed_plans: 29
+  total_plans: 33
+  completed_plans: 30
   percent: 75
 ---
 
@@ -24,14 +24,14 @@ progress:
 See: .planning/PROJECT.md (updated 2026-07-03)
 
 **Core value:** Ser um ODM fino e extensível — produtividade de ODM sem abrir mão do controle e do acesso direto ao driver nativo do MongoDB.
-**Current focus:** Phase 7 — Sistema de plugins
+**Current focus:** Phase 07 — sistema-de-plugins
 
 ## Current Position
 
-Phase: 7 — Sistema de plugins
-Plan: Planned — 4 plans (waves 1-3), plan-checker VERIFICATION PASSED — ready to execute
-Status: Phase 7 planned — research + validation (Nyquist) + patterns + 4 plans done; awaiting execution
-Last activity: 2026-07-15 — Phase 7 planned (4 plans), ready to execute
+Phase: 07 (sistema-de-plugins) — EXECUTING
+Plan: 2 of 4
+Status: Ready to execute
+Last activity: 2026-07-15 — Phase 07 execution started
 
 Progress: [░░░░░░░░░░] 0%
 
@@ -85,6 +85,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 06 P03 | 5min | 3 tasks | 8 files |
 | Phase 06 P04 | 6min | 3 tasks | 10 files |
 | Phase 06 P05 | 11min | 3 tasks | 4 files |
+| Phase 07 P01 | 5min | 2 tasks | 8 files |
 
 ## Accumulated Context
 
@@ -156,6 +157,8 @@ Recent decisions affecting current work:
 - [Phase 06-04]: Pre/Post reaproveitam (...args: unknown[]) => unknown (mesmo shape de FieldMeta desde 06-01) em vez de overloads por posição — evita contravariância estrita do TS no call-site do decorator; dev tipa/faz cast dentro do corpo da função
 - [Phase 06-04]: @Post em campo lança com o code default VALIDATION_FAILED (não um code dedicado) — plano só exige documentar INVALID_HOOK_METHOD, code extra seria escopo além do pedido
 - [Phase 06-04]: extractDecoratorHooks nunca lança para classe sem metadata Mongoat (devolve {pre:[],post:[]}) — Model chama incondicionalmente para qualquer schema função, sem checar de antemão
+- [Phase ?]: resolvePluginList/applyPlugins usam '<anonymous>' como fallback de nome tambem para objetos { setup } sem name explicito
+- [Phase ?]: registerPluginStatic recebe owners: Map<string,string> por chamada de applyPlugins (nao module-level estatico) - evita colisoes vazando entre models
 
 ### Pending Todos
 
@@ -187,6 +190,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-15T11:59:00.000Z
+Last session: 2026-07-15T12:26:01.865Z
 Stopped at: Phase 7 planned — 4 plans (waves 1-3), ready to execute
 Resume file: .planning/phases/07-sistema-de-plugins/07-01-PLAN.md
