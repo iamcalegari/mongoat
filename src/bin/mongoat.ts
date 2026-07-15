@@ -79,6 +79,32 @@ function assertValidVersionArg(
 /**
  * @internal
  *
+ * WR-03 — mirrors the same "validate before building any filesystem path"
+ * posture `assertValidVersionArg`/T-08-01 already applies to the `to`/`down`
+ * version argument, now for `mongoat create <name>`. Rejects anything
+ * outside `^[A-Za-z0-9_-]+$` (no `.`, so `..` can never appear; no path
+ * separators, no whitespace) BEFORE `name` is ever interpolated into a
+ * filename and joined into a path — a crafted name can neither escape the
+ * migrations directory nor produce a filename `discoverMigrations`'s
+ * `MIGRATION_FILENAME_PATTERN` would silently fail to find later.
+ */
+const MIGRATION_NAME_PATTERN = /^[A-Za-z0-9_-]+$/;
+
+function assertValidMigrationName(name: string | undefined): string {
+  if (!name || !MIGRATION_NAME_PATTERN.test(name)) {
+    throw new MongoatValidationError(
+      `"mongoat create" requires a name matching ${MIGRATION_NAME_PATTERN} — ` +
+        `received "${name ?? ''}"`,
+      { code: 'INVALID_MIGRATION_NAME' }
+    );
+  }
+
+  return name;
+}
+
+/**
+ * @internal
+ *
  * T-08-03 — writes a loud, non-suppressible warning to `process.stderr`
  * whenever `--allow-no-transaction` is set, on EVERY invocation. Never
  * gated behind a `--quiet` flag or any other suppression mechanism.
@@ -287,19 +313,31 @@ export async function handleCreate(argv: string[]): Promise<number> {
       },
     });
 
-    const [name] = positionals;
-
-    if (!name) {
-      throw new MongoatValidationError(
-        'Usage: mongoat create <name> [--dir <path>] [--js]',
-        { code: 'MISSING_MIGRATION_NAME' }
-      );
-    }
+    // WR-03: validated BEFORE any filesystem path is built from it — same
+    // "validate before path.join" posture as `assertValidVersionArg`.
+    const name = assertValidMigrationName(positionals[0]);
 
     const dir = resolveMigrationsDir(values.dir);
     const extension: 'js' | 'ts' = values.js ? 'js' : 'ts';
     const fileName = `${buildTimestampVersion()}_${name}.${extension}`;
     const filePath = path.join(dir, fileName);
+
+    // Defense in depth — the same containment check `discoverMigrations`
+    // already performs (T-08-01): even a name that passed the regex above
+    // must resolve to a path that stays within `dir`.
+    const resolvedDir = path.resolve(dir);
+    const resolvedFilePath = path.resolve(filePath);
+
+    if (
+      resolvedFilePath !== resolvedDir &&
+      !resolvedFilePath.startsWith(resolvedDir + path.sep)
+    ) {
+      throw new MongoatValidationError(
+        `Resolved migration path "${resolvedFilePath}" escapes the migrations directory ` +
+          `"${resolvedDir}"`,
+        { code: 'INVALID_MIGRATION_NAME' }
+      );
+    }
 
     await mkdir(dir, { recursive: true });
     await writeFile(filePath, buildMigrationStub(extension));
