@@ -14,7 +14,13 @@ import { defineConfig } from 'tsdown';
 // `type` não está declarado no package.json (CommonJS default), então precisa
 // ser `.mjs` — um `.js` seria tratado como CommonJS e o `import` acima falharia.
 export default defineConfig({
-  entry: ['src/index.ts'],
+  // The second entry below is the shebang CLI bin, coexisting with the
+  // library entry; tsdown emits it as `lib/mongoat.{cjs,mjs}`, matched by
+  // the `bin.mongoat` field in package.json — the mapping is explicit
+  // there, not auto-derived from the shebang, since auto-detect only
+  // behaves predictably with a single entry point (RESEARCH.md — tsdown
+  // bin support).
+  entry: ['src/index.ts', 'src/bin/mongoat.ts'],
   format: ['esm', 'cjs'],
   outDir: 'lib',
   dts: true,

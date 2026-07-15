@@ -32,9 +32,20 @@
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit"
   },
+  "bin": {
+    "mongoat": "./lib/mongoat.cjs"
+  },
   "dependencies": {
     "bson": "7.0.0",
     "mongodb": "7.0.0"
+  },
+  "peerDependencies": {
+    "tsx": "^4.23.0"
+  },
+  "peerDependenciesMeta": {
+    "tsx": {
+      "optional": true
+    }
   },
   "devDependencies": {
     "@arethetypeswrong/cli": "^0.18.4",
