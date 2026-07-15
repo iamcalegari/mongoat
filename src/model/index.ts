@@ -37,9 +37,7 @@ import {
   CreateModelProps,
   DefaultProperties,
   DocumentDefaults,
-  ModelDbValidationProps,
   ModelValidationSchema,
-  ValidationQueryExpressions,
 } from '@/types/model';
 import type { Plugin } from '@/types/plugin';
 import type { SchemaClass } from '@/types/schema';
@@ -62,6 +60,7 @@ import { Schema } from '@/schema';
 import { extractDecoratorHooks } from '@/schema/compile';
 import { kMongoatSchemaClass } from '@/schema/decorators';
 import { toObjectId } from '@/utils';
+import { buildJsonSchemaValidator } from '@utils/database';
 
 const kDatabase = Symbol('kDatabase');
 const kHookContext = Symbol('kHookContext');
@@ -184,7 +183,7 @@ function assertNoWhere(filter: unknown): void {
  * era COMPARTILHADO por todos os documentos inseridos; um pre-hook que
  * mutasse `this.meta.source` poluía o default permanentemente para todos os
  * inserts futuros. Mesma classe de vazamento por referência corrigida no
- * schema (`structuredClone` em `schemaValidatorBuilder`).
+ * schema (`structuredClone` em `buildJsonSchemaValidator`, `@utils/database`).
  *
  * Não usa `structuredClone` de propósito: defaults podem conter instâncias
  * de classe do BSON (ex.: `ObjectId`), cujo protótipo o `structuredClone`
@@ -417,7 +416,7 @@ export class Model<ModelType extends Document = Document> {
     // decorated with `@Schema`/`@Prop` — a decorated class is, at runtime,
     // just a `function` (the constructor); a plain schema object is never
     // callable and declares `bsonType` directly. Resolved BEFORE
-    // `schemaValidatorBuilder`, which keeps receiving only the plain
+    // `buildJsonSchemaValidator`, which keeps receiving only the plain
     // `ModelValidationSchema` shape — it stays entirely unaware of
     // decorators.
     const isDecoratedSchemaClass = typeof schema === 'function';
@@ -447,7 +446,7 @@ export class Model<ModelType extends Document = Document> {
     // D-07) so `isSameConfig` has the fully-resolved validator to compare
     // against when the collection is already registered (D-06).
     const { validationAction, validationLevel, validator } =
-      this.schemaValidatorBuilder({
+      buildJsonSchemaValidator({
         schema: resolvedSchema,
         validationQueryExpressions,
       });
@@ -625,64 +624,6 @@ export class Model<ModelType extends Document = Document> {
     return Model[kDatabase].registerModel(
       this as unknown as Model<Document>
     ) as unknown as Model<ModelType>;
-  }
-
-  private schemaValidatorBuilder({
-    schema,
-    validationQueryExpressions = {},
-  }: {
-    schema: ModelValidationSchema;
-    validationQueryExpressions?: ValidationQueryExpressions;
-    validity?: boolean;
-  }): ModelDbValidationProps {
-    // Clonar antes de mutar — `includeAdditionalPropertiesFalse` mutates
-    // its argument in-place; sem o clone, um objeto de schema reusado
-    // (por referência) em dois models vazaria a mutação de volta para o
-    // objeto do usuário (QUAL-01). `structuredClone` é global desde Node
-    // 17 (sem import) e cobre o shape de `ModelValidationSchema` (plain
-    // objects/arrays/strings/booleans — sem funções nem tipos
-    // não-cloneáveis).
-    const clonedSchema = structuredClone(schema);
-
-    return {
-      validationAction: 'error',
-      validationLevel: 'strict',
-      validator: {
-        $jsonSchema: {
-          additionalProperties: false,
-          bsonType: 'object',
-          properties: {
-            _id: {
-              bsonType: 'objectId',
-              description: 'Id of the document in the database',
-            },
-            ...this.includeAdditionalPropertiesFalse(clonedSchema).properties,
-          },
-          required: [...((clonedSchema.required as string[]) ?? []), '_id'],
-        },
-        ...validationQueryExpressions,
-      },
-    };
-  }
-
-  private includeAdditionalPropertiesFalse(
-    schema: ModelValidationSchema
-  ): ModelValidationSchema {
-    if (schema.bsonType === 'object' && !schema.additionalProperties) {
-      schema.additionalProperties = false;
-    }
-
-    if (schema.items) {
-      this.includeAdditionalPropertiesFalse(schema.items);
-    }
-
-    if (schema.properties) {
-      Object.keys(schema.properties).forEach((key) => {
-        this.includeAdditionalPropertiesFalse((schema.properties ?? {})[key]);
-      });
-    }
-
-    return schema;
   }
 
   /**
