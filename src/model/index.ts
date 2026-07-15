@@ -69,6 +69,17 @@ const kGlobalPlugins = Symbol('kGlobalPlugins');
 const kPluginsLocked = Symbol('kPluginsLocked');
 
 /**
+ * @internal
+ *
+ * Symbol module-private (D-11) — NÃO re-exportado do barrel público
+ * (`src/index.ts`). Exportado apenas do módulo `@/model` para que suítes de
+ * teste internas possam chamar `Model[kResetPlugins]()` em `beforeEach`/
+ * `afterAll` e isolar o estado global de plugins entre casos, o mesmo
+ * problema que `Database.resetRegistry()` resolve para `KModelMap`.
+ */
+export const kResetPlugins = Symbol('kResetPlugins');
+
+/**
  * WR-05: serialização com chaves ordenadas. `JSON.stringify` puro é sensível
  * à ordem de inserção das chaves — o mesmo schema declarado com `properties`
  * em ordem distinta em dois módulos geraria um falso `MongoatError:
@@ -340,10 +351,9 @@ export class Model<ModelType extends Document = Document> {
   /**
    * @internal
    *
-   * Plugins globais registrados via `Model.plugin()` — a API que escreve
-   * nesta lista chega no Plano 03; permanece vazia neste plano, então
-   * `applyPlugins` só tem plugins LOCAIS (`props.plugins`) para aplicar.
-   * Guarda a referência ORIGINAL de cada plugin (não o objeto normalizado),
+   * Plugins globais registrados via `Model.plugin()`, aplicados ANTES dos
+   * plugins locais (`props.plugins`) por `applyPlugins`. Guarda a
+   * referência ORIGINAL de cada plugin (não o objeto normalizado),
    * preservando o dedup por referência que `resolvePluginList` faz.
    */
   static [kGlobalPlugins]: Plugin<Document>[] = [];
@@ -354,8 +364,9 @@ export class Model<ModelType extends Document = Document> {
    * Trava de ordem (Pitfall 5): setada `true` na PRIMEIRA construção
    * bem-sucedida de QUALQUER model — inclusive quando essa primeira
    * construção cai no early-return de reuso de config idêntica. Consumida
-   * por `Model.plugin()` (Plano 03) para recusar registro de plugin global
-   * depois que a ordem de aplicação já ficou fixada por um model real.
+   * por `Model.plugin()` para recusar registro de plugin global (código
+   * `PLUGIN_REGISTERED_TOO_LATE`) depois que a ordem de aplicação já ficou
+   * fixada por um model real. `Model[kResetPlugins]()` destrava para testes.
    */
   static [kPluginsLocked] = false;
 
@@ -468,13 +479,12 @@ export class Model<ModelType extends Document = Document> {
     // schema class, not just `props.hooks`.
     const candidateHasHooks = Boolean(
       decoratedHooks.pre.length > 0 ||
-        decoratedHooks.post.length > 0 ||
-        (props.hooks &&
-          Object.values(props.hooks).some(
-            (config) =>
-              (config?.pre?.length ?? 0) > 0 ||
-              (config?.post?.length ?? 0) > 0
-          ))
+      decoratedHooks.post.length > 0 ||
+      (props.hooks &&
+        Object.values(props.hooks).some(
+          (config) =>
+            (config?.pre?.length ?? 0) > 0 || (config?.post?.length ?? 0) > 0
+        ))
     );
 
     // Pitfall 4: mesma classe de mascaramento que `candidateHasHooks`
@@ -1270,5 +1280,48 @@ export class Model<ModelType extends Document = Document> {
 
   static setDatabase(database: Database) {
     Model[kDatabase] = database;
+  }
+
+  /**
+   * @public
+   *
+   * Registers a plugin globally — applied to every model, before any
+   * per-model `plugins` array, in registration order.
+   *
+   * Must be called before constructing the first model: once any model has
+   * been constructed (even a repeated construction that reuses an existing
+   * registration), the set of global plugins is considered final and a
+   * later call throws instead of silently producing a model set with
+   * inconsistent globals applied.
+   */
+  static plugin(plugin: Plugin<Document>): void {
+    if (Model[kPluginsLocked]) {
+      throw new MongoatValidationError(
+        'Global plugins must be registered before constructing any model — Model.plugin() was called too late',
+        { code: 'PLUGIN_REGISTERED_TOO_LATE' }
+      );
+    }
+
+    // Preserva a referência ORIGINAL (não normaliza aqui) — o dedup por
+    // referência de `resolvePluginList` depende disso.
+    Model[kGlobalPlugins].push(plugin);
+  }
+
+  /**
+   * @internal
+   *
+   * Clears the global plugin registry (`kGlobalPlugins`) and unlocks the
+   * PLUG-02 order flag (`kPluginsLocked`).
+   *
+   * Not part of the public API — intended for test suites that need to
+   * isolate global plugin state between cases, the same role
+   * `Database.resetRegistry()` plays for the model registry. Using this
+   * outside of tests will make `Model.plugin()` accept registrations again
+   * after models have already been constructed, defeating the PLUG-02
+   * ordering guarantee.
+   */
+  static [kResetPlugins](): void {
+    Model[kGlobalPlugins].length = 0;
+    Model[kPluginsLocked] = false;
   }
 }
