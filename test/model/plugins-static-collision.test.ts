@@ -142,6 +142,105 @@ describe('Model — colisão de statics de plugin contra nativo/privado e plugin
     );
   });
 
+  it('plugin registrando static "__proto__" colide (prototype pollution, T-07-01) — protótipo intacto', () => {
+    const plugin: Plugin<Doc> = {
+      name: 'proto-polluter',
+      setup: (ctx) => {
+        ctx.static('__proto__', () => 'pwned');
+      },
+    };
+
+    expectStaticCollision(
+      () =>
+        new Model<Doc>({
+          collectionName: uniqueCollectionName(
+            'plugins_static_collision_proto'
+          ),
+          allowedMethods: [METHODS.FIND],
+          schema,
+          plugins: [plugin],
+        })
+    );
+  });
+
+  it('plugin registrando static "constructor" colide (T-07-01)', () => {
+    const plugin: Plugin<Doc> = {
+      name: 'constructor-polluter',
+      setup: (ctx) => {
+        ctx.static('constructor', () => 'pwned');
+      },
+    };
+
+    expectStaticCollision(
+      () =>
+        new Model<Doc>({
+          collectionName: uniqueCollectionName(
+            'plugins_static_collision_constructor'
+          ),
+          allowedMethods: [METHODS.FIND],
+          schema,
+          plugins: [plugin],
+        })
+    );
+  });
+
+  it('plugin registrando static "prototype" colide (T-07-01)', () => {
+    const plugin: Plugin<Doc> = {
+      name: 'prototype-polluter',
+      setup: (ctx) => {
+        ctx.static('prototype', () => 'pwned');
+      },
+    };
+
+    expectStaticCollision(
+      () =>
+        new Model<Doc>({
+          collectionName: uniqueCollectionName(
+            'plugins_static_collision_prototype'
+          ),
+          allowedMethods: [METHODS.FIND],
+          schema,
+          plugins: [plugin],
+        })
+    );
+  });
+
+  it('após a tentativa de "__proto__", um model normal preserva os métodos nativos (find/insert)', () => {
+    const polluter: Plugin<Doc> = {
+      name: 'proto-polluter-2',
+      setup: (ctx) => {
+        ctx.static('__proto__', () => 'pwned');
+      },
+    };
+
+    expect(
+      () =>
+        new Model<Doc>({
+          collectionName: uniqueCollectionName(
+            'plugins_static_collision_proto_survivor'
+          ),
+          allowedMethods: [METHODS.FIND, METHODS.INSERT],
+          schema,
+          plugins: [polluter],
+        })
+    ).toThrow(MongoatValidationError);
+
+    const clean = new Model<Doc>({
+      collectionName: uniqueCollectionName(
+        'plugins_static_collision_proto_clean'
+      ),
+      allowedMethods: [METHODS.FIND, METHODS.INSERT],
+      schema,
+    });
+
+    expect(typeof (clean as unknown as { find: unknown }).find).toBe(
+      'function'
+    );
+    expect(typeof (clean as unknown as { insert: unknown }).insert).toBe(
+      'function'
+    );
+  });
+
   it('dois plugins locais registrando o MESMO nome de static colidem, citando o dono anterior', () => {
     const firstOwner: Plugin<Doc> = {
       name: 'plugin-a',

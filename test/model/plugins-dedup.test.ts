@@ -117,4 +117,32 @@ describe('Model — dedup por referência global+local e colisão de nome (D-07)
       'DUPLICATE_PLUGIN_NAME'
     );
   });
+
+  it('dois plugins anônimos distintos (bare functions) NÃO colidem com DUPLICATE_PLUGIN_NAME (WR-02)', async () => {
+    const firstSpy = vi.fn();
+    const secondSpy = vi.fn();
+
+    // Duas bare functions anônimas distintas — declaradas inline para que
+    // NÃO recebam nome inferido (uma atribuição a `const` daria `.name`),
+    // ambas normalizam para o sentinela '<anonymous>', mas são plugins
+    // genuinamente diferentes.
+    const model = new Model<Doc>({
+      collectionName: 'plugins_dedup_two_anonymous',
+      allowedMethods: [METHODS.INSERT],
+      schema,
+      plugins: [
+        (ctx) => {
+          firstSpy(ctx.collectionName);
+        },
+        (ctx) => {
+          secondSpy(ctx.collectionName);
+        },
+      ],
+    });
+
+    await db.setupCollection(model as unknown as Model);
+
+    expect(firstSpy).toHaveBeenCalledTimes(1);
+    expect(secondSpy).toHaveBeenCalledTimes(1);
+  });
 });

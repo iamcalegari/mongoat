@@ -30,6 +30,22 @@ export interface PluginTarget {
  * prototype properties, overwritable by a plugin static of the same name
  * unless checked here.
  */
+/**
+ * Keys that can corrupt the prototype chain if used as a bracket-assignment
+ * target on a live instance. A plugin `static` named any of these is
+ * rejected up front (before any assignment) — `ctx.static('__proto__', fn)`
+ * would otherwise invoke the `__proto__` setter and replace the model's
+ * prototype, silently wiping every native method; `constructor`/`prototype`
+ * shadow `Model`. This is the prototype-pollution trust boundary: plugins
+ * can be third-party npm packages, so these keys are treated as collisions
+ * (`STATIC_COLLISION`) exactly like the real `Model.prototype` members.
+ */
+export const FORBIDDEN_STATIC_KEYS: ReadonlySet<string> = new Set([
+  '__proto__',
+  'prototype',
+  'constructor',
+]);
+
 export const RESERVED_NAMES: ReadonlySet<string> = new Set([
   ...Object.values(METHODS),
   'getCollection',
@@ -110,16 +126,25 @@ export function resolvePluginList<ModelType extends Document = Document>(
 
     const normalized = normalizePlugin(original);
     const pluginName = normalized.name ?? '<anonymous>';
-    const existingRefForName = byName.get(pluginName);
 
-    if (existingRefForName && existingRefForName !== original) {
-      throw new MongoatValidationError(
-        `Plugin "${pluginName}" is already registered with a different reference`,
-        { code: 'DUPLICATE_PLUGIN_NAME' }
-      );
+    // Anonymous plugins share the `'<anonymous>'` sentinel name but are
+    // genuinely distinct entries — reference-dedup (the `seen` map above)
+    // already collapses true duplicates, so name-dedup must NOT reject two
+    // different anonymous setups (`plugins: [() => {}, () => {}]`, the
+    // documented bare-function form) as `DUPLICATE_PLUGIN_NAME`.
+    if (pluginName !== '<anonymous>') {
+      const existingRefForName = byName.get(pluginName);
+
+      if (existingRefForName && existingRefForName !== original) {
+        throw new MongoatValidationError(
+          `Plugin "${pluginName}" is already registered with a different reference`,
+          { code: 'DUPLICATE_PLUGIN_NAME' }
+        );
+      }
+
+      byName.set(pluginName, original);
     }
 
-    byName.set(pluginName, original);
     seen.set(original, normalized);
     ordered.push({ original, normalized });
   }
@@ -144,7 +169,7 @@ export function registerPluginStatic(
   pluginName: string,
   owners: Map<string, string>
 ): void {
-  if (RESERVED_NAMES.has(name)) {
+  if (FORBIDDEN_STATIC_KEYS.has(name) || RESERVED_NAMES.has(name)) {
     throw new MongoatValidationError(
       `Plugin "${pluginName}" cannot register static "${name}" — it collides with a native Model member`,
       { code: 'STATIC_COLLISION' }
@@ -161,7 +186,16 @@ export function registerPluginStatic(
   }
 
   owners.set(name, pluginName);
-  target[name] = fn;
+  // Safe assignment: `Object.defineProperty` with an explicit data
+  // descriptor never triggers an accessor (e.g. the `__proto__` setter),
+  // so even a key that slipped past the guard above cannot mutate the
+  // prototype chain — it would define a plain own-property instead.
+  Object.defineProperty(target, name, {
+    value: fn,
+    writable: true,
+    enumerable: true,
+    configurable: true,
+  });
 }
 
 /**
