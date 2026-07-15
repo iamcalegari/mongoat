@@ -6,6 +6,7 @@ export type {
   OnHookError,
   PostHookEntry,
 } from './hooks';
+export type { MigrationContext, MigrationModule } from './migrate';
 export type {
   CreateIndexProps,
   CreateModelProps,

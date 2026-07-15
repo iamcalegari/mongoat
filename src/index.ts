@@ -26,6 +26,8 @@ export type {
   HookConfig,
   HookContextMap,
   HookFn,
+  MigrationContext,
+  MigrationModule,
   ModelDbValidationProps,
   ModelSetup,
   ModelValidationSchema,
