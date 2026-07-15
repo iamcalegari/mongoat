@@ -4,8 +4,10 @@ import { MongoatConnectionError } from '@/errors';
 
 /**
  * Probes the connected server's topology via the driver `hello` command and
- * fail-loud-rejects a data-transaction migration when it is running against
- * a standalone MongoDB (no replica set, no mongos router) — transactions
+ * fail-loud-rejects any migration (schema-only or data) when it is running
+ * against a standalone MongoDB (no replica set, no mongos router) — every
+ * migration runs inside a transaction (opaque `up()`/`down()` bodies cannot
+ * be inspected to know whether they perform data ops), and transactions
  * require one or the other (driver error 20, `IllegalOperation`).
  *
  * `hello` (formerly `isMaster`) is the officially documented topology probe:
@@ -37,10 +39,15 @@ export async function assertReplicaSetOrThrow(
 
   if (!hasReplicaSet && !allowNoTransaction) {
     throw new MongoatConnectionError(
-      'This migration includes data operations that require a MongoDB replica set (or mongos) for transactions. ' +
+      // WR-04: this message must not assert the migration "includes data
+      // operations" — the runner cannot inspect an opaque up()/down() body,
+      // so a pure schema/DDL migration is blocked by this same check too.
+      // State only the actual, always-true reason: migrations run inside a
+      // transaction, and transactions require a replica set/mongos.
+      'Migrations run inside a MongoDB transaction, which requires a replica set (or mongos). ' +
         'Standalone MongoDB does not support transactions (driver error 20, IllegalOperation). ' +
         'Start MongoDB as a single-node replica set for local development, or pass --allow-no-transaction ' +
-        'to run data operations WITHOUT atomicity (not recommended outside local dev).',
+        'to run this migration WITHOUT atomicity (not recommended outside local dev).',
       { code: 'REPLICA_SET_REQUIRED' }
     );
   }
