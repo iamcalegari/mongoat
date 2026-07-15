@@ -422,6 +422,12 @@ export async function revertMigration(
  * it only flags it (`drifted: true`) so a caller (e.g. the CLI's `status`
  * command) can surface a warning without blocking.
  *
+ * WR-01 fix: `row.applied` is `true` only for a record whose
+ * `status === 'applied'` — reconciled with `collectPending`'s own
+ * `find({ status: 'applied' })`, so a migration is never simultaneously
+ * "applied" in `status` and "pending" for `up`. A `status: 'failed'` record
+ * is surfaced distinctly via `row.failed`, never rendered as `applied`.
+ *
  * @param database - A connected `Database` instance.
  * @param config - Migration directory and control collection name.
  */
@@ -444,15 +450,21 @@ export async function getStatus(
 
   for (const entry of discovered) {
     const record = appliedByVersion.get(entry.version);
+    const isApplied = record?.status === 'applied';
     const row: MigrationStatusRow = {
       version: entry.version,
       name: entry.name,
-      applied: Boolean(record),
+      applied: isApplied,
     };
 
     if (record) {
       row.appliedAt = record.appliedAt;
-      row.drifted = (await computeChecksum(entry.filePath)) !== record.checksum;
+      row.failed = record.status === 'failed';
+
+      if (isApplied) {
+        row.drifted =
+          (await computeChecksum(entry.filePath)) !== record.checksum;
+      }
     }
 
     rows.push(row);

@@ -387,11 +387,16 @@ function formatStatusTable(rows: MigrationStatusRow[]): string {
   const lines = ['version | name | applied'];
 
   for (const row of rows) {
+    // WR-01: a `status: 'failed'` record is surfaced as its own distinct
+    // "failed" label — never as "applied" (a migration that failed, or
+    // never ran at all, must not be reported as applied).
     const appliedLabel = row.applied
       ? row.drifted
         ? 'applied (DRIFTED)'
         : 'applied'
-      : 'pending';
+      : row.failed
+        ? 'failed'
+        : 'pending';
 
     lines.push(`${row.version} | ${row.name} | ${appliedLabel}`);
   }
