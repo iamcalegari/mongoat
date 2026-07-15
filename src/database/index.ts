@@ -12,6 +12,10 @@ import { MongoatConnectionError, MongoatError } from '@/errors';
 import { Model } from '@/model';
 import { DatabaseConfig } from '@/types';
 import { METHODS } from '@/utils/enums';
+import {
+  applyCollectionIndexes,
+  applyCollectionValidator,
+} from '@utils/database';
 
 const kClient = Symbol('kClient');
 const kDb = Symbol('kDb');
@@ -379,53 +383,25 @@ export class Database {
   }
 
   private async setupValidators(model: Model<Document>) {
-    const validators = {
-      validator: model.validator,
+    if (!this[kDb]) return;
+
+    await applyCollectionValidator(this[kDb], model.collectionName, {
       validationAction: model.validationAction,
       validationLevel: model.validationLevel,
-    };
-
-    await this[kDb]?.command({
-      collMod: model.collectionName,
-      ...validators,
+      validator: model.validator,
     });
   }
 
   private async setupIndexes(model: Model<Document>) {
-    const collection = this[kDb]?.collection(model.collectionName);
+    if (!this[kDb]) return;
 
-    const newIndexes = model.indexes;
-
-    if (!newIndexes.length || !collection) return;
-
-    // WR-10: nada de `dropIndexes()` incondicional — ele destruía TODOS os
-    // índices da collection (inclusive os criados fora do Mongoat por
-    // DBAs/migrations) e abria uma janela sem unicidade entre o drop e o
-    // recreate a cada boot. Em vez disso, diff: `createIndex` já é
-    // idempotente para specs idênticas; só quando a spec de um índice
-    // GERENCIADO divergiu (conflito de nome ou de key pattern) é que o
-    // índice específico é derrubado e recriado.
-    for (const newIndex of newIndexes) {
-      const { key, ...options } = newIndex;
-
-      try {
-        await collection.createIndex(key, options);
-      } catch (err) {
-        const existingIndexes = await collection.listIndexes().toArray();
-
-        const conflicting = existingIndexes.find(
-          (existing) =>
-            existing.name !== '_id_' &&
-            (JSON.stringify(existing.key) === JSON.stringify(key) ||
-              (options.name !== undefined && existing.name === options.name))
-        );
-
-        if (!conflicting) throw err;
-
-        await collection.dropIndex(conflicting.name);
-        await collection.createIndex(key, options);
-      }
-    }
+    // WR-10: `applyCollectionIndexes` (`@utils/database`) diffs instead of
+    // an unconditional `dropIndexes()` — see its own doc comment.
+    await applyCollectionIndexes(
+      this[kDb],
+      model.collectionName,
+      model.indexes
+    );
   }
 
   async [kCreateClientConnection](options?: DatabaseConfig): Promise<string> {
