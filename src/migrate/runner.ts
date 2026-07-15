@@ -131,20 +131,20 @@ async function collectPending(
  * Runs `fn` with a bound `ClientSession` — inside `Database#withTransaction`
  * when the topology supports it (the default, fail-loud path), or against a
  * plain (non-transactional) session when the caller explicitly opted into
- * `allowNoTransaction` against a standalone server. `assertReplicaSetOrThrow`
- * itself never silently degrades — it is the caller's explicit config that
- * allows the non-transactional branch to run at all.
+ * `allowNoTransaction` against a standalone server.
+ *
+ * CR-01 fix: `hasReplicaSet` is now RESOLVED ONCE by the caller (via
+ * `assertReplicaSetOrThrow`, called before the apply loop and outside any
+ * failure-recording `try`) and threaded down here — this function no longer
+ * re-probes the topology per migration, and a `REPLICA_SET_REQUIRED` failure
+ * can never originate from inside this function anymore, so it can never be
+ * misclassified as a migration failure by `applyOne`'s catch block.
  */
 async function runInSessionOrTransaction(
   database: Database,
-  nativeDb: Db,
-  config: MigrateConfig,
+  hasReplicaSet: boolean,
   fn: (session: ClientSession) => Promise<void>
 ): Promise<void> {
-  const { hasReplicaSet } = await assertReplicaSetOrThrow(nativeDb, {
-    allowNoTransaction: config.allowNoTransaction,
-  });
-
   if (hasReplicaSet) {
     await database.withTransaction(fn);
 
@@ -188,12 +188,18 @@ async function upsertRecord(
  * duplicates the record). On failure, marks `{ status: 'failed' }` and
  * rethrows wrapped as `MIGRATION_FAILED` — D-03 fail-loud, no automatic DDL
  * rollback, the loop stops here.
+ *
+ * `hasReplicaSet` is the ALREADY-RESOLVED topology decision from the caller
+ * (`runMigrations`/`runTo`) — CR-01 fix: the topology precondition itself
+ * never runs inside this function's `try`, so a `REPLICA_SET_REQUIRED`
+ * failure can never be caught here and misrecorded as a `failed` migration.
  */
 async function applyOne(
   database: Database,
   nativeDb: Db,
   entry: DiscoveredMigration,
-  config: MigrateConfig
+  config: MigrateConfig,
+  hasReplicaSet: boolean
 ): Promise<void> {
   const migrationModule = await importMigrationModule(entry.filePath);
   const checksum = await computeChecksum(entry.filePath);
@@ -209,7 +215,7 @@ async function applyOne(
   };
 
   try {
-    await runInSessionOrTransaction(database, nativeDb, config, runUp);
+    await runInSessionOrTransaction(database, hasReplicaSet, runUp);
   } catch (err: unknown) {
     await upsertRecord(nativeDb, config, {
       version: entry.version,
@@ -253,6 +259,12 @@ async function applyOne(
  * transaction, per D-03. A failing migration is recorded `{ status: 'failed'
  * }` and the run stops — no automatic rollback of any DDL already applied.
  *
+ * CR-01 fix: the topology precondition (`assertReplicaSetOrThrow`) runs
+ * ONCE here, before the apply loop and OUTSIDE any failure-recording `try` —
+ * a `REPLICA_SET_REQUIRED` failure propagates to the caller UNWRAPPED (own
+ * `.code`, actionable message) and never persists a bogus `failed` record
+ * for a migration that never ran.
+ *
  * @param database - A connected `Database` instance.
  * @param config - Migration directory, control collection name, and the
  * `allowNoTransaction` opt-in.
@@ -262,10 +274,14 @@ export async function runMigrations(
   config: MigrateConfig
 ): Promise<void> {
   const nativeDb = getNativeDbOrThrow(database);
+  // Precondition — never recorded as a migration failure (CR-01).
+  const { hasReplicaSet } = await assertReplicaSetOrThrow(nativeDb, {
+    allowNoTransaction: config.allowNoTransaction,
+  });
   const pending = await collectPending(nativeDb, config);
 
   for (const entry of pending) {
-    await applyOne(database, nativeDb, entry, config);
+    await applyOne(database, nativeDb, entry, config, hasReplicaSet);
   }
 }
 
@@ -276,6 +292,10 @@ export async function runMigrations(
  * `version` is lexicographically `<= version` (D-01 ordering) — lets a
  * caller stop at a specific point in the migration history instead of
  * always applying everything pending.
+ *
+ * CR-01 fix: same as {@link runMigrations} — the topology precondition runs
+ * once, before the apply loop, and propagates `REPLICA_SET_REQUIRED`
+ * unwrapped.
  *
  * @param database - A connected `Database` instance.
  * @param version - The last version (inclusive) to apply, `YYYYMMDDHHMMSS`.
@@ -288,10 +308,14 @@ export async function runTo(
   config: MigrateConfig
 ): Promise<void> {
   const nativeDb = getNativeDbOrThrow(database);
+  // Precondition — never recorded as a migration failure (CR-01).
+  const { hasReplicaSet } = await assertReplicaSetOrThrow(nativeDb, {
+    allowNoTransaction: config.allowNoTransaction,
+  });
   const pending = await collectPending(nativeDb, config, version);
 
   for (const entry of pending) {
-    await applyOne(database, nativeDb, entry, config);
+    await applyOne(database, nativeDb, entry, config, hasReplicaSet);
   }
 }
 
@@ -359,6 +383,14 @@ export async function revertMigration(
     );
   }
 
+  // Precondition — CR-01 fix: resolved BEFORE the failure-recording `try`
+  // below, so `REPLICA_SET_REQUIRED` propagates to the caller unwrapped
+  // (own `.code`, actionable message) instead of being demoted to `.cause`
+  // under `MIGRATION_FAILED`.
+  const { hasReplicaSet } = await assertReplicaSetOrThrow(nativeDb, {
+    allowNoTransaction: config.allowNoTransaction,
+  });
+
   const runDown = async (session: ClientSession): Promise<void> => {
     const ctx: MigrationContext = {
       db: nativeDb,
@@ -370,7 +402,7 @@ export async function revertMigration(
   };
 
   try {
-    await runInSessionOrTransaction(database, nativeDb, config, runDown);
+    await runInSessionOrTransaction(database, hasReplicaSet, runDown);
   } catch (err: unknown) {
     throw new MongoatError(
       `Reverting migration "${onDisk.version}_${onDisk.name}" failed.`,
