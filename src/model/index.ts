@@ -31,6 +31,7 @@ import {
   runPostHooks,
   runPreHooks,
 } from '@/model/hooks';
+import { applyPlugins, type PluginTarget } from '@/model/plugins';
 import {
   CreateIndexProps,
   CreateModelProps,
@@ -40,6 +41,7 @@ import {
   ModelValidationSchema,
   ValidationQueryExpressions,
 } from '@/types/model';
+import type { Plugin } from '@/types/plugin';
 import type { SchemaClass } from '@/types/schema';
 import {
   HookConfig,
@@ -63,6 +65,8 @@ import { toObjectId } from '@/utils';
 
 const kDatabase = Symbol('kDatabase');
 const kHookContext = Symbol('kHookContext');
+const kGlobalPlugins = Symbol('kGlobalPlugins');
+const kPluginsLocked = Symbol('kPluginsLocked');
 
 /**
  * WR-05: serialização com chaves ordenadas. `JSON.stringify` puro é sensível
@@ -334,6 +338,28 @@ export class Model<ModelType extends Document = Document> {
   static [kDatabase]: Database | undefined;
 
   /**
+   * @internal
+   *
+   * Plugins globais registrados via `Model.plugin()` — a API que escreve
+   * nesta lista chega no Plano 03; permanece vazia neste plano, então
+   * `applyPlugins` só tem plugins LOCAIS (`props.plugins`) para aplicar.
+   * Guarda a referência ORIGINAL de cada plugin (não o objeto normalizado),
+   * preservando o dedup por referência que `resolvePluginList` faz.
+   */
+  static [kGlobalPlugins]: Plugin<Document>[] = [];
+
+  /**
+   * @internal
+   *
+   * Trava de ordem (Pitfall 5): setada `true` na PRIMEIRA construção
+   * bem-sucedida de QUALQUER model — inclusive quando essa primeira
+   * construção cai no early-return de reuso de config idêntica. Consumida
+   * por `Model.plugin()` (Plano 03) para recusar registro de plugin global
+   * depois que a ordem de aplicação já ficou fixada por um model real.
+   */
+  static [kPluginsLocked] = false;
+
+  /**
    * D-07 — per-instance `AsyncLocalStorage` reentrancy guard (Pattern 5).
    * A hook (or an internal method delegation, e.g. `findById` → `find`)
    * that calls another method of THIS SAME model runs inside the same
@@ -451,6 +477,13 @@ export class Model<ModelType extends Document = Document> {
           ))
     );
 
+    // Pitfall 4: mesma classe de mascaramento que `candidateHasHooks`
+    // fecha para hooks — um `plugins[]` declarado numa re-registração do
+    // mesmo `collectionName` nunca é descartado em silêncio. Plugins não
+    // são estruturalmente comparáveis (são funções/objetos com `setup`),
+    // então o único comportamento seguro é falhar alto.
+    const candidateHasPlugins = Boolean(props.plugins?.length);
+
     if (existing) {
       if (candidateHasHooks) {
         // Fail loud instead of comparing (functions have no structural
@@ -458,6 +491,13 @@ export class Model<ModelType extends Document = Document> {
         // collectionName is NEVER silently dropped.
         throw new MongoatValidationError(
           `Model "${resolvedCollectionName}" already registered — hooks declared on a re-registration are never silently discarded`,
+          { code: 'MODEL_CONFIG_CONFLICT' }
+        );
+      }
+
+      if (candidateHasPlugins) {
+        throw new MongoatValidationError(
+          `Model "${resolvedCollectionName}" already registered — plugins declared on a re-registration are never silently discarded`,
           { code: 'MODEL_CONFIG_CONFLICT' }
         );
       }
@@ -470,6 +510,11 @@ export class Model<ModelType extends Document = Document> {
           validator,
         })
       ) {
+        // Pitfall 5: a trava de ordem é setada mesmo neste early-return —
+        // a PRIMEIRA construção bem-sucedida (mesmo reusando config
+        // idêntica) já fixa a ordem de aplicação de plugins.
+        Model[kPluginsLocked] = true;
+
         return existing as unknown as Model<ModelType>;
       }
 
@@ -516,6 +561,21 @@ export class Model<ModelType extends Document = Document> {
       this.hooks[method].post.push({ fn });
     }
 
+    // D-06/D-13/D-14: slot ÚNICO e determinístico para aplicar plugins —
+    // depois dos hooks decorados (`@Pre`/`@Post` de campo/classe, já
+    // registrados acima) e ANTES de `props.hooks`. Um `@Pre`/`@Post` de
+    // plugin registrado aqui sempre executa DEPOIS do decorado e ANTES do
+    // hook declarado em `props.hooks` (D-06). `applyPlugins` reusa a MESMA
+    // mecânica de hooks já existente — nenhum pipeline novo (D-14); um
+    // `setup()` que lança aborta a construção ANTES de `registerModel`
+    // (fail-loud, D-10), então o model nunca é registrado. A lista global
+    // (`Model[kGlobalPlugins]`) fica vazia até `Model.plugin()` (Plano 03).
+    applyPlugins<ModelType>(
+      this as unknown as PluginTarget,
+      Model[kGlobalPlugins] as Plugin<ModelType>[],
+      props.plugins ?? []
+    );
+
     // D-01/D-02: hooks declarados no construtor populam a registry ANTES
     // de qualquer `.pre()`/`.post()` encadeável chamado depois (que só
     // faz `push`, nunca sobrescreve — ver `pre()`/`post()` abaixo).
@@ -537,6 +597,12 @@ export class Model<ModelType extends Document = Document> {
         }
       }
     }
+
+    // Pitfall 5: a trava de ordem é setada na PRIMEIRA construção
+    // bem-sucedida — este é o caminho "de verdade" (nenhum registro
+    // anterior para este collectionName); o early-return de reuso acima
+    // também seta a mesma flag.
+    Model[kPluginsLocked] = true;
 
     // registerModel() wraps `this` in the KModelProxyHandler Proxy and
     // stores it in the registry — return that wrapped instance instead of
