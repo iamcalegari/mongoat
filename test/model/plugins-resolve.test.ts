@@ -1,4 +1,3 @@
-import { Document } from 'mongodb';
 import { describe, expect, it, vi } from 'vitest';
 
 import { MongoatValidationError } from '@/errors';
@@ -42,7 +41,7 @@ function createFakeTarget(): PluginTarget {
     },
     hooks: Object.fromEntries(
       Object.values(METHODS).map((method) => [method, { pre: [], post: [] }])
-    ) as PluginTarget['hooks'],
+    ) as unknown as PluginTarget['hooks'],
   };
 }
 
