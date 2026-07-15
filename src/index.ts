@@ -5,6 +5,13 @@ export {
   MongoatError,
   MongoatValidationError,
 } from './errors';
+export {
+  defineMigration,
+  getStatus,
+  revertMigration,
+  runMigrations,
+  runTo,
+} from './migrate';
 export { Model } from './model';
 export { Optional, Post, Pre, Prop, Schema } from './schema';
 export {
