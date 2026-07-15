@@ -6,14 +6,14 @@ current_phase: 07
 current_phase_name: sistema-de-plugins
 status: executing
 stopped_at: Phase 7 planned (4 plans, waves 1-3) — ready to execute
-last_updated: "2026-07-15T12:27:46.419Z"
+last_updated: "2026-07-15T12:44:11.799Z"
 last_activity: 2026-07-15
 last_activity_desc: Phase 07 execution started
 progress:
   total_phases: 8
   completed_phases: 6
   total_plans: 33
-  completed_plans: 30
+  completed_plans: 31
   percent: 75
 ---
 
@@ -29,7 +29,7 @@ See: .planning/PROJECT.md (updated 2026-07-03)
 ## Current Position
 
 Phase: 07 (sistema-de-plugins) — EXECUTING
-Plan: 2 of 4
+Plan: 3 of 4
 Status: Ready to execute
 Last activity: 2026-07-15 — Phase 07 execution started
 
@@ -86,6 +86,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 06 P04 | 6min | 3 tasks | 10 files |
 | Phase 06 P05 | 11min | 3 tasks | 4 files |
 | Phase 07 P01 | 5min | 2 tasks | 8 files |
+| Phase 07 P02 | 15min | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -159,6 +160,8 @@ Recent decisions affecting current work:
 - [Phase 06-04]: extractDecoratorHooks nunca lança para classe sem metadata Mongoat (devolve {pre:[],post:[]}) — Model chama incondicionalmente para qualquer schema função, sem checar de antemão
 - [Phase ?]: resolvePluginList/applyPlugins usam '<anonymous>' como fallback de nome tambem para objetos { setup } sem name explicito
 - [Phase ?]: registerPluginStatic recebe owners: Map<string,string> por chamada de applyPlugins (nao module-level estatico) - evita colisoes vazando entre models
+- [Phase 07]: [Phase 07-02]: applyPlugins (Plano 01) envolve QUALQUER erro de setup() -- inclusive STATIC_COLLISION disparado por ctx.static() -- em PLUGIN_SETUP_FAILED com .cause preservado; testes de colisao verificam via .cause.code
+- [Phase 07]: [Phase 07-02]: candidateHasPlugins/kPluginsLocked seguem o mesmo idioma de candidateHasHooks -- plugins declarados em re-registro do mesmo collectionName falham alto (MODEL_CONFIG_CONFLICT), trava de ordem setada na 1a construcao bem-sucedida inclusive no early-return de reuso
 
 ### Pending Todos
 
@@ -190,6 +193,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-15T12:26:01.865Z
+Last session: 2026-07-15T12:42:44.765Z
 Stopped at: Phase 7 planned — 4 plans (waves 1-3), ready to execute
 Resume file: .planning/phases/07-sistema-de-plugins/07-01-PLAN.md

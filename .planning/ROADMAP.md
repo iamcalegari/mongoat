@@ -217,7 +217,7 @@ Decimal phases appear between their surrounding integers in numeric order.
   2. Dev registra um plugin global via `Model.plugin()`, com enforcement de ordem (erro claro se chamado após a construção do primeiro model).
   3. Plugins recebem um `PluginContext` tipado e selado: podem registrar hooks e statics, mas não podem mutar schema/validator/allowedMethods.
 
-**Plans**: 1/4 plans executed
+**Plans**: 2/4 plans executed
 
 **Wave 1**
 
@@ -225,7 +225,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 **Wave 2** *(blocked on Wave 1)*
 
-- [ ] 07-02-PLAN.md — Aplicação de plugins locais no construtor (antes do wrap do Proxy) + selo + colisão de statics + fail-loud (PLUG-01, PLUG-03)
+- [x] 07-02-PLAN.md — Aplicação de plugins locais no construtor (antes do wrap do Proxy) + selo + colisão de statics + fail-loud (PLUG-01, PLUG-03)
 
 **Wave 3** *(blocked on Wave 2)*
 
@@ -258,5 +258,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8
 | 4. Site de documentação | 6/6 | Complete    | 2026-07-08 |
 | 5. Estabilização de API e release v1.0 | 5/5 | Complete    | 2026-07-13 |
 | 6. API de schema com decorators (TC39) | 5/5 | Complete    | 2026-07-14 |
-| 7. Sistema de plugins | 1/4 | In Progress|  |
+| 7. Sistema de plugins | 2/4 | In Progress|  |
 | 8. Migrations | 0/TBD | Not started | - |
