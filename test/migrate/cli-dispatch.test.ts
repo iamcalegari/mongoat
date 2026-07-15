@@ -24,8 +24,12 @@ describe('mongoat CLI dispatch', () => {
   let stderrSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
-    stdoutSpy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
-    stderrSpy = vi.spyOn(process.stderr, 'write').mockImplementation(() => true);
+    stdoutSpy = vi
+      .spyOn(process.stdout, 'write')
+      .mockImplementation(() => true);
+    stderrSpy = vi
+      .spyOn(process.stderr, 'write')
+      .mockImplementation(() => true);
   });
 
   afterEach(() => {
@@ -39,7 +43,9 @@ describe('mongoat CLI dispatch', () => {
 
     expect(exitCode).not.toBe(0);
 
-    const stderrOutput = stderrSpy.mock.calls.map((call) => call[0]).join('');
+    const stderrOutput = stderrSpy.mock.calls
+      .map((call: unknown[]) => call[0])
+      .join('');
     expect(stderrOutput).toContain('Unknown command');
     expect(stderrOutput).toContain('create');
     expect(stderrOutput).toContain('status');
@@ -75,7 +81,9 @@ describe('mongoat CLI dispatch', () => {
     expect(fakeDatabase.connect).toHaveBeenCalledTimes(1);
     expect(fakeDatabase.disconnect).toHaveBeenCalledTimes(1);
 
-    const stdoutOutput = stdoutSpy.mock.calls.map((call) => call[0]).join('');
+    const stdoutOutput = stdoutSpy.mock.calls
+      .map((call: unknown[]) => call[0])
+      .join('');
     expect(stdoutOutput).toContain('version | name | applied');
     expect(stdoutOutput).toContain('20260101090000 | first | applied');
     expect(stdoutOutput).toContain('20260101100000 | second | pending');
@@ -90,7 +98,9 @@ describe('mongoat CLI dispatch', () => {
     expect(exitCode).toBe(1);
     expect(createDatabase).not.toHaveBeenCalled();
 
-    const stderrOutput = stderrSpy.mock.calls.map((call) => call[0]).join('');
+    const stderrOutput = stderrSpy.mock.calls
+      .map((call: unknown[]) => call[0])
+      .join('');
     expect(stderrOutput).toContain('INVALID_MIGRATION_VERSION');
   });
 
