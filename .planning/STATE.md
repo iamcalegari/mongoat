@@ -4,17 +4,17 @@ milestone: v1.0
 milestone_name: "**Goal**: A API do alpha é auditada e estabilizada deliberadamente, e então publicada como 1.1.0 com semver disciplinado e um pipeline de release automatizado."
 current_phase: 07
 current_phase_name: sistema-de-plugins
-status: executing
-stopped_at: Plano 07-03 completo (2/2 tasks) -- pronto para Plano 07-04
-last_updated: "2026-07-15T12:56:54.810Z"
+status: verifying
+stopped_at: Plano 07-04 completo (2/2 tasks) -- Fase 07 (4/4 planos) pronta para verificacao
+last_updated: "2026-07-15T13:06:38.075Z"
 last_activity: 2026-07-15
 last_activity_desc: Phase 07 execution started
 progress:
   total_phases: 8
-  completed_phases: 6
+  completed_phases: 7
   total_plans: 33
-  completed_plans: 32
-  percent: 75
+  completed_plans: 33
+  percent: 88
 ---
 
 # Project State
@@ -30,7 +30,7 @@ See: .planning/PROJECT.md (updated 2026-07-03)
 
 Phase: 07 (sistema-de-plugins) — EXECUTING
 Plan: 4 of 4
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-07-15 — Phase 07 execution started
 
 Progress: [░░░░░░░░░░] 0%
@@ -88,6 +88,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 07 P01 | 5min | 2 tasks | 8 files |
 | Phase 07 P02 | 15min | 2 tasks | 5 files |
 | Phase 07 P03 | 10min | 2 tasks | 5 files |
+| Phase 07 P04 | 20min | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -165,6 +166,8 @@ Recent decisions affecting current work:
 - [Phase 07]: [Phase 07-02]: candidateHasPlugins/kPluginsLocked seguem o mesmo idioma de candidateHasHooks -- plugins declarados em re-registro do mesmo collectionName falham alto (MODEL_CONFIG_CONFLICT), trava de ordem setada na 1a construcao bem-sucedida inclusive no early-return de reuso
 - [Phase 07]: Model.plugin()/kResetPlugins() completam PLUG-02 (07-03); registro global fail-loud + reset de teste; ordem determinística e dedup global+local provados de ponta a ponta
 - [Phase 07]: test/model/plugins-order.test.ts usa schema PLANO (nao decorado) em vez de @Pre de campo/classe -- babel do vitest so transforma decorators sob (src|test)/schema/**, e o artifact precisa viver em test/model/
+- [Phase 07]: D-12 provado por integracao (testcontainers): static de plugin registrado via ctx.static herda o bind automatico do Proxy trap (value.bind(target)), sem nenhum .bind manual em registerPluginStatic
+- [Phase 07]: D-09b confirmado na pratica: module augmentation (declare module '@/model') tipa .paginate() sem cast/any no call-site; inferencia-plena via new Model({ plugins }) documentada como inviavel (TS1093 + tipo de instancia fixo)
 
 ### Pending Todos
 
@@ -196,6 +199,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-07-15T12:56:54.802Z
-Stopped at: Plano 07-03 completo (2/2 tasks) -- pronto para Plano 07-04
-Resume file: .planning/phases/07-sistema-de-plugins/07-04-PLAN.md
+Last session: 2026-07-15T13:06:37.869Z
+Stopped at: Plano 07-04 completo (2/2 tasks) -- Fase 07 (4/4 planos) pronta para verificacao
+Resume file: 

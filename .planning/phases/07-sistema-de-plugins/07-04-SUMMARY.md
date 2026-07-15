@@ -125,3 +125,7 @@ None - no external service configuration required.
 ---
 *Phase: 07-sistema-de-plugins*
 *Completed: 2026-07-15*
+
+## Self-Check: PASSED
+
+All created files exist on disk; all task/summary commit hashes (`9afcda8`, `8ea57f7`, `cca8eb7`) found in `git log`.
