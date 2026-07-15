@@ -73,8 +73,9 @@ docs/.vitepress/dist/
 # dependency pins for dev/CI installs; npm never publishes it to consumers)
 yarn.lock
 
-# GSD research web-fetch cache (not versioned)
-.planning/research/.cache/
+# Claude Code + GSD local workflow artifacts (kept on disk, not versioned)
+.claude/
+.planning/
 
 # smoke-decorators.mjs transient fixture/output dirs
 scripts/.smoke-tmp/
