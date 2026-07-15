@@ -53,7 +53,7 @@
 ### Plugins
 
 - [x] **PLUG-01**: Dev pode aplicar plugins por model via `plugins[]` no construtor (aplicados antes do wrap do Proxy)
-- [ ] **PLUG-02**: Dev pode registrar plugin global via `Model.plugin()`, com enforcement de ordem (erro claro se chamado após a construção do primeiro model)
+- [x] **PLUG-02**: Dev pode registrar plugin global via `Model.plugin()`, com enforcement de ordem (erro claro se chamado após a construção do primeiro model)
 - [x] **PLUG-03**: Plugins recebem contexto tipado e selado (`PluginContext`): podem registrar hooks e statics; não podem mutar schema/validator/allowedMethods
 
 ### Documentação
@@ -122,7 +122,7 @@
 | DECO-03 | Phase 6 | Complete |
 | DECO-04 | Phase 6 | Complete |
 | PLUG-01 | Phase 7 | Complete |
-| PLUG-02 | Phase 7 | Pending |
+| PLUG-02 | Phase 7 | Complete |
 | PLUG-03 | Phase 7 | Complete |
 | MIG-01 | Phase 8 | Pending |
 | MIG-02 | Phase 8 | Pending |
