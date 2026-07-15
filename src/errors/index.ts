@@ -47,7 +47,13 @@ export class MongoatError extends Error {
  * `@Schema`, `LEGACY_DECORATORS_MODE` — decorator invocado sob
  * `experimentalDecorators`, `INVALID_HOOK_METHOD` — `@Pre`/`@Post`
  * declarado com um nome de método que não existe no enum de métodos
- * suportados, detectado já na decoração da classe).
+ * suportados, detectado já na decoração da classe, `DUPLICATE_PLUGIN_NAME`
+ * — dois plugins com o mesmo nome mas referências diferentes,
+ * `STATIC_COLLISION` — um static de plugin colide com um método nativo do
+ * model ou com um static já registrado por outro plugin,
+ * `PLUGIN_SETUP_FAILED` — o `setup()` de um plugin lançou durante a
+ * construção do model, `PLUGIN_REGISTERED_TOO_LATE` — um plugin global foi
+ * registrado depois que o primeiro model já foi construído).
  */
 export class MongoatValidationError extends MongoatError {
   constructor(message: string, options?: { cause?: unknown; code?: string }) {

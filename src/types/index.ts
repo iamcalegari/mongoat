@@ -17,4 +17,10 @@ export type {
   SchemaWithDefaults,
   ValidationQueryExpressions,
 } from './model';
+export type {
+  Plugin,
+  PluginContext,
+  PluginObject,
+  PluginSetup,
+} from './plugin';
 export type { SchemaClass } from './schema';

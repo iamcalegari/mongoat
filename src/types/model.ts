@@ -8,6 +8,7 @@ import {
 } from 'mongodb';
 
 import type { HookConfig, HookContextMap, OnHookError } from '@/types/hooks';
+import type { Plugin } from '@/types/plugin';
 import type { SchemaClass } from '@/types/schema';
 
 /**
@@ -79,6 +80,14 @@ export interface CreateModelProps<ModelType extends Document> {
    * swallowed in total silence).
    */
   onHookError?: OnHookError<HookContextMap<ModelType>[METHODS]>;
+  /**
+   * Local plugins for this model, applied after any global plugins and
+   * before the model is wrapped for method gating — so hooks/methods a
+   * plugin registers are already present on the very first construction.
+   * Global plugins always run first; within each group, plugins apply in
+   * declaration order.
+   */
+  plugins?: Plugin<ModelType>[];
   /**
    * Accepts either a plain `ModelValidationSchema` object or a class
    * decorated with `@Schema`/`@Prop` — the two schema declaration styles
