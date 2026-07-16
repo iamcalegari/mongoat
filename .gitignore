@@ -77,6 +77,9 @@ yarn.lock
 .claude/
 .planning/
 
+# Obsidian vault config (personal editor config, not versioned)
+.obsidian/
+
 # smoke-decorators.mjs transient fixture/output dirs
 scripts/.smoke-tmp/
 scripts/.smoke-out/
