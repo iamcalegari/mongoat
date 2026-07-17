@@ -44,3 +44,89 @@
 .dark .mongoat-banner img {
   box-shadow: 0 2px 24px rgba(0, 0, 0, 0.45);
 }
+
+/* ── Benchmarks page ──────────────────────────────────────────────────────
+   KPI tiles (stat-tile contract from the data-viz skill: label · value ·
+   note) and the security matrix (status cells that always pair colour with
+   an icon + label, so meaning never rides on colour alone). */
+
+.bench-kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+  margin: 1.5rem 0 2rem;
+}
+
+.bench-kpi {
+  border: 1px solid var(--vp-c-divider);
+  border-radius: 12px;
+  padding: 1.1rem 1.25rem;
+  background: var(--vp-c-bg-soft);
+}
+
+.bench-kpi .k-value {
+  font-size: 2rem;
+  font-weight: 650;
+  line-height: 1.1;
+  letter-spacing: -0.01em;
+}
+
+.bench-kpi .k-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--vp-c-text-2);
+  margin-bottom: 0.35rem;
+}
+
+.bench-kpi .k-note {
+  font-size: 0.82rem;
+  color: var(--vp-c-text-3);
+  margin-top: 0.4rem;
+  line-height: 1.4;
+}
+
+/* Security matrix */
+.bench-sec {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  margin: 1.5rem 0;
+  font-size: 0.86rem;
+}
+.bench-sec th,
+.bench-sec td {
+  padding: 0.5rem 0.65rem;
+  text-align: left;
+  border-bottom: 1px solid var(--vp-c-divider);
+}
+.bench-sec thead th {
+  font-size: 0.78rem;
+  color: var(--vp-c-text-2);
+  white-space: nowrap;
+}
+.bench-sec tbody th {
+  font-weight: 500;
+  color: var(--vp-c-text-1);
+}
+.bench-sec .cell {
+  white-space: nowrap;
+  font-weight: 600;
+  border-radius: 6px;
+}
+.bench-sec .ok {
+  background: rgba(12, 163, 12, 0.14);
+  color: #067a06;
+}
+.dark .bench-sec .ok {
+  color: #4fc94f;
+}
+.bench-sec .bad {
+  background: rgba(208, 59, 59, 0.15);
+  color: #b32d2d;
+}
+.dark .bench-sec .bad {
+  color: #ec7676;
+}
+.bench-sec .meh {
+  color: var(--vp-c-text-3);
+}

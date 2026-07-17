@@ -2,6 +2,7 @@ import { h } from 'vue';
 import DefaultTheme from 'vitepress/theme';
 import { withBase } from 'vitepress';
 import './custom.css';
+import BenchBars from './components/BenchBars.vue';
 
 /**
  * Tema estendido do VitePress: injeta a arte oficial do Mongoat
@@ -12,6 +13,11 @@ import './custom.css';
  */
 export default {
   extends: DefaultTheme,
+  enhanceApp({ app }) {
+    // Registrado globalmente para uso na página de benchmarks
+    // (docs/explanation/benchmarks.md) sem re-importar por página.
+    app.component('BenchBars', BenchBars);
+  },
   Layout() {
     return h(DefaultTheme.Layout, null, {
       'home-hero-before': () =>
