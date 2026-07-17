@@ -22,6 +22,21 @@
 export class MongoatError extends Error {
   readonly code: string;
 
+  /**
+   * @public
+   *
+   * Errors from secondary, best-effort operations that failed while this
+   * error was being handled — never the primary cause of failure. Absent
+   * (`undefined`) unless at least one secondary failure was recorded; the
+   * array can accumulate more than one entry across a single error's
+   * lifecycle.
+   *
+   * Each entry is the raw error captured from the secondary operation, not
+   * sanitized. Never serialize a `MongoatError` (or this field alone) with
+   * `JSON.stringify` — the same discipline already applied to `.cause`.
+   */
+  suppressed?: unknown[];
+
   constructor(message: string, options?: { cause?: unknown; code?: string }) {
     super(message, { cause: options?.cause });
     this.name = 'MongoatError';
