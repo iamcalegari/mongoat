@@ -68,7 +68,10 @@ export default defineConfig({
       '/tutorials/': [
         {
           text: 'Tutorials',
-          items: [{ text: 'Getting started', link: '/tutorials/getting-started' }],
+          items: [
+            { text: 'Getting started', link: '/tutorials/getting-started' },
+            { text: 'Your first migration', link: '/tutorials/first-migration' },
+          ],
         },
       ],
       '/how-to/': [
@@ -78,6 +81,7 @@ export default defineConfig({
             { text: 'Register pre/post hooks', link: '/how-to/hooks' },
             { text: 'Document defaults & timestamps', link: '/how-to/document-defaults' },
             { text: 'Define indexes & validation', link: '/how-to/indexes-validation' },
+            { text: 'Write and run migrations', link: '/how-to/migrations' },
             { text: 'Run aggregation pipelines', link: '/how-to/aggregation' },
             { text: 'Batch writes with bulkWrite', link: '/how-to/bulk-write' },
             { text: 'Use transactions & sessions', link: '/how-to/transactions' },
