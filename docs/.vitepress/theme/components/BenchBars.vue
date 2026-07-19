@@ -215,23 +215,13 @@ function fmt(v) {
   --lib-papr: #e87ba4;
   --lib-mongoose: #eda100;
   --band: rgba(90, 88, 82, 0.09);
-  --axis: rgba(120, 118, 112, 0.55);
-  --ref: #6f6d68;
-  --ink: #34332f;
-  --muted: #75736e;
-  --brand: #1f7a2b;
 }
 :global(.dark) .bench-chart {
   --lib-native: #3987e5;
   --lib-mongoat: #6fce74;
   --lib-papr: #d55181;
   --lib-mongoose: #c98500;
-  --band: rgba(255, 255, 255, 0.045);
-  --axis: rgba(180, 178, 170, 0.45);
-  --ref: #9c9a93;
-  --ink: #d6d5cb;
-  --muted: #9a988f;
-  --brand: #7bd982;
+  --band: rgba(255, 255, 255, 0.05);
 }
 
 .bench-chart svg {
@@ -248,40 +238,49 @@ function fmt(v) {
 .bar { transition: opacity 0.12s; }
 .bar:hover { opacity: 0.82; cursor: default; }
 
+/* Structural guides and every text label ride VitePress's own theme tokens, so
+   they are calibrated for light AND dark instead of being hand-mixed greys that
+   wash out on the dark surface. Text never wears a series colour. */
 .noise-band { fill: var(--band); }
-.axis { stroke: var(--axis); stroke-width: 1; }
-.ref-line { stroke: var(--ref); stroke-width: 1.5; stroke-dasharray: 5 3; }
+.axis { stroke: var(--vp-c-divider); stroke-width: 1; }
+.ref-line { stroke: var(--vp-c-text-3); stroke-width: 1.5; stroke-dasharray: 5 3; }
 
-.ref-txt,
-.band-lbl,
-.group-lbl,
-.group-note,
-.legend-txt,
-.val-lbl {
-  fill: var(--ink);
-}
-.ref-txt { font-size: 12px; fill: var(--muted); }
-.band-lbl {
-  font-size: 11px;
-  fill: var(--muted);
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-}
-.group-lbl { font-size: 13.5px; font-variant-numeric: tabular-nums; }
-.group-lbl.is-highlight { fill: var(--brand); font-weight: 650; }
-.group-note {
-  font-size: 10.5px;
-  fill: var(--brand);
+.group-lbl {
+  fill: var(--vp-c-text-1);
+  font-size: 13.5px;
   font-variant-numeric: tabular-nums;
 }
-.legend-txt { font-size: 13px; dominant-baseline: middle; }
+.group-lbl.is-highlight {
+  fill: var(--vp-c-brand-1);
+  font-weight: 650;
+}
+.group-note {
+  fill: var(--vp-c-brand-1);
+  font-size: 10.5px;
+  font-variant-numeric: tabular-nums;
+}
+.legend-txt {
+  fill: var(--vp-c-text-1);
+  font-size: 13px;
+  dominant-baseline: middle;
+}
 .val-lbl {
+  fill: var(--vp-c-text-2);
   font-size: 12px;
   font-variant-numeric: tabular-nums;
-  fill: var(--muted);
 }
 .val-callout {
+  fill: var(--vp-c-text-1);
   font-weight: 650;
-  fill: var(--ink);
+}
+.ref-txt {
+  fill: var(--vp-c-text-2);
+  font-size: 12px;
+}
+.band-lbl {
+  fill: var(--vp-c-text-2);
+  font-size: 11px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
 }
 </style>
