@@ -1,7 +1,10 @@
 import type { ClientSession, Db, Document } from 'mongodb';
 
 import type { Model } from '@/model';
-import type { ModelValidationSchema } from '@/types/model';
+import type {
+  ModelValidationSchema,
+  ValidationQueryExpressions,
+} from '@/types/model';
 import type { SchemaClass } from '@/types/schema';
 
 /**
@@ -31,9 +34,17 @@ export interface MigrationSchemaHelpers {
     collectionName: string,
     target: MigrationSchemaTarget
   ): Promise<void>;
+  /**
+   * `options.validationQueryExpressions` mirrors the sibling
+   * `CreateModelProps.validationQueryExpressions` field — only meaningful
+   * when `target` is a raw schema/decorated class (a registered `Model`
+   * already embeds its own expressions in its built validator; combining
+   * both is rejected as an ambiguous input, see the implementation).
+   */
   applyValidator(
     collectionName: string,
-    target: MigrationSchemaTarget
+    target: MigrationSchemaTarget,
+    options?: { validationQueryExpressions?: ValidationQueryExpressions }
   ): Promise<void>;
 }
 
