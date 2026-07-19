@@ -2,9 +2,10 @@ import { CollectionInfo, Db, Document } from 'mongodb';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { Database } from '@/database';
+import { MongoatValidationError } from '@/errors';
 import { createMigrationSchemaHelpers } from '@/migrate/schema-helpers';
 import { Model } from '@/model';
-import { ModelValidationSchema } from '@/types';
+import { ModelValidationSchema, ValidationQueryExpressions } from '@/types';
 import { METHODS } from '@/utils/enums';
 
 /**
@@ -141,6 +142,70 @@ describe('createMigrationSchemaHelpers — validator/index parity with Model (MI
 
     expect(emailIndex).toBeDefined();
     expect(emailIndex?.unique).toBe(true);
+  });
+
+  it('applyValidator(collectionName, rawSchema, { validationQueryExpressions }) has real parity with an equivalent Model (HARD-02/IN-02)', async () => {
+    const validationQueryExpressions: ValidationQueryExpressions = {
+      $or: [{ email: { $exists: true } }, { name: { $exists: true } }],
+    };
+
+    const modelWithExpressions = new Model<Doc>({
+      collectionName: 'schema_migration_model_expr',
+      allowedMethods: [METHODS.FIND],
+      schema,
+      validationQueryExpressions,
+    });
+
+    await db.setupCollection(modelWithExpressions as unknown as Model);
+
+    await nativeDb.createCollection('schema_migration_raw_expr');
+
+    const helpers = createMigrationSchemaHelpers(nativeDb);
+    await helpers.applyValidator('schema_migration_raw_expr', schema, {
+      validationQueryExpressions,
+    });
+
+    const modelOptions = await getCollectionOptions(
+      nativeDb,
+      'schema_migration_model_expr'
+    );
+    const rawOptions = await getCollectionOptions(
+      nativeDb,
+      'schema_migration_raw_expr'
+    );
+
+    // The expression key is present at the top level, alongside $jsonSchema —
+    // proves IN-02 is closed (no longer silently dropped).
+    expect(rawOptions?.validator?.$or).toBeDefined();
+
+    // Byte-for-byte parity with the Model-applied validator.
+    expect(rawOptions?.validator).toEqual(modelOptions?.validator);
+  });
+
+  it('applyValidator(collectionName, model, { validationQueryExpressions }) fails loud with MIGRATION_VALIDATOR_OPTIONS_CONFLICT (D-05)', async () => {
+    const helpers = createMigrationSchemaHelpers(nativeDb);
+
+    await expect(
+      helpers.applyValidator(
+        'schema_migration_model',
+        model as unknown as Model,
+        {
+          validationQueryExpressions: { $or: [{ email: { $exists: true } }] },
+        }
+      )
+    ).rejects.toMatchObject({
+      code: 'MIGRATION_VALIDATOR_OPTIONS_CONFLICT',
+    });
+
+    await expect(
+      helpers.applyValidator(
+        'schema_migration_model',
+        model as unknown as Model,
+        {
+          validationQueryExpressions: { $or: [{ email: { $exists: true } }] },
+        }
+      )
+    ).rejects.toBeInstanceOf(MongoatValidationError);
   });
 
   it('applyIndexes(collectionName, rawSchema) is a documented no-op — no index metadata to derive', async () => {
