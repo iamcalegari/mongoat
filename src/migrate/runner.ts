@@ -7,6 +7,7 @@ import {
   MongoatError,
   MongoatValidationError,
 } from '@/errors';
+import { attachSuppressed, runBestEffort } from '@/errors/suppress';
 import { computeChecksum } from '@/migrate/checksum';
 import { discoverMigrations } from '@/migrate/discover';
 import { MIGRATION_ERROR_CODES } from '@/migrate/errors';
@@ -217,29 +218,52 @@ async function applyOne(
   try {
     await runInSessionOrTransaction(database, hasReplicaSet, runUp);
   } catch (err: unknown) {
+    const writeResult = await runBestEffort(() =>
+      upsertRecord(nativeDb, config, {
+        version: entry.version,
+        name: entry.name,
+        checksum,
+        appliedAt: new Date(),
+        status: 'failed',
+      })
+    );
+
+    const wrapped = new MongoatError(
+      writeResult.ok
+        ? `Migration "${entry.version}_${entry.name}" failed — recorded as "failed" in ` +
+            `"${config.collection}" and stopped (no automatic DDL rollback). Resolve the cause ` +
+            'and re-run, or revert via down().'
+        : `Migration "${entry.version}_${entry.name}" failed AND its "failed" status could ` +
+            `NOT be persisted to "${config.collection}" — mongoat status will show it as ` +
+            'pending. Resolve the underlying cause (see the original error) before re-running.',
+      { cause: err, code: MIGRATION_ERROR_CODES.MIGRATION_FAILED }
+    );
+
+    if (!writeResult.ok) attachSuppressed(wrapped, writeResult.error);
+
+    throw wrapped;
+  }
+
+  try {
     await upsertRecord(nativeDb, config, {
       version: entry.version,
       name: entry.name,
       checksum,
       appliedAt: new Date(),
-      status: 'failed',
+      status: 'applied',
     });
-
+  } catch (writeErr: unknown) {
     throw new MongoatError(
-      `Migration "${entry.version}_${entry.name}" failed — recorded as "failed" in ` +
-        `"${config.collection}" and stopped (no automatic DDL rollback, D-03). Resolve the ` +
-        'cause and re-run, or revert via down().',
-      { cause: err, code: MIGRATION_ERROR_CODES.MIGRATION_FAILED }
+      `Migration "${entry.version}_${entry.name}" ran successfully, but its "applied" ` +
+        `status could NOT be persisted to "${config.collection}" — the runner will treat it ` +
+        'as pending on the next run. Do NOT re-run without first verifying the effects of ' +
+        'this migration manually.',
+      {
+        cause: writeErr,
+        code: MIGRATION_ERROR_CODES.MIGRATION_STATE_WRITE_FAILED,
+      }
     );
   }
-
-  await upsertRecord(nativeDb, config, {
-    version: entry.version,
-    name: entry.name,
-    checksum,
-    appliedAt: new Date(),
-    status: 'applied',
-  });
 }
 
 /**
@@ -410,7 +434,20 @@ export async function revertMigration(
     );
   }
 
-  await recordCollection.deleteOne({ version });
+  try {
+    await recordCollection.deleteOne({ version });
+  } catch (writeErr: unknown) {
+    throw new MongoatError(
+      `Migration "${onDisk.version}_${onDisk.name}" was reverted successfully, but its ` +
+        `record could NOT be removed from "${config.collection}" — it will continue to be ` +
+        'tracked as applied. Do NOT re-run down() without first verifying the effects of ' +
+        'this revert manually.',
+      {
+        cause: writeErr,
+        code: MIGRATION_ERROR_CODES.MIGRATION_STATE_WRITE_FAILED,
+      }
+    );
+  }
 }
 
 /**
