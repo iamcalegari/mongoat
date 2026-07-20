@@ -34,20 +34,60 @@ const DEFAULT_MIGRATIONS_COLLECTION = '_migrations';
 /**
  * @internal
  *
+ * Treats an empty (or whitespace-only) string as "not set". A declared but
+ * unpopulated env var — `MONGOAT_MIGRATIONS_DIR=` in a CI job, a Docker
+ * Compose `environment:` entry, an unset `.env` key — arrives as `''`, which
+ * is indistinguishable from absent for every configuration purpose. Without
+ * this, `??` would treat `''` as an explicit value and, for `dir`, make
+ * `path.resolve('')` silently point discovery at the process cwd.
+ */
+function emptyToUndefined(value: string | undefined): string | undefined {
+  return value === undefined || value.trim() === '' ? undefined : value;
+}
+
+/**
+ * @internal
+ *
+ * A value supplied EXPLICITLY (via flag or config file) that is empty is a
+ * mistake worth surfacing, not silently ignoring — unlike an empty env var,
+ * which is ambient and expected to mean "unset" (see `emptyToUndefined`).
+ * Returns `undefined` for a genuinely absent value so the caller can still
+ * fall through the precedence chain.
+ */
+function assertNonEmpty(
+  value: string | undefined,
+  label: string
+): string | undefined {
+  if (value === undefined) return undefined;
+
+  if (value.trim() === '') {
+    throw new MongoatValidationError(`"${label}" must not be empty`, {
+      code: 'INVALID_CONFIG_SHAPE',
+    });
+  }
+
+  return value;
+}
+
+/**
+ * @internal
+ *
  * Resolution precedence for the four migrations knobs (dir,
  * control-collection, lock TTL, whether transactions are required): CLI
  * flag, then env var, then config file, then a built-in fallback — applied
  * independently per field. `mergeMigrateConfig` is the single place this
- * four-tier chain is assembled into a `MigrateConfig`.
+ * four-tier chain is assembled into a `MigrateConfig`. Each string tier is
+ * normalized so an empty value never wins the chain: an empty env var falls
+ * through, an empty flag/config value fails loud.
  */
 function resolveMigrationsDir(
   flagValue: string | undefined,
   configValue: string | undefined
 ): string {
   return (
-    flagValue ??
-    process.env.MONGOAT_MIGRATIONS_DIR ??
-    configValue ??
+    assertNonEmpty(flagValue, '--dir') ??
+    emptyToUndefined(process.env.MONGOAT_MIGRATIONS_DIR) ??
+    assertNonEmpty(configValue, 'dir') ??
     DEFAULT_MIGRATIONS_DIR
   );
 }
@@ -57,9 +97,9 @@ function resolveMigrationsCollection(
   configValue: string | undefined
 ): string {
   return (
-    flagValue ??
-    process.env.MONGOAT_MIGRATIONS_COLLECTION ??
-    configValue ??
+    assertNonEmpty(flagValue, '--collection') ??
+    emptyToUndefined(process.env.MONGOAT_MIGRATIONS_COLLECTION) ??
+    assertNonEmpty(configValue, 'collection') ??
     DEFAULT_MIGRATIONS_COLLECTION
   );
 }
@@ -81,16 +121,42 @@ function resolveLockTtlMs(
   flagValue: string | undefined,
   configValue: number | undefined
 ): number {
-  const raw = flagValue ?? process.env.MONGOAT_MIGRATIONS_LOCK_TTL;
+  // An empty env var means "unset" and must fall through to the config
+  // file/default, exactly as `parseBooleanEnv` treats its own empty input —
+  // otherwise a declared-but-empty `MONGOAT_MIGRATIONS_LOCK_TTL` would make
+  // `Number('')` be `0` and take the whole CLI down (including `create`/
+  // `status`/`unlock`, which never acquire a lock at all).
+  const fromFlag = flagValue !== undefined && flagValue.trim() !== '';
+  const rawValue = fromFlag
+    ? flagValue
+    : emptyToUndefined(process.env.MONGOAT_MIGRATIONS_LOCK_TTL);
 
-  if (raw === undefined) return configValue ?? DEFAULT_LOCK_TTL_MS;
+  if (rawValue === undefined) return configValue ?? DEFAULT_LOCK_TTL_MS;
+
+  const raw = rawValue.trim();
+  // Name the source so an operator who set the env var isn't sent hunting
+  // for a `--lock-ttl` flag they never passed.
+  const source = fromFlag
+    ? '"--lock-ttl"'
+    : '"MONGOAT_MIGRATIONS_LOCK_TTL"';
+
+  // Decimal digits only — bare `Number()` would also accept hex (`0x1F`),
+  // scientific notation (`1e3`) and surrounding whitespace, silently
+  // honoring input the operator never meant.
+  if (!/^\d+$/.test(raw)) {
+    throw new MongoatValidationError(
+      `${source} must be a positive integer number of milliseconds — ` +
+        `received "${rawValue}"`,
+      { code: 'INVALID_LOCK_TTL' }
+    );
+  }
 
   const parsed = Number(raw);
 
   if (!Number.isInteger(parsed) || parsed <= 0) {
     throw new MongoatValidationError(
-      '"--lock-ttl" (or its environment-variable equivalent) must be a positive integer ' +
-        `number of milliseconds — received "${raw}"`,
+      `${source} must be a positive integer number of milliseconds — ` +
+        `received "${rawValue}"`,
       { code: 'INVALID_LOCK_TTL' }
     );
   }
@@ -122,9 +188,16 @@ const ALLOW_NO_TRANSACTION_ENV_VAR = 'MONGOAT_MIGRATIONS_ALLOW_NO_TRANSACTION';
  * of the precedence chain. A small, closed set of recognized true/false
  * literals (case-insensitive, surrounding whitespace trimmed) is accepted;
  * anything else throws rather than guessing.
+ *
+ * `varName`/`code` are parameters — not hardcoded — so that when a second
+ * boolean env var is added, its error message and `.code` name the variable
+ * the operator actually set instead of always citing
+ * `allowNoTransaction`'s.
  */
 export function parseBooleanEnv(
-  value: string | undefined
+  value: string | undefined,
+  varName: string = ALLOW_NO_TRANSACTION_ENV_VAR,
+  code: string = 'INVALID_ALLOW_NO_TRANSACTION'
 ): boolean | undefined {
   if (value === undefined) return undefined;
 
@@ -135,10 +208,10 @@ export function parseBooleanEnv(
   if (BOOLEAN_ENV_FALSE_LITERALS.has(normalized)) return false;
 
   throw new MongoatValidationError(
-    `"${ALLOW_NO_TRANSACTION_ENV_VAR}" must be one of ` +
+    `"${varName}" must be one of ` +
       `${[...BOOLEAN_ENV_TRUE_LITERALS, ...BOOLEAN_ENV_FALSE_LITERALS].join(', ')} ` +
       `(case-insensitive) — received "${value}"`,
-    { code: 'INVALID_ALLOW_NO_TRANSACTION' }
+    { code }
   );
 }
 
@@ -349,10 +422,38 @@ async function withConnectedDatabase<T>(
   }
 }
 
+type InterruptSignal = 'SIGINT' | 'SIGTERM';
+
+/**
+ * @internal
+ *
+ * Exit codes for an interrupted run — Unix 128+n convention (130 = SIGINT,
+ * 143 = SIGTERM), distinct from a migration failure (1).
+ */
+const INTERRUPT_EXIT_CODES: Record<InterruptSignal, number> = {
+  SIGINT: 130,
+  SIGTERM: 143,
+};
+
+/**
+ * @internal
+ *
+ * Matches `tsx` as a loader/import specifier — either as a path segment
+ * (`.../tsx/...`, or a bare `tsx`/`tsx/esm` argv element) or as the value of
+ * a `--import`/`--loader`/`--require` option. A loose `includes('tsx')`
+ * substring test would false-positive on unrelated paths like
+ * `/opt/tsx-utils/hook.js` and, worse, wrongly conclude the process is
+ * already TS-capable — skipping a re-exec that was actually needed and
+ * letting a later `import()` of a `.ts` file blow up with a raw parser error
+ * instead of the actionable `TSX_NOT_AVAILABLE`.
+ */
+const TSX_LOADER_PATTERN =
+  /(?:^|[/\\])tsx(?:[/\\]|$)|(?:^|\s)(?:--import|--loader|--require)[= ]['"]?tsx(?:[/\\]|['"]|\s|$)/;
+
 function isRunningUnderTsx(): boolean {
   if (process.env.MONGOAT_TSX_ACTIVE === '1') return true;
-  if (process.execArgv.some((arg) => arg.includes('tsx'))) return true;
-  if (process.env.NODE_OPTIONS?.includes('tsx')) return true;
+  if (process.execArgv.some((arg) => TSX_LOADER_PATTERN.test(arg))) return true;
+  if (TSX_LOADER_PATTERN.test(process.env.NODE_OPTIONS ?? '')) return true;
 
   return false;
 }
@@ -372,14 +473,51 @@ function resolveTsxCliPath(): string | undefined {
  */
 function reExecUnderTsx(tsxCliPath: string): never {
   const entryPath = process.argv[1] ?? '';
-  const result = spawnSync(
-    process.execPath,
-    [tsxCliPath, entryPath, ...process.argv.slice(2)],
-    {
-      stdio: 'inherit',
-      env: { ...process.env, MONGOAT_TSX_ACTIVE: '1' },
-    }
-  );
+
+  // While `spawnSync` blocks, the parent needs its own signal listeners.
+  // Without them, a Ctrl+C (delivered to the whole process group) kills the
+  // parent by the default SIGINT disposition and leaves the child — which by
+  // then holds the migration lock and is applying DDL — orphaned against a
+  // terminal that has already returned to the prompt. Ignoring in the parent
+  // lets the child run its own two-stage graceful-stop handler and report
+  // the real exit status back here.
+  const ignore = (): void => {};
+  let result!: ReturnType<typeof spawnSync>;
+
+  process.on('SIGINT', ignore);
+  process.on('SIGTERM', ignore);
+
+  try {
+    result = spawnSync(
+      process.execPath,
+      [tsxCliPath, entryPath, ...process.argv.slice(2)],
+      {
+        stdio: 'inherit',
+        env: { ...process.env, MONGOAT_TSX_ACTIVE: '1' },
+      }
+    );
+  } finally {
+    process.off('SIGINT', ignore);
+    process.off('SIGTERM', ignore);
+  }
+
+  // Spawn itself failed (`ENOENT`/`EACCES` on the runtime, `EAGAIN`,
+  // `ENOMEM`): `status` is `null`. Surface the reason instead of exiting 1
+  // with a silent stderr, which would be indistinguishable from a migration
+  // that failed.
+  if (result.error) {
+    process.stderr.write(
+      `Error [TSX_REEXEC_FAILED]: could not re-execute under tsx — ${result.error.message}\n`
+    );
+    process.exit(1);
+  }
+
+  // Child was killed by a signal (`status` is `null`, `signal` is set):
+  // propagate the same 128+n convention the in-process handler uses, so a CI
+  // wrapper can still tell an interrupt from a failure on the re-execed path.
+  if (result.signal) {
+    process.exit(INTERRUPT_EXIT_CODES[result.signal as InterruptSignal] ?? 1);
+  }
 
   process.exit(result.status ?? 1);
 }
@@ -428,7 +566,22 @@ function reExecIfTsAndNotUnderTsx(hasTsCandidate: boolean): void {
 async function ensureTsCapableRuntimeForMigrations(
   config: MigrateConfig
 ): Promise<void> {
-  const discovered = await discoverMigrations(config.dir).catch(() => []);
+  const discovered = await discoverMigrations(config.dir).catch(
+    (err: unknown) => {
+      // A not-yet-created migrations directory is the one expected failure —
+      // treat it as "no migrations". Any other error (`EACCES`, `ENOTDIR`
+      // when `dir` points at a file, a transient `EMFILE`) is real: let it
+      // propagate to the error boundary instead of being silently swallowed
+      // into an empty list, which would skip the re-exec checkpoint and only
+      // surface much later as a raw parser error from the runner's
+      // `import()`.
+      if ((err as NodeJS.ErrnoException | undefined)?.code === 'ENOENT') {
+        return [];
+      }
+
+      throw err;
+    }
+  );
   const hasTsMigrations = discovered.some((entry) =>
     entry.filePath.endsWith('.ts')
   );
@@ -507,7 +660,14 @@ async function runWithErrorBoundary(
     return result ?? 0;
   } catch (err: unknown) {
     if (err instanceof MongoatError) {
-      process.stderr.write(`Error [${err.code}]: ${err.message}\n`);
+      // Append the underlying cause's `.message` (never its stack, never a
+      // `JSON.stringify`) so a wrapper failure like `CONFIG_LOAD_FAILED` says
+      // WHY — malformed JSON vs. an ESM `SyntaxError` vs. `EISDIR` — instead
+      // of the same opaque line for every distinct root cause.
+      const cause =
+        err.cause instanceof Error ? ` (cause: ${err.cause.message})` : '';
+
+      process.stderr.write(`Error [${err.code}]: ${err.message}${cause}\n`);
     } else {
       process.stderr.write(
         `Error: ${err instanceof Error ? err.message : String(err)}\n`
@@ -517,19 +677,6 @@ async function runWithErrorBoundary(
     return 1;
   }
 }
-
-type InterruptSignal = 'SIGINT' | 'SIGTERM';
-
-/**
- * @internal
- *
- * Exit codes for an interrupted run — Unix 128+n convention (130 = SIGINT,
- * 143 = SIGTERM), distinct from a migration failure (1).
- */
-const INTERRUPT_EXIT_CODES: Record<InterruptSignal, number> = {
-  SIGINT: 130,
-  SIGTERM: 143,
-};
 
 /**
  * @internal
@@ -643,7 +790,11 @@ export async function handleCreate(argv: string[]): Promise<number> {
     // Defense in depth — the same containment check `discoverMigrations`
     // already performs: even a name that passed the regex above must
     // resolve to a path that stays within `dir`, now also guarding a
-    // directory that may have come from a config file.
+    // directory that may have come from a config file. Given `name` already
+    // matched `^[A-Za-z0-9_-]+$` (no `.`, no separators) and `fileName` is
+    // `${digits}_${name}.${ext}`, this branch is in practice unreachable — it
+    // is kept deliberately, as a cheap backstop that documents the invariant
+    // rather than one covering a currently-reachable escape.
     const resolvedDir = path.resolve(config.dir);
     const resolvedFilePath = path.resolve(filePath);
 
