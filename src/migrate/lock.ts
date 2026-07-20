@@ -223,17 +223,33 @@ export async function acquireLock(
  * acquired) can never delete a lock it no longer owns. Never throws; the
  * caller decides what to do with a failed release (e.g. a loud warning —
  * this function itself never writes to stderr nor throws).
+ *
+ * WR-04: `released` reports whether the `{ _id, ownerId }` filter actually
+ * matched a document (`deletedCount === 1`) — the ONLY observable signal
+ * that this run's lease expired and was reacquired by another runner while
+ * this run was still in flight (a real LOCK-01 mutual-exclusion violation).
+ * `ok: true, released: false` means the delete itself succeeded (no driver
+ * error) but matched nothing — the caller should warn loudly, this is never
+ * a silent no-op.
  */
 export async function releaseIfOwner(
   nativeDb: Db,
   config: MigrateConfig,
   ownerId: string
-): Promise<{ ok: true } | { ok: false; error: unknown }> {
-  return runBestEffort(async () => {
-    await nativeDb
+): Promise<
+  { ok: true; released: boolean } | { ok: false; error: unknown }
+> {
+  let released = false;
+
+  const result = await runBestEffort(async () => {
+    const deleteResult = await nativeDb
       .collection<MigrationLockDocument>(lockCollectionName(config))
       .deleteOne({ _id: LOCK_DOCUMENT_ID, ownerId });
+
+    released = deleteResult.deletedCount === 1;
   });
+
+  return result.ok ? { ok: true, released } : result;
 }
 
 /**

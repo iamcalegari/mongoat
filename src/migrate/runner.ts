@@ -259,6 +259,32 @@ async function applyOne(
 }
 
 /**
+ * @internal
+ *
+ * WR-04: `releaseIfOwner`'s `released: false` (with `ok: true`, i.e. the
+ * delete itself did not error) is the ONLY observable signal that this
+ * run's lease expired mid-run and another runner has since acquired the
+ * lock — a real LOCK-01 mutual-exclusion violation, possibly still in
+ * flight concurrently right now. Silently discarding it (as the pre-fix
+ * code did) leaves an operator with zero indication anything went wrong.
+ * Never called for a driver-error release failure (`ok: false`) — that case
+ * already gets its own `MongoatLockReleaseWarning` at each call site.
+ */
+function warnIfLeaseExpiredDuringRun(
+  releaseResult: { ok: true; released: boolean } | { ok: false; error: unknown },
+  operation: 'run' | 'revert'
+): void {
+  if (!releaseResult.ok || releaseResult.released) return;
+
+  process.emitWarning(
+    `[mongoat] This migration ${operation}'s lock lease expired before it finished — another ` +
+      'runner may have acquired the lock and executed concurrently while this run was still ' +
+      'in flight. Consider a longer --lock-ttl if this recurs.',
+    { type: 'MongoatLockLeaseExpiredWarning' }
+  );
+}
+
+/**
  * @public
  *
  * Applies every pending migration found in `config.dir`, in ascending
@@ -342,6 +368,8 @@ export async function runMigrations(
       attachSuppressed(primary, releaseResult.error);
     }
 
+    warnIfLeaseExpiredDuringRun(releaseResult, 'run');
+
     throw primary;
   }
 
@@ -359,6 +387,8 @@ export async function runMigrations(
       { type: 'MongoatLockReleaseWarning' }
     );
   }
+
+  warnIfLeaseExpiredDuringRun(releaseResult, 'run');
 }
 
 /**
@@ -424,6 +454,8 @@ export async function runTo(
       attachSuppressed(primary, releaseResult.error);
     }
 
+    warnIfLeaseExpiredDuringRun(releaseResult, 'run');
+
     throw primary;
   }
 
@@ -438,6 +470,8 @@ export async function runTo(
       { type: 'MongoatLockReleaseWarning' }
     );
   }
+
+  warnIfLeaseExpiredDuringRun(releaseResult, 'run');
 }
 
 /**
@@ -581,6 +615,8 @@ export async function revertMigration(
       attachSuppressed(primary, releaseResult.error);
     }
 
+    warnIfLeaseExpiredDuringRun(releaseResult, 'revert');
+
     throw primary;
   }
 
@@ -595,6 +631,8 @@ export async function revertMigration(
       { type: 'MongoatLockReleaseWarning' }
     );
   }
+
+  warnIfLeaseExpiredDuringRun(releaseResult, 'revert');
 }
 
 /**
