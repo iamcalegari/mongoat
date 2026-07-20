@@ -727,7 +727,15 @@ export async function dispatch(
   deps: CliDeps = defaultDeps
 ): Promise<number> {
   const [subcommand, ...rest] = argv;
-  const handler = subcommand ? COMMANDS[subcommand] : undefined;
+  // WR-01: `Object.hasOwn` — a plain `COMMANDS[subcommand]` lookup falls
+  // through to `Object.prototype` for names like `toString`/`constructor`/
+  // `__proto__`, either returning a truthy non-function (`handler is not a
+  // function`) or silently INVOKING an inherited function (`toString`)
+  // instead of ever reaching the "Unknown command" branch below.
+  const handler =
+    subcommand && Object.hasOwn(COMMANDS, subcommand)
+      ? COMMANDS[subcommand]
+      : undefined;
 
   if (!handler) {
     process.stderr.write(

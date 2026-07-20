@@ -54,6 +54,20 @@ describe('mongoat CLI dispatch', () => {
     expect(stderrOutput).toContain('status');
   });
 
+  it.each(['__proto__', 'toString', 'constructor', 'valueOf', 'hasOwnProperty'])(
+    'a prototype-chain property name ("%s") is treated as an unknown command, not invoked (WR-01)',
+    async (subcommand) => {
+      const exitCode = await dispatch([subcommand]);
+
+      expect(exitCode).toBe(1);
+
+      const stderrOutput = stderrSpy.mock.calls
+        .map((call: unknown[]) => call[0])
+        .join('');
+      expect(stderrOutput).toContain('Unknown command');
+    }
+  );
+
   it('a missing subcommand exits non-zero', async () => {
     const exitCode = await dispatch([]);
 
