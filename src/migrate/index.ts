@@ -52,9 +52,12 @@ export function defineMigration(
  * code to call it from).
  *
  * The exported config must stay a static, side-effect-free object: when the
- * CLI needs to re-execute the process under a TypeScript-capable runtime,
- * the config module is evaluated once per process, so a top-level side
- * effect in it would run twice.
+ * CLI re-executes itself under a TypeScript-capable runtime, the config
+ * module is evaluated once in the original process and again in the
+ * re-executed child — up to TWICE per invocation, the second time under a
+ * different runtime. A top-level side effect (reading a `.env`, resolving a
+ * secret, opening a socket) would therefore run twice; keep the module
+ * idempotent, or side-effect-free entirely.
  *
  * @example
  * ```typescript

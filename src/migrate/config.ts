@@ -1,4 +1,4 @@
-import { access, readFile } from 'node:fs/promises';
+import { access, readFile, stat } from 'node:fs/promises';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 
@@ -44,8 +44,14 @@ function isPlainRecord(value: unknown): value is Record<string, unknown> {
 
 function describeExportType(value: unknown): string {
   if (value === null) return 'null';
+  if (value === undefined) return 'undefined';
   if (Array.isArray(value)) return 'an array';
-  return typeof value;
+
+  const type = typeof value;
+
+  // Consistent article across every branch — otherwise the message reads
+  // "received an array" next to "received function".
+  return type === 'object' ? 'an object' : `a ${type}`;
 }
 
 /**
@@ -56,18 +62,30 @@ function describeExportType(value: unknown): string {
  * own working directory, which is global state and would tie any caller to
  * serial execution.
  *
+ * SECURITY: a `.js`/`.ts` config file is CODE, executed by `loadConfigFile`
+ * with the full privileges of whoever invoked the CLI. Two consequences
+ * worth being explicit about: (1) the no-argument cwd probe below runs
+ * `mongoat.config.js` AUTOMATICALLY, with no flag — cloning a repository and
+ * running `mongoat status` in it is enough to execute third-party code, the
+ * same trust model as `vite`/`jest`/`eslint` config files; (2) a relative
+ * `--config` is confined to the working directory (a `../` escape fails
+ * loud), since the one input that leads to executing code should not also be
+ * the one that can reach outside the project — an absolute path stays
+ * allowed as a deliberate, explicit escape hatch.
+ *
  * With `explicitPath`: the extension is validated against
  * `ALLOWED_CONFIG_EXTENSIONS` BEFORE any filesystem access (same
  * "validate before use" posture already applied to the CLI's other
- * argument validators), then resolved against `cwd` and checked for
- * readability — an unreadable/missing explicit path is a fail-loud error,
- * since it was an explicit request.
+ * argument validators), then confined to `cwd` (relative only), resolved
+ * and checked for readability — an unreadable/missing explicit path is a
+ * fail-loud error, since it was an explicit request.
  *
  * Without `explicitPath`: probes all three known basenames in the cwd,
  * without short-circuiting on the first match — short-circuiting would
- * make detecting ambiguity impossible. Zero matches resolves silently to
- * `undefined` (the file is optional); two or more matches fail loud,
- * listing every file found.
+ * make detecting ambiguity impossible. Only a regular FILE counts (a
+ * directory named `mongoat.config.js` is ignored). Zero matches resolves
+ * silently to `undefined` (the file is optional); two or more matches fail
+ * loud, listing every file found.
  */
 export async function resolveConfigPath(
   cwd: string,
@@ -84,6 +102,21 @@ export async function resolveConfigPath(
     }
 
     const resolved = path.resolve(cwd, explicitPath);
+    const resolvedCwd = path.resolve(cwd);
+
+    // A relative `--config` must stay inside the working directory; an
+    // absolute path is a deliberate escape hatch (see this function's
+    // SECURITY note).
+    if (
+      !path.isAbsolute(explicitPath) &&
+      resolved !== resolvedCwd &&
+      !resolved.startsWith(resolvedCwd + path.sep)
+    ) {
+      throw new MongoatValidationError(
+        `"--config" relative path "${explicitPath}" escapes the working directory`,
+        { code: 'INVALID_CONFIG_PATH' }
+      );
+    }
 
     try {
       await access(resolved);
@@ -103,8 +136,13 @@ export async function resolveConfigPath(
     const candidate = path.join(cwd, basename);
 
     try {
-      await access(candidate);
-      found.push(candidate);
+      // `stat().isFile()`, not a bare `access()`: `access` succeeds for a
+      // DIRECTORY named `mongoat.config.js`, which would then be pushed as a
+      // phantom match (and could even trip the ambiguity error) despite not
+      // being a loadable config file.
+      const info = await stat(candidate);
+
+      if (info.isFile()) found.push(candidate);
     } catch {
       // Basename not present in this cwd — keep probing the remaining
       // ones; a missing file here is expected, not an error.
@@ -176,7 +214,19 @@ export function normalizeConfigExport(mod: unknown): unknown {
  * with the original error preserved untouched in `.cause` — never
  * serialized. On success, writes exactly one informational line to
  * `process.stderr` (never `stdout`, which stays clean for machine
- * consumption) naming the file that was loaded.
+ * consumption) naming the file that was loaded — emitted only AFTER the
+ * shape has validated, so the "loaded config" line always means "accepted",
+ * never appearing right before a validation error.
+ *
+ * SECURITY: for a `.js`/`.ts` file this runs the config author's code with
+ * the invoker's privileges (`.json` is only read and parsed, never
+ * executed). KNOWN LIMITATION: when a `.js`/`.ts` config redirects `dir` to
+ * a folder of `.ts` migrations, the re-exec checkpoint means the parent
+ * loads the config once and then the tsx child loads it again — so such a
+ * config module can be evaluated TWICE per invocation, the second time under
+ * a different runtime. A config with side effects (reading a `.env`,
+ * resolving a secret, opening a socket) should therefore be written to be
+ * idempotent.
  */
 export async function loadConfigFile(
   absolutePath: string
@@ -199,9 +249,11 @@ export async function loadConfigFile(
     );
   }
 
+  const validated = validateConfigShape(raw, absolutePath);
+
   process.stderr.write(`[mongoat] loaded config from ${absolutePath}\n`);
 
-  return validateConfigShape(raw, absolutePath);
+  return validated;
 }
 
 /**
@@ -243,9 +295,9 @@ export function validateConfigShape(
   const result: MongoatMigrationsConfig = {};
 
   if (Object.hasOwn(raw, 'dir')) {
-    if (typeof raw.dir !== 'string') {
+    if (typeof raw.dir !== 'string' || raw.dir.trim() === '') {
       throw new MongoatValidationError(
-        `"dir" in the migrations config at "${sourcePath}" must be a string`,
+        `"dir" in the migrations config at "${sourcePath}" must be a non-empty string`,
         { code: 'INVALID_CONFIG_SHAPE' }
       );
     }
@@ -254,9 +306,23 @@ export function validateConfigShape(
   }
 
   if (Object.hasOwn(raw, 'collection')) {
-    if (typeof raw.collection !== 'string') {
+    if (typeof raw.collection !== 'string' || raw.collection.trim() === '') {
       throw new MongoatValidationError(
-        `"collection" in the migrations config at "${sourcePath}" must be a string`,
+        `"collection" in the migrations config at "${sourcePath}" must be a non-empty string`,
+        { code: 'INVALID_CONFIG_SHAPE' }
+      );
+    }
+
+    // Reject names the MongoDB driver would only fail on obscurely later: a
+    // "$", a NUL byte, or the reserved "system." prefix. Same "validate
+    // before use, with a stable .code" posture the rest of this module keeps.
+    if (
+      raw.collection.includes('$') ||
+      raw.collection.includes('\0') ||
+      raw.collection.startsWith('system.')
+    ) {
+      throw new MongoatValidationError(
+        `"collection" in the migrations config at "${sourcePath}" is not a valid MongoDB collection name`,
         { code: 'INVALID_CONFIG_SHAPE' }
       );
     }
