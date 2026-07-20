@@ -1,3 +1,8 @@
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { readdir } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
+
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('@/migrate', async (importOriginal) => {
@@ -6,12 +11,28 @@ vi.mock('@/migrate', async (importOriginal) => {
   return {
     ...actual,
     runMigrations: vi.fn().mockResolvedValue(undefined),
+    revertMigration: vi.fn().mockResolvedValue(undefined),
+    runTo: vi.fn().mockResolvedValue(undefined),
+    getStatus: vi.fn().mockResolvedValue([]),
+    getLockStatus: vi.fn().mockResolvedValue({ held: false }),
+    forceUnlock: vi.fn().mockResolvedValue({ removed: false }),
   };
 });
 
 import type { CliDeps } from '@/bin/mongoat';
-import { handleUp, mergeMigrateConfig, parseBooleanEnv } from '@/bin/mongoat';
+import {
+  handleCreate,
+  handleDown,
+  handleStatus,
+  handleTo,
+  handleUnlock,
+  handleUp,
+  mergeMigrateConfig,
+  parseBooleanEnv,
+  resolveMigrateConfig,
+} from '@/bin/mongoat';
 import type { Database } from '@/database';
+import { getLockStatus, getStatus } from '@/migrate';
 import type { MongoatMigrationsConfig } from '@/types/migrate';
 
 /**
@@ -363,5 +384,324 @@ describe('allowNoTransaction — the env var reaches the real handler with no fl
       .map((call: unknown[]) => call[0])
       .join('');
     expect(stderrOutput).toContain('--allow-no-transaction is set');
+  });
+});
+
+/**
+ * `create`/`status`/`unlock` gain the same `resolveMigrateConfig` chain
+ * `up`/`down`/`to` already had — the fix for the "config that only works in
+ * some handlers" inconsistency. `create` is exercised by real dispatch
+ * against a real filesystem (it has no DB dependency); `status`/`unlock` are
+ * exercised through the `CliDeps` seam, same idiom as `cli-dispatch.test.ts`,
+ * with no real DB connection. The ambiguous-config scenario is the one
+ * exception — it depends on a directory PROBE (no explicit "--config"), and
+ * every real handler always resolves against the actual process cwd, so it
+ * is exercised directly against `resolveMigrateConfig`'s own exported `cwd`
+ * parameter instead, never by swapping the test process's real working
+ * directory (that is shared, mutable, global state across every test file).
+ */
+describe('config chain wired into all six subcommands', () => {
+  let stdoutSpy: ReturnType<typeof vi.spyOn>;
+  let stderrSpy: ReturnType<typeof vi.spyOn>;
+  let fakeDatabase: Database;
+  let deps: CliDeps;
+
+  function makeTmpDir(): string {
+    return mkdtempSync(path.join(tmpdir(), 'mongoat-cli-config-chain-'));
+  }
+
+  function writeConfig(dir: string, contents: MongoatMigrationsConfig): string {
+    const configPath = path.join(dir, 'mongoat.config.json');
+    writeFileSync(configPath, JSON.stringify(contents), 'utf-8');
+
+    return configPath;
+  }
+
+  function stderr(): string {
+    return stderrSpy.mock.calls.map((call: unknown[]) => call[0]).join('');
+  }
+
+  beforeEach(() => {
+    stdoutSpy = vi
+      .spyOn(process.stdout, 'write')
+      .mockImplementation(() => true);
+    stderrSpy = vi
+      .spyOn(process.stderr, 'write')
+      .mockImplementation(() => true);
+    fakeDatabase = {
+      connect: vi.fn().mockResolvedValue(undefined),
+      disconnect: vi.fn().mockResolvedValue(undefined),
+    } as unknown as Database;
+    deps = { createDatabase: () => fakeDatabase };
+  });
+
+  afterEach(() => {
+    stdoutSpy.mockRestore();
+    stderrSpy.mockRestore();
+    vi.mocked(getStatus).mockClear();
+    vi.mocked(getLockStatus).mockClear();
+  });
+
+  describe('--config is declared and accepted by every subcommand', () => {
+    it('create accepts --config without an unknown-option error', async () => {
+      const fixtureDir = makeTmpDir();
+      const targetDir = makeTmpDir();
+      try {
+        const configPath = writeConfig(fixtureDir, {});
+
+        const exitCode = await handleCreate([
+          'add_users',
+          '--dir',
+          targetDir,
+          '--config',
+          configPath,
+        ]);
+
+        expect(exitCode).toBe(0);
+        expect(stderr()).not.toContain("Unknown option '--config'");
+      } finally {
+        rmSync(fixtureDir, { recursive: true, force: true });
+        rmSync(targetDir, { recursive: true, force: true });
+      }
+    });
+
+    it('up accepts --config without an unknown-option error', async () => {
+      const dir = makeTmpDir();
+      try {
+        const configPath = writeConfig(dir, {});
+
+        const exitCode = await handleUp(['--config', configPath], deps);
+
+        expect(exitCode).toBe(0);
+        expect(stderr()).not.toContain("Unknown option '--config'");
+      } finally {
+        rmSync(dir, { recursive: true, force: true });
+      }
+    });
+
+    it('down accepts --config without an unknown-option error', async () => {
+      const dir = makeTmpDir();
+      try {
+        const configPath = writeConfig(dir, {});
+
+        const exitCode = await handleDown(
+          ['20260101000000', '--config', configPath],
+          deps
+        );
+
+        expect(exitCode).toBe(0);
+        expect(stderr()).not.toContain("Unknown option '--config'");
+      } finally {
+        rmSync(dir, { recursive: true, force: true });
+      }
+    });
+
+    it('to accepts --config without an unknown-option error', async () => {
+      const dir = makeTmpDir();
+      try {
+        const configPath = writeConfig(dir, {});
+
+        const exitCode = await handleTo(
+          ['20260101000000', '--config', configPath],
+          deps
+        );
+
+        expect(exitCode).toBe(0);
+        expect(stderr()).not.toContain("Unknown option '--config'");
+      } finally {
+        rmSync(dir, { recursive: true, force: true });
+      }
+    });
+
+    it('status accepts --config without an unknown-option error', async () => {
+      const dir = makeTmpDir();
+      try {
+        const configPath = writeConfig(dir, {});
+
+        const exitCode = await handleStatus(['--config', configPath], deps);
+
+        expect(exitCode).toBe(0);
+        expect(stderr()).not.toContain("Unknown option '--config'");
+      } finally {
+        rmSync(dir, { recursive: true, force: true });
+      }
+    });
+
+    it('unlock accepts --config without an unknown-option error', async () => {
+      const dir = makeTmpDir();
+      try {
+        const configPath = writeConfig(dir, {});
+
+        const exitCode = await handleUnlock(['--config', configPath], deps);
+
+        expect(exitCode).toBe(0);
+        expect(stderr()).not.toContain("Unknown option '--config'");
+      } finally {
+        rmSync(dir, { recursive: true, force: true });
+      }
+    });
+  });
+
+  it('create writes into the directory from a config file when no --dir flag and no env var are set', async () => {
+    const fixtureDir = makeTmpDir();
+    const targetDir = makeTmpDir();
+    try {
+      const configPath = writeConfig(fixtureDir, { dir: targetDir });
+
+      const exitCode = await handleCreate([
+        'from_config_dir',
+        '--config',
+        configPath,
+      ]);
+
+      expect(exitCode).toBe(0);
+
+      const files = await readdir(targetDir);
+      expect(files).toHaveLength(1);
+      expect(files[0]).toMatch(/^\d{14}_from_config_dir\.ts$/);
+    } finally {
+      rmSync(fixtureDir, { recursive: true, force: true });
+      rmSync(targetDir, { recursive: true, force: true });
+    }
+  });
+
+  it('create --dir flag wins over the config file dir (precedence)', async () => {
+    const fixtureDir = makeTmpDir();
+    const configDir = makeTmpDir();
+    const flagDir = makeTmpDir();
+    try {
+      const configPath = writeConfig(fixtureDir, { dir: configDir });
+
+      const exitCode = await handleCreate([
+        'from_flag_dir',
+        '--dir',
+        flagDir,
+        '--config',
+        configPath,
+      ]);
+
+      expect(exitCode).toBe(0);
+
+      const flagFiles = await readdir(flagDir);
+      expect(flagFiles).toHaveLength(1);
+
+      const configFiles = await readdir(configDir);
+      expect(configFiles).toHaveLength(0);
+    } finally {
+      rmSync(fixtureDir, { recursive: true, force: true });
+      rmSync(configDir, { recursive: true, force: true });
+      rmSync(flagDir, { recursive: true, force: true });
+    }
+  });
+
+  it('status resolves against the control collection from a config file', async () => {
+    const dir = makeTmpDir();
+    try {
+      const configPath = writeConfig(dir, {
+        collection: 'custom_migrations',
+      });
+
+      const exitCode = await handleStatus(['--config', configPath], deps);
+
+      expect(exitCode).toBe(0);
+      expect(getStatus).toHaveBeenCalledWith(
+        fakeDatabase,
+        expect.objectContaining({ collection: 'custom_migrations' })
+      );
+      expect(getLockStatus).toHaveBeenCalledWith(
+        fakeDatabase,
+        expect.objectContaining({ collection: 'custom_migrations' })
+      );
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('unlock resolves against the control collection from a config file', async () => {
+    const dir = makeTmpDir();
+    try {
+      const configPath = writeConfig(dir, {
+        collection: 'custom_migrations',
+      });
+
+      const exitCode = await handleUnlock(['--config', configPath], deps);
+
+      expect(exitCode).toBe(0);
+      expect(getLockStatus).toHaveBeenCalledWith(
+        fakeDatabase,
+        expect.objectContaining({ collection: 'custom_migrations' })
+      );
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('create still rejects an invalid name before resolving any config, even with --config present', async () => {
+    const dir = makeTmpDir();
+    try {
+      const configPath = writeConfig(dir, { dir });
+
+      const exitCode = await handleCreate([
+        'not a valid name!',
+        '--config',
+        configPath,
+      ]);
+
+      expect(exitCode).toBe(1);
+      expect(stderr()).toContain('INVALID_MIGRATION_NAME');
+      // A config resolvida nunca chega a ser lida — a validação do nome
+      // acontece antes de qualquer resolução de config, então a linha de
+      // transparência do loader (escrita só quando um config É carregado)
+      // nunca aparece.
+      expect(stderr()).not.toContain('loaded config from');
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  describe('an ambiguous config in cwd fails loud for every subcommand', () => {
+    // A ambiguidade só é detectável durante a SONDAGEM do cwd (sem
+    // "--config" explícito) — os seis handlers de verdade sempre resolvem
+    // contra o cwd real do processo, então este cenário chama
+    // `resolveMigrateConfig` (exportada para isso) direto, com um `cwd` de
+    // diretório temporário passado explicitamente, exatamente o mecanismo
+    // que cada um dos seis handlers usa por baixo — nunca trocando o
+    // diretório de trabalho real do processo de teste.
+    const subcommandNames = [
+      'create',
+      'up',
+      'down',
+      'to',
+      'status',
+      'unlock',
+    ] as const;
+
+    it.each(subcommandNames)(
+      '%s: fails with the stable AMBIGUOUS_CONFIG code',
+      async () => {
+        const dir = makeTmpDir();
+        try {
+          writeFileSync(path.join(dir, 'mongoat.config.json'), '{}', 'utf-8');
+          writeFileSync(
+            path.join(dir, 'mongoat.config.js'),
+            'module.exports = {};',
+            'utf-8'
+          );
+
+          let caught: unknown;
+          try {
+            await resolveMigrateConfig({}, dir);
+          } catch (err) {
+            caught = err;
+          }
+
+          expect(caught).toEqual(
+            expect.objectContaining({ code: 'AMBIGUOUS_CONFIG' })
+          );
+        } finally {
+          rmSync(dir, { recursive: true, force: true });
+        }
+      }
+    );
   });
 });

@@ -439,9 +439,12 @@ async function ensureTsCapableRuntimeForMigrations(
 /**
  * @internal
  *
- * Single entry point for the three subcommands that execute migration
- * files (`up`/`down`/`to`): resolves the migrations config in the order
- * this always has to happen in, and only in this order.
+ * Single entry point shared by all six subcommands: resolves the
+ * migrations config in the order this always has to happen in, and only in
+ * this order. Only `up`/`down`/`to` additionally run a second checkpoint
+ * afterwards, against the discovered migration files — `create`/`status`/
+ * `unlock` never import a migration file, so this is the only checkpoint
+ * that can make any of them re-exec.
  *
  * The config file's PATH is resolved first — filesystem only, no
  * `import()` — because a `.ts` config file cannot be loaded by a process
@@ -452,12 +455,19 @@ async function ensureTsCapableRuntimeForMigrations(
  * survives it) is the file actually loaded and merged with the flag/env
  * values into the final `MigrateConfig` — whose `dir` is what the caller's
  * own second re-exec checkpoint, against the discovered migration files,
- * must check next. Checking the migrations directory before this merge
- * would inspect the wrong place whenever a `.js`/`.json` config redirects
- * `dir` to a folder of `.ts` migrations, letting that case slip past
- * un-re-execed until the runner's own `import()` failed much later.
+ * must check next (for `up`/`down`/`to` only). Checking the migrations
+ * directory before this merge would inspect the wrong place whenever a
+ * `.js`/`.json` config redirects `dir` to a folder of `.ts` migrations,
+ * letting that case slip past un-re-execed until the runner's own
+ * `import()` failed much later.
+ *
+ * Exported (rather than kept purely internal) so tests can exercise the
+ * cwd-dependent discovery/ambiguity behavior with an explicit temporary
+ * directory, without ever touching the real process working directory —
+ * `cwd` is a parameter here, never read implicitly mid-function, the same
+ * discipline `resolveConfigPath`/`loadConfigFile` already established.
  */
-async function resolveMigrateConfig(
+export async function resolveMigrateConfig(
   values: {
     'allow-no-transaction'?: boolean;
     'collection'?: string;
@@ -612,6 +622,7 @@ export async function handleCreate(argv: string[]): Promise<number> {
       options: {
         dir: { type: 'string' },
         js: { type: 'boolean', default: false },
+        config: { type: 'string' },
       },
     });
 
@@ -619,15 +630,21 @@ export async function handleCreate(argv: string[]): Promise<number> {
     // "validate before path.join" posture as `assertValidVersionArg`.
     const name = assertValidMigrationName(positionals[0]);
 
-    const dir = resolveMigrationsDir(values.dir, undefined);
+    // May re-exec — never returns if it does (see `resolveMigrateConfig`).
+    // `create` never imports a migration FILE, so — unlike `up`/`down`/`to`
+    // — it never runs the migrations-discovery checkpoint: a TypeScript
+    // CONFIG file is the only reason this handler can still re-exec, and
+    // that is already covered by resolving the config itself.
+    const config = await resolveMigrateConfig(values);
     const extension: 'js' | 'ts' = values.js ? 'js' : 'ts';
     const fileName = `${buildTimestampVersion()}_${name}.${extension}`;
-    const filePath = path.join(dir, fileName);
+    const filePath = path.join(config.dir, fileName);
 
     // Defense in depth — the same containment check `discoverMigrations`
-    // already performs: even a name that passed the regex above
-    // must resolve to a path that stays within `dir`.
-    const resolvedDir = path.resolve(dir);
+    // already performs: even a name that passed the regex above must
+    // resolve to a path that stays within `dir`, now also guarding a
+    // directory that may have come from a config file.
+    const resolvedDir = path.resolve(config.dir);
     const resolvedFilePath = path.resolve(filePath);
 
     if (
@@ -641,7 +658,7 @@ export async function handleCreate(argv: string[]): Promise<number> {
       );
     }
 
-    await mkdir(dir, { recursive: true });
+    await mkdir(config.dir, { recursive: true });
     await writeFile(filePath, buildMigrationStub(extension));
 
     process.stdout.write(`Created ${filePath}\n`);
@@ -800,10 +817,15 @@ export async function handleUnlock(
         dir: { type: 'string' },
         collection: { type: 'string' },
         force: { type: 'boolean', default: false },
+        config: { type: 'string' },
       },
     });
 
-    const config = mergeMigrateConfig(values);
+    // May re-exec — never returns if it does (see `resolveMigrateConfig`).
+    // `unlock` never imports a migration file, so — like `create` and
+    // `status` — it never runs the migrations-discovery checkpoint; only a
+    // TypeScript config file can still trigger a re-exec here.
+    const config = await resolveMigrateConfig(values);
 
     await withConnectedDatabase(deps, async (database) => {
       if (values.force) {
@@ -875,10 +897,14 @@ export async function handleStatus(
       options: {
         dir: { type: 'string' },
         collection: { type: 'string' },
+        config: { type: 'string' },
       },
     });
 
-    const config = mergeMigrateConfig(values);
+    // May re-exec — never returns if it does (see `resolveMigrateConfig`).
+    // `status` never imports a migration file, so it never runs the
+    // migrations-discovery checkpoint either — same reasoning as `create`.
+    const config = await resolveMigrateConfig(values);
     const { rows, lockStatus } = await withConnectedDatabase(
       deps,
       async (database) => ({
