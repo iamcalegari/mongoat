@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 
 import { Db } from 'mongodb';
-import { afterEach, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 
 import { Database } from '@/database';
 import { acquireLock, getLockStatus, lockCollectionName } from '@/migrate/lock';
@@ -28,6 +28,12 @@ describe('lock — expiry (LOCK-02, D-32)', () => {
 
     await db.connect();
     nativeDb = db.getDb() as Db;
+  });
+
+  // WR-05: see lock-acquisition.test.ts — without this, MongoClient sockets/
+  // monitors stay open past this suite's last test.
+  afterAll(async () => {
+    await db.disconnect();
   });
 
   afterEach(async () => {

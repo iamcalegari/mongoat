@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 
 import { Db } from 'mongodb';
-import { afterEach, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 
 import { Database } from '@/database';
 import { MongoatError } from '@/errors';
@@ -29,6 +29,14 @@ describe('lock — acquisition (LOCK-01)', () => {
 
     await db.connect();
     nativeDb = db.getDb() as Db;
+  });
+
+  // WR-05: the sibling suites in this phase (lock-release.test.ts,
+  // graceful-stop.test.ts) already disconnect in afterAll — without it here,
+  // this suite's `MongoClient` keeps sockets/monitors open past the last
+  // test, which can hang the vitest worker process.
+  afterAll(async () => {
+    await db.disconnect();
   });
 
   afterEach(async () => {
