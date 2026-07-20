@@ -31,10 +31,10 @@ describe('lock — acquisition', () => {
     nativeDb = db.getDb() as Db;
   });
 
-  // The sibling suites in this phase (lock-release.test.ts,
-  // graceful-stop.test.ts) already disconnect in afterAll — without it here,
-  // this suite's `MongoClient` keeps sockets/monitors open past the last
-  // test, which can hang the vitest worker process.
+  // The sibling lock suites (lock-release.test.ts, graceful-stop.test.ts)
+  // already disconnect in afterAll — without it here, this suite's
+  // `MongoClient` keeps sockets/monitors open past the last test, which can
+  // hang the vitest worker process.
   afterAll(async () => {
     await db.disconnect();
   });
@@ -124,6 +124,11 @@ describe('lock — acquisition', () => {
     // pode citar nenhum identificador de planejamento interno.
     expect(err.message).not.toMatch(/\b[A-Z]{2,5}-\d{2}\b/);
     expect(err.message).not.toMatch(/\bD-\d{1,2}\b/);
-    expect(err.message).not.toMatch(/\b(Fase|Phase|Plano|Plan|Task|Wave)\s+\d/i);
+    expect(err.message).not.toMatch(
+      /\b(Fase|Phase|Plano|Plan|Task|Wave|Pitfall|Pattern)\s+\d/i
+    );
+    expect(err.message).not.toMatch(/\b(phase|fase|pitfall)\b/i);
+    expect(err.message).not.toMatch(/\b(RED|GREEN) note\b/i);
+    expect(err.message).not.toMatch(/\bimplementation task\b/i);
   });
 });

@@ -335,7 +335,87 @@ describe('parseBooleanEnv', () => {
 
     expect(message).not.toMatch(/\b[A-Z]{2,5}-\d{2}\b/);
     expect(message).not.toMatch(/\bD-\d{1,2}\b/);
-    expect(message).not.toMatch(/\b(Fase|Phase|Plano|Plan|Task|Wave)\s+\d/i);
+    expect(message).not.toMatch(
+      /\b(Fase|Phase|Plano|Plan|Task|Wave|Pitfall|Pattern)\s+\d/i
+    );
+    expect(message).not.toMatch(/\b(phase|fase|pitfall)\b/i);
+    expect(message).not.toMatch(/\b(RED|GREEN) note\b/i);
+    expect(message).not.toMatch(/\bimplementation task\b/i);
+  });
+});
+
+/**
+ * Empty strings must never win a tier of the chain: a declared-but-empty env
+ * var means "unset" and falls through; an empty flag/config value is an
+ * explicit mistake and fails loud. Without this, an empty `dir` would make
+ * discovery silently scan the process cwd and report a run against the wrong
+ * directory as success.
+ */
+describe('mergeMigrateConfig — empty values never win the chain', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it('an empty MONGOAT_MIGRATIONS_DIR falls through to the default, not the cwd', () => {
+    vi.stubEnv('MONGOAT_MIGRATIONS_DIR', '');
+
+    expect(mergeMigrateConfig({}).dir).toBe('migrations');
+  });
+
+  it('an empty MONGOAT_MIGRATIONS_DIR falls through to the config file', () => {
+    vi.stubEnv('MONGOAT_MIGRATIONS_DIR', '');
+
+    expect(mergeMigrateConfig({}, { dir: 'db/migrations' }).dir).toBe(
+      'db/migrations'
+    );
+  });
+
+  it('an empty --dir flag fails loud instead of scanning the cwd', () => {
+    expect(() => mergeMigrateConfig({ dir: '' })).toThrowError(
+      expect.objectContaining({ code: 'INVALID_CONFIG_SHAPE' })
+    );
+  });
+
+  it('an empty --collection flag fails loud', () => {
+    expect(() => mergeMigrateConfig({ collection: '   ' })).toThrowError(
+      expect.objectContaining({ code: 'INVALID_CONFIG_SHAPE' })
+    );
+  });
+
+  it('an empty MONGOAT_MIGRATIONS_LOCK_TTL falls through instead of failing on Number("")', () => {
+    vi.stubEnv('MONGOAT_MIGRATIONS_LOCK_TTL', '');
+
+    expect(mergeMigrateConfig({}, { lockTtlMs: 5000 }).lockTtlMs).toBe(5000);
+    expect(mergeMigrateConfig({}).lockTtlMs).toBe(30 * 60 * 1000);
+  });
+
+  it('a non-decimal MONGOAT_MIGRATIONS_LOCK_TTL fails loud and names the env var', () => {
+    vi.stubEnv('MONGOAT_MIGRATIONS_LOCK_TTL', '0x1F');
+
+    let caught: unknown;
+    try {
+      mergeMigrateConfig({});
+    } catch (err) {
+      caught = err;
+    }
+
+    expect(caught).toEqual(
+      expect.objectContaining({ code: 'INVALID_LOCK_TTL' })
+    );
+    expect((caught as Error).message).toContain(
+      'MONGOAT_MIGRATIONS_LOCK_TTL'
+    );
+  });
+
+  it('an invalid --lock-ttl flag names the flag, not the env var', () => {
+    let caught: unknown;
+    try {
+      mergeMigrateConfig({ 'lock-ttl': '1e3' });
+    } catch (err) {
+      caught = err;
+    }
+
+    expect((caught as Error).message).toContain('--lock-ttl');
   });
 });
 

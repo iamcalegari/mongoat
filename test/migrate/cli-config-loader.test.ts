@@ -474,6 +474,119 @@ describe('mongoat config loader', () => {
     });
   });
 
+  describe('shape validation rejects empty and unsafe values', () => {
+    it('rejects an empty "dir"', () => {
+      expect(() => validateConfigShape({ dir: '' }, '/x')).toThrowError(
+        MongoatValidationError
+      );
+      expect(() => validateConfigShape({ dir: '   ' }, '/x')).toThrowError(
+        /must be a non-empty string/
+      );
+    });
+
+    it('rejects an empty "collection"', () => {
+      expect(() => validateConfigShape({ collection: '' }, '/x')).toThrowError(
+        /must be a non-empty string/
+      );
+    });
+
+    it('rejects a collection name the driver would only fail on later', () => {
+      for (const bad of ['has$dollar', 'system.profile', 'nul\0byte']) {
+        expect(() =>
+          validateConfigShape({ collection: bad }, '/x')
+        ).toThrowError(/not a valid MongoDB collection name/);
+      }
+    });
+
+    it('still accepts a normal collection name', () => {
+      expect(validateConfigShape({ collection: '_migrations' }, '/x')).toEqual({
+        collection: '_migrations',
+      });
+    });
+
+    it('uses a consistent article in the "not a plain object" message', () => {
+      expect(() => validateConfigShape('hello', '/x')).toThrowError(
+        /received a string/
+      );
+      expect(() => validateConfigShape(42, '/x')).toThrowError(
+        /received a number/
+      );
+      expect(() => validateConfigShape([], '/x')).toThrowError(
+        /received an array/
+      );
+    });
+  });
+
+  describe('explicit --config path containment', () => {
+    it('rejects a relative path that escapes the working directory', async () => {
+      const dir = makeTmpDir();
+      try {
+        let caught: unknown;
+        try {
+          await resolveConfigPath(dir, '../outside.js');
+        } catch (err) {
+          caught = err;
+        }
+
+        expect(caught).toBeInstanceOf(MongoatValidationError);
+        expect((caught as MongoatValidationError).code).toBe(
+          'INVALID_CONFIG_PATH'
+        );
+      } finally {
+        rmSync(dir, { recursive: true, force: true });
+      }
+    });
+
+    it('still accepts an absolute path outside the cwd as an explicit escape hatch', async () => {
+      const dir = makeTmpDir();
+      const other = makeTmpDir();
+      try {
+        const abs = path.join(other, 'mongoat.config.json');
+        writeFileSync(abs, '{}', 'utf-8');
+
+        await expect(resolveConfigPath(dir, abs)).resolves.toBe(abs);
+      } finally {
+        rmSync(dir, { recursive: true, force: true });
+        rmSync(other, { recursive: true, force: true });
+      }
+    });
+  });
+
+  describe('cwd probe ignores a non-file candidate', () => {
+    it('skips a DIRECTORY named like a config file', async () => {
+      const dir = makeTmpDir();
+      try {
+        // A directory whose name collides with a config basename must not be
+        // treated as a config file — nor trip the ambiguity error alongside a
+        // real one.
+        mkdirSync(path.join(dir, 'mongoat.config.js'));
+        const realConfig = path.join(dir, 'mongoat.config.json');
+        writeFileSync(realConfig, '{}', 'utf-8');
+
+        await expect(resolveConfigPath(dir)).resolves.toBe(realConfig);
+      } finally {
+        rmSync(dir, { recursive: true, force: true });
+      }
+    });
+  });
+
+  describe('parseBooleanEnv names the variable it was given', () => {
+    it('quotes the caller-supplied var name and code on an invalid value', () => {
+      let caught: unknown;
+      try {
+        parseBooleanEnv('perhaps', 'SOME_OTHER_FLAG', 'INVALID_SOME_OTHER_FLAG');
+      } catch (err) {
+        caught = err;
+      }
+
+      expect(caught).toBeInstanceOf(MongoatValidationError);
+      expect((caught as MongoatValidationError).code).toBe(
+        'INVALID_SOME_OTHER_FLAG'
+      );
+      expect((caught as Error).message).toContain('SOME_OTHER_FLAG');
+    });
+  });
+
   describe('mensagens sem jargão de planejamento interno', () => {
     // Guarda genérica: replica as três regexes já usadas em
     // test/migrate/lock-acquisition.test.ts — toda mensagem nova precisa
@@ -481,7 +594,16 @@ describe('mongoat config loader', () => {
     const assertNoPlanningJargon = (message: string): void => {
       expect(message).not.toMatch(/\b[A-Z]{2,5}-\d{2}\b/);
       expect(message).not.toMatch(/\bD-\d{1,2}\b/);
-      expect(message).not.toMatch(/\b(Fase|Phase|Plano|Plan|Task|Wave)\s+\d/i);
+      expect(message).not.toMatch(
+        /\b(Fase|Phase|Plano|Plan|Task|Wave|Pitfall|Pattern)\s+\d/i
+      );
+      // Non-numbered process vocabulary — the class that slipped past the
+      // numbered patterns above. Only unambiguous process words are matched
+      // bare (a case-insensitive `\bPattern\b` would false-positive on
+      // identifiers like `TSX_LOADER_PATTERN`).
+      expect(message).not.toMatch(/\b(phase|fase|pitfall)\b/i);
+      expect(message).not.toMatch(/\b(RED|GREEN) note\b/i);
+      expect(message).not.toMatch(/\bimplementation task\b/i);
     };
 
     it('the AMBIGUOUS_CONFIG message stays free of planning identifiers', async () => {
@@ -608,13 +730,13 @@ describe('mongoat config loader', () => {
       }
     });
 
-    describe('static scan of the phase source files', () => {
+    describe('static scan of the CLI config source files', () => {
       // Mensagens de erro só cobrem o que RODA em tempo de execução —
       // um identificador de planejamento vazado num comentário de JSDoc
       // nunca dispararia nenhuma das asserções acima, mas chegaria intacto
       // na documentação de API gerada (o pacote é público). Lendo o
-      // conteúdo INTEIRO dos dois arquivos-fonte tocados nesta fase e
-      // aplicando as MESMAS três regexes fecha essa lacuna — reutiliza os
+      // conteúdo INTEIRO dos dois arquivos-fonte da CLI de config e
+      // aplicando as MESMAS regexes fecha essa lacuna — reutiliza os
       // literais de `assertNoPlanningJargon` acima para que os dois lugares
       // nunca divirjam com o tempo.
       const PROJECT_ROOT = path.resolve(__dirname, '../..');

@@ -114,22 +114,30 @@ function writeStubMigration(dir: string, extension: 'js' | 'ts'): void {
 
 describe('CLI config resolution — re-exec ordering and warning-once contract', () => {
   beforeAll(() => {
-    execFileSync('npm', ['run', 'build'], {
-      cwd: PROJECT_ROOT,
-      stdio: 'ignore',
-    });
+    // Capture the build output (`stdio: 'pipe'`) and re-emit it on failure:
+    // with `stdio: 'ignore'`, a broken build would fail here with a bare
+    // "Command failed" and none of the `tsc` diagnostics that actually say
+    // what broke.
+    try {
+      execFileSync('npm', ['run', 'build'], {
+        cwd: PROJECT_ROOT,
+        stdio: 'pipe',
+        encoding: 'utf-8',
+      });
+    } catch (err) {
+      const e = err as { stdout?: string; stderr?: string };
+
+      throw new Error(`build failed:\n${e.stdout ?? ''}${e.stderr ?? ''}`);
+    }
 
     expect(existsSync(BUILT_BIN)).toBe(true);
   }, 60_000);
 
-  // RED note (kept for historical context of the failing state this file
-  // started in): before this file's implementation task, no handler ever
-  // resolved a config file at all — the count observed was 0, not 1, since
-  // the TypeScript config's `allowNoTransaction: true` was never read. Once
-  // config resolution is wired in ahead of the warning and behind the
-  // re-exec checkpoint, the fragment appears exactly once, no matter which
-  // process (parent or re-executed child) ends up being the one that reads
-  // it.
+  // The count asserted below is exactly one — a warning printed twice would
+  // still satisfy a mere presence check, so counting is what proves the
+  // once-only contract. Wiring config resolution ahead of the warning and
+  // behind the re-exec checkpoint is what makes the fragment appear once, no
+  // matter which process (parent or re-executed child) ends up reading it.
   it(
     'prints the transaction warning exactly once when a TypeScript config triggers a re-exec',
     () => {
@@ -218,7 +226,11 @@ describe('CLI config resolution — re-exec ordering and warning-once contract',
       // checkpoint can even be evaluated) and once again in the
       // re-executed child — two occurrences is direct evidence a re-exec
       // took place at the second checkpoint, against the already-merged
-      // directory.
+      // directory. This double load is a KNOWN, documented limitation (see
+      // `defineConfig`/`loadConfigFile`): harmless for a `.json` config,
+      // which is only read and parsed, but a `.js`/`.ts` config in this same
+      // shape would have its code evaluated twice — hence the "keep it
+      // idempotent" guidance in those docs, not a behavior to rely on.
       expect(countOccurrences(output, CONFIG_LOADED_FRAGMENT)).toBe(2);
     },
     SPAWN_TIMEOUT_MS + 5_000
