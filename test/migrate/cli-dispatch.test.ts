@@ -6,13 +6,14 @@ vi.mock('@/migrate', async (importOriginal) => {
   return {
     ...actual,
     getStatus: vi.fn(),
+    getLockStatus: vi.fn(),
   };
 });
 
 import type { CliDeps } from '@/bin/mongoat';
 import { dispatch, handleStatus, handleTo } from '@/bin/mongoat';
 import type { Database } from '@/database';
-import { getStatus } from '@/migrate';
+import { getLockStatus, getStatus } from '@/migrate';
 
 /**
  * MIG-03/T-08-01 — CLI subcommand dispatch, `status` table output, and
@@ -36,6 +37,7 @@ describe('mongoat CLI dispatch', () => {
     stdoutSpy.mockRestore();
     stderrSpy.mockRestore();
     vi.mocked(getStatus).mockReset();
+    vi.mocked(getLockStatus).mockReset();
   });
 
   it('an unknown subcommand exits non-zero and lists available commands on stderr', async () => {
@@ -67,6 +69,7 @@ describe('mongoat CLI dispatch', () => {
       },
       { version: '20260101100000', name: 'second', applied: false },
     ]);
+    vi.mocked(getLockStatus).mockResolvedValue({ held: false });
 
     const fakeDatabase = {
       connect: vi.fn().mockResolvedValue(undefined),
@@ -78,6 +81,7 @@ describe('mongoat CLI dispatch', () => {
 
     expect(exitCode).toBe(0);
     expect(getStatus).toHaveBeenCalledTimes(1);
+    expect(getLockStatus).toHaveBeenCalledTimes(1);
     expect(fakeDatabase.connect).toHaveBeenCalledTimes(1);
     expect(fakeDatabase.disconnect).toHaveBeenCalledTimes(1);
 
@@ -87,6 +91,7 @@ describe('mongoat CLI dispatch', () => {
     expect(stdoutOutput).toContain('version | name | applied');
     expect(stdoutOutput).toContain('20260101090000 | first | applied');
     expect(stdoutOutput).toContain('20260101100000 | second | pending');
+    expect(stdoutOutput).toContain('lock: free');
   });
 
   it('a malformed "to <version>" argument is rejected before touching the DB', async () => {

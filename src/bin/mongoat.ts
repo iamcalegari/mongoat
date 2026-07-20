@@ -20,6 +20,7 @@ import {
   discoverMigrations,
   MIGRATION_VERSION_REGEX,
 } from '@/migrate/discover';
+import { MIGRATION_ERROR_CODES } from '@/migrate/errors';
 import { DEFAULT_LOCK_TTL_MS, formatLockDiagnostic } from '@/migrate/lock';
 import type { MigrateConfig, MigrationStatusRow } from '@/types/migrate';
 
@@ -317,11 +318,13 @@ function reExecUnderTsx(tsxCliPath: string): never {
  * code instead of calling `process.exit()` directly, so handlers stay
  * testable without killing the test process.
  */
-async function runWithErrorBoundary(fn: () => Promise<void>): Promise<number> {
+async function runWithErrorBoundary(
+  fn: () => Promise<number | void>
+): Promise<number> {
   try {
-    await fn();
+    const result = await fn();
 
-    return 0;
+    return result ?? 0;
   } catch (err: unknown) {
     if (err instanceof MongoatError) {
       process.stderr.write(`Error [${err.code}]: ${err.message}\n`);
@@ -332,6 +335,96 @@ async function runWithErrorBoundary(fn: () => Promise<void>): Promise<number> {
     }
 
     return 1;
+  }
+}
+
+type InterruptSignal = 'SIGINT' | 'SIGTERM';
+
+/**
+ * @internal
+ *
+ * Exit codes for an interrupted run — Unix 128+n convention (130 = SIGINT,
+ * 143 = SIGTERM), distinct from a migration failure (1).
+ */
+const INTERRUPT_EXIT_CODES: Record<InterruptSignal, number> = {
+  SIGINT: 130,
+  SIGTERM: 143,
+};
+
+/**
+ * @internal
+ *
+ * Installs `SIGINT`/`SIGTERM` handlers ONLY for the duration of `run` — the
+ * library itself never installs process signal handlers (that stays inside
+ * `runMigrations`/`runTo`, reacting to `config.signal`); only the CLI does,
+ * and only while an actual run (`up`/`down`/`to`) is in flight, never around
+ * `create`/`status`/`unlock`.
+ *
+ * On the FIRST signal: writes an actionable warning to stderr and aborts the
+ * `AbortController` threaded into `run` — the runner (already wired to
+ * `config.signal`) stops gracefully between migrations. On the SECOND
+ * signal: forces an immediate exit with the exit code matching the signal
+ * received (130 for `SIGINT`, 143 for `SIGTERM`) — any in-flight best-effort
+ * lock release either already completed or will not, and the lock
+ * self-heals via its own TTL either way.
+ *
+ * If `run` rejects with a `MongoatError` whose `.code` is
+ * `MIGRATION_ABORTED`, this maps that rejection to the exit code of the
+ * signal that triggered it (130/143) — a mapping that does NOT belong in
+ * `runWithErrorBoundary`'s generic catch (which always returns 1). Any other
+ * error is rethrown unchanged and left to the normal error boundary (exit
+ * 1). Both handlers are removed once `run` settles, so no listener leaks
+ * across CLI invocations.
+ */
+export async function runWithSignalHandling(
+  run: (signal: AbortSignal) => Promise<void>
+): Promise<number> {
+  const controller = new AbortController();
+  let interruptCount = 0;
+  let lastSignal: InterruptSignal | undefined;
+
+  const onSignal = (signal: InterruptSignal): void => {
+    interruptCount += 1;
+    lastSignal = signal;
+
+    if (interruptCount === 1) {
+      process.stderr.write(
+        '\n[mongoat] Interrupt received — finishing the current migration before stopping. ' +
+          'Press Ctrl+C again to force exit (may leave partial DDL).\n\n'
+      );
+      controller.abort();
+
+      return;
+    }
+
+    process.exitCode = INTERRUPT_EXIT_CODES[signal];
+    process.exit(INTERRUPT_EXIT_CODES[signal]);
+  };
+
+  const onSigint = (): void => onSignal('SIGINT');
+  const onSigterm = (): void => onSignal('SIGTERM');
+
+  process.on('SIGINT', onSigint);
+  process.on('SIGTERM', onSigterm);
+
+  try {
+    await run(controller.signal);
+
+    return 0;
+  } catch (err: unknown) {
+    if (
+      err instanceof MongoatError &&
+      err.code === MIGRATION_ERROR_CODES.MIGRATION_ABORTED
+    ) {
+      process.stderr.write(`${err.message}\n`);
+
+      return INTERRUPT_EXIT_CODES[lastSignal ?? 'SIGINT'];
+    }
+
+    throw err;
+  } finally {
+    process.off('SIGINT', onSigint);
+    process.off('SIGTERM', onSigterm);
   }
 }
 
@@ -406,10 +499,16 @@ export async function handleUp(
 
     warnAllowNoTransaction(config.allowNoTransaction);
     await ensureTsCapableRuntime(config);
-    await withConnectedDatabase(deps, (database) =>
-      runMigrations(database, config)
+
+    const exitCode = await runWithSignalHandling((signal) =>
+      withConnectedDatabase(deps, (database) =>
+        runMigrations(database, { ...config, signal })
+      )
     );
-    process.stdout.write('Migrations applied.\n');
+
+    if (exitCode === 0) process.stdout.write('Migrations applied.\n');
+
+    return exitCode;
   });
 }
 
@@ -436,10 +535,18 @@ export async function handleDown(
 
     warnAllowNoTransaction(config.allowNoTransaction);
     await ensureTsCapableRuntime(config);
-    await withConnectedDatabase(deps, (database) =>
-      revertMigration(database, version, config)
+
+    const exitCode = await runWithSignalHandling((signal) =>
+      withConnectedDatabase(deps, (database) =>
+        revertMigration(database, version, { ...config, signal })
+      )
     );
-    process.stdout.write(`Reverted migration ${version}.\n`);
+
+    if (exitCode === 0) {
+      process.stdout.write(`Reverted migration ${version}.\n`);
+    }
+
+    return exitCode;
   });
 }
 
@@ -466,10 +573,16 @@ export async function handleTo(
 
     warnAllowNoTransaction(config.allowNoTransaction);
     await ensureTsCapableRuntime(config);
-    await withConnectedDatabase(deps, (database) =>
-      runTo(database, version, config)
+
+    const exitCode = await runWithSignalHandling((signal) =>
+      withConnectedDatabase(deps, (database) =>
+        runTo(database, version, { ...config, signal })
+      )
     );
-    process.stdout.write(`Migrated to ${version}.\n`);
+
+    if (exitCode === 0) process.stdout.write(`Migrated to ${version}.\n`);
+
+    return exitCode;
   });
 }
 
@@ -575,11 +688,18 @@ export async function handleStatus(
     });
 
     const config = buildConfig(values);
-    const rows = await withConnectedDatabase(deps, (database) =>
-      getStatus(database, config)
+    const { rows, lockStatus } = await withConnectedDatabase(
+      deps,
+      async (database) => ({
+        rows: await getStatus(database, config),
+        lockStatus: await getLockStatus(database, config),
+      })
     );
 
     process.stdout.write(formatStatusTable(rows));
+    process.stdout.write(
+      `lock: ${lockStatus.held ? formatLockDiagnostic(lockStatus.lock) : 'free'}\n`
+    );
   });
 }
 
