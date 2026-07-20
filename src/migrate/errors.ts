@@ -19,10 +19,12 @@ import {
  *   `MIGRATION_NOT_FOUND`, `MIGRATION_VALIDATOR_OPTIONS_CONFLICT` →
  *   `MongoatValidationError` (invalid migration state/input, same family as
  *   `INVALID_OBJECT_ID`/`FORBIDDEN_OPERATOR`).
- * - `MIGRATION_FAILED`, `MIGRATION_STATE_WRITE_FAILED` → base
- *   `MongoatError` (a migration ran and failed mid-way, or its follow-up
- *   state write failed after the migration itself already succeeded/failed;
- *   neither is a validation problem nor a connection problem).
+ * - `MIGRATION_FAILED`, `MIGRATION_STATE_WRITE_FAILED`, `MIGRATION_LOCK_HELD`,
+ *   `MIGRATION_ABORTED` → base `MongoatError` (a migration ran and failed
+ *   mid-way, or its follow-up state write failed after the migration itself
+ *   already succeeded/failed, or another runner already holds the run
+ *   lock, or the run was stopped via an abort signal — none of these is a
+ *   validation problem nor a connection problem).
  */
 export const MIGRATION_ERROR_CODES = Object.freeze({
   /** A data-transaction migration was attempted against a standalone
@@ -54,6 +56,14 @@ export const MIGRATION_ERROR_CODES = Object.freeze({
    * already embeds its own expressions in its built validator. Thrown as
    * `MongoatValidationError`. */
   MIGRATION_VALIDATOR_OPTIONS_CONFLICT: 'MIGRATION_VALIDATOR_OPTIONS_CONFLICT',
+  /** Another runner already holds the exclusive run lock (its lease has not
+   * expired yet) — this runner refuses to apply/revert concurrently. Thrown
+   * as base `MongoatError`. */
+  MIGRATION_LOCK_HELD: 'MIGRATION_LOCK_HELD',
+  /** The run was stopped via an abort signal (e.g. a graceful-stop request)
+   * between migrations — the migration that was in flight completed, but no
+   * further migration started. Thrown as base `MongoatError`. */
+  MIGRATION_ABORTED: 'MIGRATION_ABORTED',
 } as const);
 
 export type MigrationErrorCode =
