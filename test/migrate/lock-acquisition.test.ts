@@ -120,8 +120,10 @@ describe('lock — acquisition', () => {
     expect(caught).toBeInstanceOf(MongoatError);
     const err = caught as MongoatError;
 
-    expect(err.message).not.toMatch(/\bD-\d/);
-    expect(err.message).not.toMatch(/\bLOCK-\d/);
-    expect(err.message).not.toMatch(/Fase 10/);
+    // Guarda genérica: a mensagem é lida por quem OPERA a lib, então não
+    // pode citar nenhum identificador de planejamento interno.
+    expect(err.message).not.toMatch(/\b[A-Z]{2,5}-\d{2}\b/);
+    expect(err.message).not.toMatch(/\bD-\d{1,2}\b/);
+    expect(err.message).not.toMatch(/\b(Fase|Phase|Plano|Plan|Task|Wave)\s+\d/i);
   });
 });
