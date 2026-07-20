@@ -15,9 +15,39 @@ import {
 } from 'vitest';
 
 import { Database } from '@/database';
-import { acquireLock, getLockStatus, lockCollectionName } from '@/migrate/lock';
+import {
+  acquireLock,
+  getLockStatus,
+  LOCK_DOCUMENT_ID,
+  lockCollectionName,
+} from '@/migrate/lock';
 import { runMigrations } from '@/migrate/runner';
-import type { MigrateConfig } from '@/types/migrate';
+import type { MigrateConfig, MigrationLockDocument } from '@/types/migrate';
+
+/**
+ * Polls the lock collection until a document exists — avoids racing real
+ * wall-clock timers against `acquireLock`'s own async work (unreliable
+ * under a busy shared test run, per the flake this replaced).
+ */
+async function waitForLockDocument(
+  nativeDb: Db,
+  config: MigrateConfig
+): Promise<void> {
+  const collection = nativeDb.collection<MigrationLockDocument>(
+    lockCollectionName(config)
+  );
+  const deadline = Date.now() + 5_000;
+
+  while (Date.now() < deadline) {
+    const existing = await collection.findOne({ _id: LOCK_DOCUMENT_ID });
+
+    if (existing) return;
+
+    await new Promise((resolve) => setTimeout(resolve, 10));
+  }
+
+  throw new Error('timed out waiting for the lock document to appear');
+}
 
 /**
  * WR-04 — `releaseIfOwner`'s `deleteOne({ _id, ownerId })` matching ZERO
@@ -26,12 +56,14 @@ import type { MigrateConfig } from '@/types/migrate';
  * lock — a real LOCK-01 mutual-exclusion violation. Before the fix, the
  * runner silently discarded this signal and reported a plain success.
  *
- * Proves the full path against a real MongoDB: a slow migration outlives a
- * deliberately short `lockTtlMs`; while it is still in flight, a second
- * `acquireLock` call (simulating a second runner) legitimately re-acquires
- * the now-stale lock. The first run's own release then matches nothing, and
- * `runMigrations` — which still resolves successfully, since the migration
- * itself never failed — must emit `MongoatLockLeaseExpiredWarning`.
+ * Proves the full path against a real MongoDB: while a slow migration is
+ * still in flight, the lock document's `expiresAt` is forced into the past
+ * directly (deterministic — never a race against a short TTL and real
+ * timers), then a second `acquireLock` call (simulating a second runner)
+ * legitimately re-acquires the now-stale lock. The first run's own release
+ * then matches nothing, and `runMigrations` — which still resolves
+ * successfully, since the migration itself never failed — must emit
+ * `MongoatLockLeaseExpiredWarning`.
  */
 describe('runner — lock lease expiry during a run emits a warning (WR-04)', () => {
   let db: Database;
@@ -55,11 +87,7 @@ describe('runner — lock lease expiry during a run emits a warning (WR-04)', ()
 
   beforeEach(async () => {
     dir = await mkdtemp(path.join(tmpdir(), 'mongoat-lease-expiry-'));
-    config = {
-      dir,
-      collection: '_migrations_lease_expiry_test',
-      lockTtlMs: 150,
-    };
+    config = { dir, collection: '_migrations_lease_expiry_test' };
   });
 
   afterEach(async () => {
@@ -72,7 +100,7 @@ describe('runner — lock lease expiry during a run emits a warning (WR-04)', ()
     await writeFile(
       path.join(dir, '20260301120000_slow.ts'),
       `export async function up(): Promise<void> {
-  await new Promise((resolve) => setTimeout(resolve, 400));
+  await new Promise((resolve) => setTimeout(resolve, 500));
 }
 `
     );
@@ -86,20 +114,30 @@ describe('runner — lock lease expiry during a run emits a warning (WR-04)', ()
 
     const runPromise = runMigrations(db, config);
 
-    // Wait past the short TTL, then re-acquire the now-stale lock as a
-    // second runner — the same filter-based staleness recovery LOCK-02
-    // already proves, deliberately raced against the still-running
-    // migration above.
-    await new Promise((resolve) => setTimeout(resolve, 250));
+    // Deterministic instead of racing a short TTL against real timers: wait
+    // for the first runner's lock document to exist, then force it stale
+    // directly — the exact staleness shape `acquireLock`'s own filter
+    // (`expiresAt: { $lt: now }`) already re-evaluates on every attempt.
+    await waitForLockDocument(nativeDb, config);
+    await nativeDb
+      .collection<MigrationLockDocument>(lockCollectionName(config))
+      .updateOne(
+        { _id: LOCK_DOCUMENT_ID },
+        { $set: { expiresAt: new Date(Date.now() - 1_000) } }
+      );
 
     // Long TTL for the SECOND runner's own lock — it must still be held by
-    // the time this test's final assertions run, well after the short-TTL
-    // first run's migration finishes.
+    // the time this test's final assertions run, well after the first run's
+    // still-in-flight migration finishes.
     await acquireLock(
       nativeDb,
       { ...config, lockTtlMs: 60_000 },
       randomUUID(),
-      { hostname: hostname(), pid: process.pid, operation: 'up (second runner)' }
+      {
+        hostname: hostname(),
+        pid: process.pid,
+        operation: 'up (second runner)',
+      }
     );
 
     await expect(runPromise).resolves.toBeUndefined();

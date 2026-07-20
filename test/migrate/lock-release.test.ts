@@ -188,4 +188,62 @@ describe('runner — lock release fail-safe (LOCK-03)', () => {
       expect(status.held).toBe(true);
     });
   });
+
+  describe('a release failure alongside a non-MongoatError primary is never silently dropped (WR-06)', () => {
+    let restoreDeleteOne: (() => void) | undefined;
+
+    afterEach(() => {
+      restoreDeleteOne?.();
+      restoreDeleteOne = undefined;
+    });
+
+    it('still warns about the failed release even though the primary error cannot carry .suppressed', async () => {
+      // A raw `fs` ENOENT (never wrapped as a MongoatError) from
+      // `discoverMigrations` — a plausible primary failure that predates
+      // `acquireLock` ever succeeding at reading migration state.
+      const missingDir = path.join(dir, 'does-not-exist');
+
+      restoreDeleteOne = patchDeleteOneToFailForCollection(
+        lockCollectionName(config)
+      );
+
+      const warnings: Error[] = [];
+      const onWarning = (warning: Error): void => {
+        warnings.push(warning);
+      };
+
+      process.on('warning', onWarning);
+
+      let caught: unknown;
+
+      try {
+        await runMigrations(db, { ...config, dir: missingDir });
+      } catch (err) {
+        caught = err;
+      }
+
+      await new Promise((resolve) => setImmediate(resolve));
+      process.off('warning', onWarning);
+
+      // The primary error propagates UNWRAPPED — never a MongoatError, and
+      // never masked by the release failure.
+      expect(caught).not.toBeInstanceOf(MongoatError);
+      expect((caught as NodeJS.ErrnoException).code).toBe('ENOENT');
+
+      const releaseWarning = warnings.find(
+        (warning) => warning.name === 'MongoatLockReleaseWarning'
+      );
+
+      expect(releaseWarning).toBeDefined();
+      expect(releaseWarning?.message).not.toMatch(/\bD-\d/);
+      expect(releaseWarning?.message).not.toMatch(/\bWR-\d/);
+
+      restoreDeleteOne();
+      restoreDeleteOne = undefined;
+
+      const status = await getLockStatus(db, config);
+
+      expect(status.held).toBe(true);
+    });
+  });
 });

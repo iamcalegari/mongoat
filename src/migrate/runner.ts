@@ -270,6 +270,38 @@ async function applyOne(
  * Never called for a driver-error release failure (`ok: false`) — that case
  * already gets its own `MongoatLockReleaseWarning` at each call site.
  */
+/**
+ * @internal
+ *
+ * WR-06: `attachSuppressed` — which is also what emits the
+ * `MongoatSuppressedError` warning for a failed release — previously only
+ * ran when `primary instanceof MongoatError` (the only case it CAN attach
+ * to, since `.suppressed` lives on `MongoatError`). A release failure
+ * alongside a non-`MongoatError` primary (a raw `fs` `ENOENT` from
+ * `discoverMigrations`/`computeChecksum`, or an unwrapped `MongoServerError`
+ * from `collectPending`'s `find().toArray()`) was silently discarded — the
+ * lock stayed held until its TTL with zero diagnostic trail. This always
+ * warns on a release failure, attaching to `primary` only when possible.
+ */
+function handleReleaseFailureAlongsidePrimaryError(
+  primary: unknown,
+  releaseResult: { ok: true; released: boolean } | { ok: false; error: unknown }
+): void {
+  if (releaseResult.ok) return;
+
+  if (primary instanceof MongoatError) {
+    attachSuppressed(primary, releaseResult.error);
+
+    return;
+  }
+
+  process.emitWarning(
+    '[mongoat] Releasing the run lock failed while handling another error — it remains ' +
+      'held until its TTL expires.',
+    { type: 'MongoatLockReleaseWarning' }
+  );
+}
+
 function warnIfLeaseExpiredDuringRun(
   releaseResult: { ok: true; released: boolean } | { ok: false; error: unknown },
   operation: 'run' | 'revert'
@@ -363,11 +395,9 @@ export async function runMigrations(
     const releaseResult = await releaseIfOwner(nativeDb, config, ownerId);
 
     // The primary error always wins — a failed release is threaded onto it
-    // as a suppressed secondary, never thrown in its place.
-    if (!releaseResult.ok && primary instanceof MongoatError) {
-      attachSuppressed(primary, releaseResult.error);
-    }
-
+    // as a suppressed secondary (when possible) or warned about on its own
+    // (WR-06), never thrown in its place.
+    handleReleaseFailureAlongsidePrimaryError(primary, releaseResult);
     warnIfLeaseExpiredDuringRun(releaseResult, 'run');
 
     throw primary;
@@ -450,10 +480,9 @@ export async function runTo(
   } catch (primary: unknown) {
     const releaseResult = await releaseIfOwner(nativeDb, config, ownerId);
 
-    if (!releaseResult.ok && primary instanceof MongoatError) {
-      attachSuppressed(primary, releaseResult.error);
-    }
-
+    // WR-06: warned about unconditionally (attached to `primary` when
+    // possible) — never silently discarded.
+    handleReleaseFailureAlongsidePrimaryError(primary, releaseResult);
     warnIfLeaseExpiredDuringRun(releaseResult, 'run');
 
     throw primary;
@@ -611,10 +640,9 @@ export async function revertMigration(
   } catch (primary: unknown) {
     const releaseResult = await releaseIfOwner(nativeDb, config, ownerId);
 
-    if (!releaseResult.ok && primary instanceof MongoatError) {
-      attachSuppressed(primary, releaseResult.error);
-    }
-
+    // WR-06: warned about unconditionally (attached to `primary` when
+    // possible) — never silently discarded.
+    handleReleaseFailureAlongsidePrimaryError(primary, releaseResult);
     warnIfLeaseExpiredDuringRun(releaseResult, 'revert');
 
     throw primary;
