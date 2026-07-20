@@ -15,6 +15,7 @@ import {
   runMigrations,
   runTo,
 } from '@/migrate';
+import { loadConfigFile, resolveConfigPath } from '@/migrate/config';
 import {
   discoverMigrations,
   MIGRATION_VERSION_REGEX,
@@ -348,38 +349,6 @@ async function withConnectedDatabase<T>(
   }
 }
 
-/**
- * @internal
- *
- * `tsx` is a loader/binary, not a programmatic
- * "transform this .ts file on demand" API. Detects whether any DISCOVERED
- * migration is a `.ts` file, and if so, verifies the process is already
- * running under a TS-capable runtime (`tsx`, or re-execs itself under it
- * when the optional peer is resolvable) before the runner ever attempts a
- * dynamic `import()` of a `.ts` migration file. `.js`-only migration sets
- * never touch this path — no `tsx` required.
- */
-async function ensureTsCapableRuntime(config: MigrateConfig): Promise<void> {
-  const discovered = await discoverMigrations(config.dir).catch(() => []);
-  const hasTsMigrations = discovered.some((entry) =>
-    entry.filePath.endsWith('.ts')
-  );
-
-  if (!hasTsMigrations || isRunningUnderTsx()) return;
-
-  const tsxCliPath = resolveTsxCliPath();
-
-  if (!tsxCliPath) {
-    throw new MongoatError(
-      '.ts migrations were found but tsx is not installed. Install it as a devDependency ' +
-        '("npm install -D tsx") or compile your migrations to .js.',
-      { code: 'TSX_NOT_AVAILABLE' }
-    );
-  }
-
-  reExecUnderTsx(tsxCliPath);
-}
-
 function isRunningUnderTsx(): boolean {
   if (process.env.MONGOAT_TSX_ACTIVE === '1') return true;
   if (process.execArgv.some((arg) => arg.includes('tsx'))) return true;
@@ -413,6 +382,101 @@ function reExecUnderTsx(tsxCliPath: string): never {
   );
 
   process.exit(result.status ?? 1);
+}
+
+/**
+ * @internal
+ *
+ * `tsx` is a loader/binary, not a programmatic "transform this .ts file on
+ * demand" API. Shared by both re-exec checkpoints (the config file's own
+ * extension, and the migrations directory's discovered files): given
+ * whether a `.ts` candidate is present, verifies the process is already
+ * running under a TS-capable runtime and, if not, re-execs itself under
+ * `tsx` (when the optional peer is resolvable) — never returns when it
+ * does. Calling this from two different points in the same process is safe
+ * specifically because it is a no-op whenever `isRunningUnderTsx()` is
+ * already true: after a re-exec, the child re-enters both checkpoints and
+ * finds each one a no-op, so there is still only ever one spawn per
+ * process, not one per checkpoint.
+ */
+function reExecIfTsAndNotUnderTsx(hasTsCandidate: boolean): void {
+  if (!hasTsCandidate || isRunningUnderTsx()) return;
+
+  const tsxCliPath = resolveTsxCliPath();
+
+  if (!tsxCliPath) {
+    throw new MongoatError(
+      '.ts files were found but tsx is not installed. Install it as a devDependency ' +
+        '("npm install -D tsx") or compile to .js.',
+      { code: 'TSX_NOT_AVAILABLE' }
+    );
+  }
+
+  reExecUnderTsx(tsxCliPath);
+}
+
+/**
+ * @internal
+ *
+ * Detects whether any DISCOVERED migration is a `.ts` file and, if so,
+ * delegates to the shared re-exec guard before the runner ever attempts a
+ * dynamic `import()` of a `.ts` migration file. `.js`-only migration sets
+ * never trigger a re-exec — no `tsx` required. Only called by the three
+ * subcommands that execute migration files (`up`/`down`/`to`); the others
+ * never import a migration module and should not pay this cost.
+ */
+async function ensureTsCapableRuntimeForMigrations(
+  config: MigrateConfig
+): Promise<void> {
+  const discovered = await discoverMigrations(config.dir).catch(() => []);
+  const hasTsMigrations = discovered.some((entry) =>
+    entry.filePath.endsWith('.ts')
+  );
+
+  reExecIfTsAndNotUnderTsx(hasTsMigrations);
+}
+
+/**
+ * @internal
+ *
+ * Single entry point for the three subcommands that execute migration
+ * files (`up`/`down`/`to`): resolves the migrations config in the order
+ * this always has to happen in, and only in this order.
+ *
+ * The config file's PATH is resolved first — filesystem only, no
+ * `import()` — because a `.ts` config file cannot be loaded by a process
+ * that is not already TS-capable; deciding the re-exec before loading is
+ * what makes a `.ts` config trigger a re-exec by itself, even when no
+ * migration in the eventual directory is TypeScript. Only once that
+ * decision is settled (and, if it re-execs, only in the child process that
+ * survives it) is the file actually loaded and merged with the flag/env
+ * values into the final `MigrateConfig` — whose `dir` is what the caller's
+ * own second re-exec checkpoint, against the discovered migration files,
+ * must check next. Checking the migrations directory before this merge
+ * would inspect the wrong place whenever a `.js`/`.json` config redirects
+ * `dir` to a folder of `.ts` migrations, letting that case slip past
+ * un-re-execed until the runner's own `import()` failed much later.
+ */
+async function resolveMigrateConfig(
+  values: {
+    'allow-no-transaction'?: boolean;
+    'collection'?: string;
+    'config'?: string;
+    'dir'?: string;
+    'lock-ttl'?: string;
+  },
+  cwd: string = process.cwd()
+): Promise<MigrateConfig> {
+  const configPath = await resolveConfigPath(cwd, values.config);
+
+  reExecIfTsAndNotUnderTsx(
+    configPath !== undefined && configPath.endsWith('.ts')
+  );
+
+  const fileConfig =
+    configPath !== undefined ? await loadConfigFile(configPath) : undefined;
+
+  return mergeMigrateConfig(values, fileConfig);
 }
 
 /**
@@ -598,13 +662,20 @@ export async function handleUp(
         'collection': { type: 'string' },
         'allow-no-transaction': { type: 'boolean' },
         'lock-ttl': { type: 'string' },
+        'config': { type: 'string' },
       },
     });
 
-    const config = mergeMigrateConfig(values);
+    // May re-exec — never returns if it does (see `resolveMigrateConfig`).
+    const config = await resolveMigrateConfig(values);
 
+    // May ALSO re-exec — never returns if it does.
+    await ensureTsCapableRuntimeForMigrations(config);
+
+    // Reached exactly once: both re-exec checkpoints above exit the
+    // process whenever they trigger, so only the process that actually
+    // proceeds past both of them ever reaches this line.
     warnAllowNoTransaction(config.allowNoTransaction);
-    await ensureTsCapableRuntime(config);
 
     const exitCode = await runWithSignalHandling((signal) =>
       withConnectedDatabase(deps, (database) =>
@@ -633,14 +704,21 @@ export async function handleDown(
         'collection': { type: 'string' },
         'allow-no-transaction': { type: 'boolean' },
         'lock-ttl': { type: 'string' },
+        'config': { type: 'string' },
       },
     });
 
-    const config = mergeMigrateConfig(values);
+    // May re-exec — never returns if it does (see `resolveMigrateConfig`).
+    const config = await resolveMigrateConfig(values);
     const version = assertValidVersionArg(positionals[0], 'down');
 
+    // May ALSO re-exec — never returns if it does.
+    await ensureTsCapableRuntimeForMigrations(config);
+
+    // Reached exactly once: both re-exec checkpoints above exit the
+    // process whenever they trigger, so only the process that actually
+    // proceeds past both of them ever reaches this line.
     warnAllowNoTransaction(config.allowNoTransaction);
-    await ensureTsCapableRuntime(config);
 
     const exitCode = await runWithSignalHandling((signal) =>
       withConnectedDatabase(deps, (database) =>
@@ -671,14 +749,21 @@ export async function handleTo(
         'collection': { type: 'string' },
         'allow-no-transaction': { type: 'boolean' },
         'lock-ttl': { type: 'string' },
+        'config': { type: 'string' },
       },
     });
 
-    const config = mergeMigrateConfig(values);
+    // May re-exec — never returns if it does (see `resolveMigrateConfig`).
+    const config = await resolveMigrateConfig(values);
     const version = assertValidVersionArg(positionals[0], 'to');
 
+    // May ALSO re-exec — never returns if it does.
+    await ensureTsCapableRuntimeForMigrations(config);
+
+    // Reached exactly once: both re-exec checkpoints above exit the
+    // process whenever they trigger, so only the process that actually
+    // proceeds past both of them ever reaches this line.
     warnAllowNoTransaction(config.allowNoTransaction);
-    await ensureTsCapableRuntime(config);
 
     const exitCode = await runWithSignalHandling((signal) =>
       withConnectedDatabase(deps, (database) =>
