@@ -8,11 +8,19 @@ import { parseArgs } from 'node:util';
 
 import { Database } from '@/database';
 import { MongoatError, MongoatValidationError } from '@/errors';
-import { getStatus, revertMigration, runMigrations, runTo } from '@/migrate';
+import {
+  forceUnlock,
+  getLockStatus,
+  getStatus,
+  revertMigration,
+  runMigrations,
+  runTo,
+} from '@/migrate';
 import {
   discoverMigrations,
   MIGRATION_VERSION_REGEX,
 } from '@/migrate/discover';
+import { DEFAULT_LOCK_TTL_MS, formatLockDiagnostic } from '@/migrate/lock';
 import type { MigrateConfig, MigrationStatusRow } from '@/types/migrate';
 
 const DEFAULT_MIGRATIONS_DIR = 'migrations';
@@ -40,15 +48,46 @@ function resolveMigrationsCollection(flagValue?: string): string {
   );
 }
 
+/**
+ * @internal
+ *
+ * Same flag → env var → default precedence as `resolveMigrationsDir`, but
+ * unlike that helper, a value supplied here (flag or env) is parsed and
+ * validated BEFORE it is ever returned — same "validate before use" posture
+ * as `assertValidVersionArg`. Must be a positive integer number of
+ * milliseconds; anything else (non-numeric, fractional, zero, negative)
+ * fails loud here, before it can ever become an invalid `expiresAt` in the
+ * driver.
+ */
+function resolveLockTtlMs(flagValue?: string): number {
+  const raw = flagValue ?? process.env.MONGOAT_MIGRATIONS_LOCK_TTL;
+
+  if (raw === undefined) return DEFAULT_LOCK_TTL_MS;
+
+  const parsed = Number(raw);
+
+  if (!Number.isInteger(parsed) || parsed <= 0) {
+    throw new MongoatValidationError(
+      '"--lock-ttl" (or its environment-variable equivalent) must be a positive integer ' +
+        `number of milliseconds — received "${raw}"`,
+      { code: 'INVALID_LOCK_TTL' }
+    );
+  }
+
+  return parsed;
+}
+
 function buildConfig(values: {
   'allow-no-transaction'?: boolean;
   'collection'?: string;
   'dir'?: string;
+  'lock-ttl'?: string;
 }): MigrateConfig {
   return {
     dir: resolveMigrationsDir(values.dir),
     collection: resolveMigrationsCollection(values.collection),
     allowNoTransaction: Boolean(values['allow-no-transaction']),
+    lockTtlMs: resolveLockTtlMs(values['lock-ttl']),
   };
 }
 
@@ -359,6 +398,7 @@ export async function handleUp(
         'dir': { type: 'string' },
         'collection': { type: 'string' },
         'allow-no-transaction': { type: 'boolean', default: false },
+        'lock-ttl': { type: 'string' },
       },
     });
 
@@ -387,6 +427,7 @@ export async function handleDown(
         'dir': { type: 'string' },
         'collection': { type: 'string' },
         'allow-no-transaction': { type: 'boolean', default: false },
+        'lock-ttl': { type: 'string' },
       },
     });
 
@@ -416,6 +457,7 @@ export async function handleTo(
         'dir': { type: 'string' },
         'collection': { type: 'string' },
         'allow-no-transaction': { type: 'boolean', default: false },
+        'lock-ttl': { type: 'string' },
       },
     });
 
@@ -428,6 +470,67 @@ export async function handleTo(
       runTo(database, version, config)
     );
     process.stdout.write(`Migrated to ${version}.\n`);
+  });
+}
+
+/**
+ * @internal
+ *
+ * Dry by default, `--force` deletes (D-06): with no flag, reports the
+ * current lock diagnostic (if any) and a risk warning on stderr, without
+ * deleting anything; with `--force`, deletes the lock unconditionally
+ * (including a non-expired one — that is its intended use case). Idempotent
+ * either way — no lock present is reported as "nothing to do", exit 0, never
+ * an error (D-07).
+ */
+export async function handleUnlock(
+  argv: string[],
+  deps: CliDeps = defaultDeps
+): Promise<number> {
+  // WR-02: `parseArgs`/`buildConfig` moved INSIDE the error boundary (see
+  // `handleCreate`'s comment for the full rationale).
+  return runWithErrorBoundary(async () => {
+    const { values } = parseArgs({
+      args: argv,
+      options: {
+        'dir': { type: 'string' },
+        'collection': { type: 'string' },
+        'force': { type: 'boolean', default: false },
+      },
+    });
+
+    const config = buildConfig(values);
+
+    await withConnectedDatabase(deps, async (database) => {
+      if (values.force) {
+        const result = await forceUnlock(database, config);
+
+        if (result.removed && result.lock) {
+          process.stdout.write(
+            `Removed migration lock (was ${formatLockDiagnostic(result.lock)}).\n`
+          );
+        } else {
+          process.stdout.write('No lock found — nothing to do.\n');
+        }
+
+        return;
+      }
+
+      const status = await getLockStatus(database, config);
+
+      if (status.held) {
+        process.stdout.write(
+          `Migration lock is ${formatLockDiagnostic(status.lock)}.\n`
+        );
+        process.stderr.write(
+          '\n[mongoat] This lock was NOT removed. Run "mongoat unlock --force" only if you ' +
+            'are certain no migration is currently running — forcing an unlock while a run is ' +
+            'in progress can let two runners execute concurrently.\n\n'
+        );
+      } else {
+        process.stdout.write('No lock found — nothing to do.\n');
+      }
+    });
   });
 }
 
@@ -489,6 +592,7 @@ const COMMANDS: Record<
   down: handleDown,
   to: handleTo,
   status: handleStatus,
+  unlock: handleUnlock,
 };
 
 /**
