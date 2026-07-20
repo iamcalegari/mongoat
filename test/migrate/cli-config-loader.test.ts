@@ -1,0 +1,536 @@
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
+
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
+import { MongoatError, MongoatValidationError } from '@/errors';
+import {
+  loadConfigFile,
+  normalizeConfigExport,
+  resolveConfigPath,
+  validateConfigShape,
+} from '@/migrate/config';
+
+/**
+ * Contrato do loader de config da CLI de migrations: descoberta no cwd,
+ * carregamento de `.json`/`.js`, normalização de interop ESM/CJS e
+ * validação strict do shape resultante.
+ *
+ * Todo cwd de teste é criado com `mkdtempSync` sob `tmpdir()` e removido no
+ * `finally`; nunca trocando o diretório de trabalho do processo de teste —
+ * esse é estado global e tornaria a execução paralela de arquivos do
+ * Vitest não-determinística. Cada função sob teste recebe o cwd como
+ * parâmetro explícito.
+ */
+describe('mongoat config loader', () => {
+  let stdoutSpy: ReturnType<typeof vi.spyOn>;
+  let stderrSpy: ReturnType<typeof vi.spyOn>;
+
+  beforeEach(() => {
+    stdoutSpy = vi
+      .spyOn(process.stdout, 'write')
+      .mockImplementation(() => true);
+    stderrSpy = vi
+      .spyOn(process.stderr, 'write')
+      .mockImplementation(() => true);
+  });
+
+  afterEach(() => {
+    stdoutSpy.mockRestore();
+    stderrSpy.mockRestore();
+  });
+
+  function makeTmpDir(): string {
+    return mkdtempSync(path.join(tmpdir(), 'mongoat-config-loader-'));
+  }
+
+  describe('resolveConfigPath', () => {
+    it('an empty cwd resolves to undefined without throwing', async () => {
+      const dir = makeTmpDir();
+      try {
+        await expect(resolveConfigPath(dir)).resolves.toBeUndefined();
+      } finally {
+        rmSync(dir, { recursive: true, force: true });
+      }
+    });
+
+    it('a cwd with only mongoat.config.json resolves to its absolute path', async () => {
+      const dir = makeTmpDir();
+      try {
+        const configPath = path.join(dir, 'mongoat.config.json');
+        writeFileSync(configPath, '{}', 'utf-8');
+
+        await expect(resolveConfigPath(dir)).resolves.toBe(configPath);
+      } finally {
+        rmSync(dir, { recursive: true, force: true });
+      }
+    });
+
+    it('a cwd with only mongoat.config.js resolves to its absolute path', async () => {
+      const dir = makeTmpDir();
+      try {
+        const configPath = path.join(dir, 'mongoat.config.js');
+        writeFileSync(configPath, 'module.exports = {};', 'utf-8');
+
+        await expect(resolveConfigPath(dir)).resolves.toBe(configPath);
+      } finally {
+        rmSync(dir, { recursive: true, force: true });
+      }
+    });
+
+    it('a cwd with both mongoat.config.json and mongoat.config.js fails loud listing both files', async () => {
+      const dir = makeTmpDir();
+      try {
+        const jsonPath = path.join(dir, 'mongoat.config.json');
+        const jsPath = path.join(dir, 'mongoat.config.js');
+        writeFileSync(jsonPath, '{}', 'utf-8');
+        writeFileSync(jsPath, 'module.exports = {};', 'utf-8');
+
+        let caught: unknown;
+        try {
+          await resolveConfigPath(dir);
+        } catch (err) {
+          caught = err;
+        }
+
+        expect(caught).toBeInstanceOf(MongoatValidationError);
+        const err = caught as MongoatValidationError;
+        expect(err.code).toBe('AMBIGUOUS_CONFIG');
+        expect(err.message).toContain('mongoat.config.json');
+        expect(err.message).toContain('mongoat.config.js');
+      } finally {
+        rmSync(dir, { recursive: true, force: true });
+      }
+    });
+
+    it('a relative explicit path is resolved against the given cwd, not process.cwd()', async () => {
+      const dir = makeTmpDir();
+      try {
+        const configPath = path.join(dir, 'custom.config.json');
+        writeFileSync(configPath, '{}', 'utf-8');
+
+        await expect(
+          resolveConfigPath(dir, 'custom.config.json')
+        ).resolves.toBe(configPath);
+      } finally {
+        rmSync(dir, { recursive: true, force: true });
+      }
+    });
+
+    it('an explicit path with an unsupported extension fails loud before touching the filesystem', async () => {
+      const dir = makeTmpDir();
+      try {
+        // Nenhum arquivo é criado — se a checagem de extensão não rodasse
+        // primeiro, a tentativa de acesso ao filesystem produziria
+        // CONFIG_NOT_FOUND, não INVALID_CONFIG_PATH.
+        let caught: unknown;
+        try {
+          await resolveConfigPath(dir, path.join(dir, 'mongoat.config.yaml'));
+        } catch (err) {
+          caught = err;
+        }
+
+        expect(caught).toBeInstanceOf(MongoatValidationError);
+        expect((caught as MongoatValidationError).code).toBe(
+          'INVALID_CONFIG_PATH'
+        );
+      } finally {
+        rmSync(dir, { recursive: true, force: true });
+      }
+    });
+
+    it('an explicit path pointing to a nonexistent file fails loud as not found', async () => {
+      const dir = makeTmpDir();
+      try {
+        let caught: unknown;
+        try {
+          await resolveConfigPath(dir, path.join(dir, 'mongoat.config.json'));
+        } catch (err) {
+          caught = err;
+        }
+
+        expect(caught).toBeInstanceOf(MongoatValidationError);
+        expect((caught as MongoatValidationError).code).toBe(
+          'CONFIG_NOT_FOUND'
+        );
+      } finally {
+        rmSync(dir, { recursive: true, force: true });
+      }
+    });
+
+    it('an explicit path bypasses the cwd probe entirely', async () => {
+      const dir = makeTmpDir();
+      const otherDir = makeTmpDir();
+      try {
+        const probedPath = path.join(dir, 'mongoat.config.json');
+        writeFileSync(probedPath, '{"dir":"probed"}', 'utf-8');
+
+        const explicitPath = path.join(otherDir, 'explicit.config.json');
+        writeFileSync(explicitPath, '{"dir":"explicit"}', 'utf-8');
+
+        await expect(resolveConfigPath(dir, explicitPath)).resolves.toBe(
+          explicitPath
+        );
+      } finally {
+        rmSync(dir, { recursive: true, force: true });
+        rmSync(otherDir, { recursive: true, force: true });
+      }
+    });
+  });
+
+  describe('loadConfigFile', () => {
+    it('loads a well-formed .json config by reading and parsing, never via dynamic import', async () => {
+      // O nome do diretório contém um caractere ('#') que quebraria uma URL
+      // crua não-codificada se o caminho fosse passado para `import()` — o
+      // carregamento de `.json` nunca passa por ali, então funciona mesmo
+      // assim.
+      const dir = makeTmpDir();
+      try {
+        const oddDir = path.join(dir, 'weird#dir');
+        mkdirSync(oddDir);
+        const configPath = path.join(oddDir, 'mongoat.config.json');
+        writeFileSync(
+          configPath,
+          JSON.stringify({ dir: 'db/migrations' }),
+          'utf-8'
+        );
+
+        const result = await loadConfigFile(configPath);
+
+        expect(result).toEqual({ dir: 'db/migrations' });
+      } finally {
+        rmSync(dir, { recursive: true, force: true });
+      }
+    });
+
+    it('a malformed .json config fails loud with the original parse error preserved as cause', async () => {
+      const dir = makeTmpDir();
+      try {
+        const configPath = path.join(dir, 'mongoat.config.json');
+        writeFileSync(configPath, '{ not valid json', 'utf-8');
+
+        let caught: unknown;
+        try {
+          await loadConfigFile(configPath);
+        } catch (err) {
+          caught = err;
+        }
+
+        expect(caught).toBeInstanceOf(MongoatError);
+        const err = caught as MongoatError;
+        expect(err.code).toBe('CONFIG_LOAD_FAILED');
+        expect(err.cause).toBeDefined();
+        expect(typeof err.cause).not.toBe('string');
+        expect(err.cause).toBeInstanceOf(Error);
+      } finally {
+        rmSync(dir, { recursive: true, force: true });
+      }
+    });
+
+    it('loads a CommonJS .js config via module.exports', async () => {
+      const dir = makeTmpDir();
+      try {
+        const configPath = path.join(dir, 'mongoat.config.js');
+        writeFileSync(configPath, "module.exports = { dir: 'x' };", 'utf-8');
+
+        const result = await loadConfigFile(configPath);
+
+        expect(result).toEqual({ dir: 'x' });
+      } finally {
+        rmSync(dir, { recursive: true, force: true });
+      }
+    });
+
+    it('loads an ESM .js config via export default under a "type": "module" package.json', async () => {
+      const dir = makeTmpDir();
+      try {
+        writeFileSync(
+          path.join(dir, 'package.json'),
+          JSON.stringify({ type: 'module' }),
+          'utf-8'
+        );
+        const configPath = path.join(dir, 'mongoat.config.js');
+        writeFileSync(configPath, "export default { dir: 'x' };", 'utf-8');
+
+        const result = await loadConfigFile(configPath);
+
+        expect(result).toEqual({ dir: 'x' });
+      } finally {
+        rmSync(dir, { recursive: true, force: true });
+      }
+    });
+
+    it('writes exactly one informational line to stderr with the loaded path, and stdout stays untouched', async () => {
+      const dir = makeTmpDir();
+      try {
+        const configPath = path.join(dir, 'mongoat.config.json');
+        writeFileSync(configPath, '{}', 'utf-8');
+
+        await loadConfigFile(configPath);
+
+        const stderrOutput = stderrSpy.mock.calls
+          .map((call: unknown[]) => call[0])
+          .join('');
+        const occurrences = stderrOutput.split(configPath).length - 1;
+
+        expect(occurrences).toBe(1);
+        expect(stdoutSpy).not.toHaveBeenCalled();
+      } finally {
+        rmSync(dir, { recursive: true, force: true });
+      }
+    });
+
+    it('when resolveConfigPath finds nothing, nothing is written to stderr', async () => {
+      const dir = makeTmpDir();
+      try {
+        const resolved = await resolveConfigPath(dir);
+
+        expect(resolved).toBeUndefined();
+        expect(stderrSpy).not.toHaveBeenCalled();
+      } finally {
+        rmSync(dir, { recursive: true, force: true });
+      }
+    });
+  });
+
+  describe('normalizeConfigExport', () => {
+    it('unwraps a single ESM default export', () => {
+      expect(normalizeConfigExport({ default: { dir: 'x' } })).toEqual({
+        dir: 'x',
+      });
+    });
+
+    it('unwraps a double-wrapped compiled-ESM-under-CJS default export', () => {
+      expect(
+        normalizeConfigExport({
+          default: { __esModule: true, default: { dir: 'x' } },
+        })
+      ).toEqual({ dir: 'x' });
+    });
+
+    it('preserves a legitimate "default" data key when the interop marker is absent', () => {
+      expect(normalizeConfigExport({ default: { default: 'v' } })).toEqual({
+        default: 'v',
+      });
+    });
+
+    it('leaves a namespace without a "default" key unchanged', () => {
+      expect(normalizeConfigExport({ dir: 'x' })).toEqual({ dir: 'x' });
+    });
+  });
+
+  describe('validateConfigShape', () => {
+    it.each(['lockTtlMS', 'Dir', 'collectionName'])(
+      'rejects an unknown key ("%s"), citing it and the allowed key list',
+      (key) => {
+        let caught: unknown;
+        try {
+          validateConfigShape({ [key]: 'value' }, 'mongoat.config.json');
+        } catch (err) {
+          caught = err;
+        }
+
+        expect(caught).toBeInstanceOf(MongoatValidationError);
+        const err = caught as MongoatValidationError;
+        expect(err.code).toBe('INVALID_CONFIG_SHAPE');
+        expect(err.message).toContain(key);
+        expect(err.message).toContain('dir');
+        expect(err.message).toContain('collection');
+        expect(err.message).toContain('lockTtlMs');
+        expect(err.message).toContain('allowNoTransaction');
+      }
+    );
+
+    const wrongTypeCases: Array<[string, unknown]> = [
+      ['dir', 123],
+      ['collection', 123],
+      ['allowNoTransaction', 'yes'],
+    ];
+
+    it.each(wrongTypeCases)(
+      'rejects a wrong-typed "%s" value',
+      (field, value) => {
+        let caught: unknown;
+        try {
+          validateConfigShape({ [field]: value }, 'mongoat.config.json');
+        } catch (err) {
+          caught = err;
+        }
+
+        expect(caught).toBeInstanceOf(MongoatValidationError);
+        expect((caught as MongoatValidationError).code).toBe(
+          'INVALID_CONFIG_SHAPE'
+        );
+      }
+    );
+
+    it.each([0, -1, 1.5, 'not-a-number'])(
+      'rejects an invalid lockTtlMs value (%p)',
+      (value) => {
+        let caught: unknown;
+        try {
+          validateConfigShape({ lockTtlMs: value }, 'mongoat.config.json');
+        } catch (err) {
+          caught = err;
+        }
+
+        expect(caught).toBeInstanceOf(MongoatValidationError);
+        expect((caught as MongoatValidationError).code).toBe(
+          'INVALID_CONFIG_SHAPE'
+        );
+      }
+    );
+
+    const nonObjectCases: unknown[] = ['not an object', 42, null, ['array']];
+
+    it.each(nonObjectCases)('rejects a non-object export (%p)', (raw) => {
+      let caught: unknown;
+      try {
+        validateConfigShape(raw, 'mongoat.config.json');
+      } catch (err) {
+        caught = err;
+      }
+
+      expect(caught).toBeInstanceOf(MongoatValidationError);
+      expect((caught as MongoatValidationError).code).toBe(
+        'INVALID_CONFIG_SHAPE'
+      );
+    });
+
+    it('rejects a prototype-pollution key as unknown, leaving Object.prototype untouched', () => {
+      // Chave montada a partir de partes para não deixar o literal na
+      // fonte deste arquivo de teste. `JSON.parse` (ao contrário de um
+      // literal de objeto) cria uma propriedade PRÓPRIA com esse nome —
+      // o mesmo formato que `loadConfigFile` produziria para um
+      // `mongoat.config.json` malicioso.
+      const prototypePollutionKey = `${'_'.repeat(2)}proto${'_'.repeat(2)}`;
+      const raw: unknown = JSON.parse(
+        `{"${prototypePollutionKey}": {"polluted": true}}`
+      );
+
+      let caught: unknown;
+      try {
+        validateConfigShape(raw, 'mongoat.config.json');
+      } catch (err) {
+        caught = err;
+      }
+
+      expect(caught).toBeInstanceOf(MongoatValidationError);
+      expect((caught as MongoatValidationError).code).toBe(
+        'INVALID_CONFIG_SHAPE'
+      );
+      expect(Object.prototype).not.toHaveProperty('polluted');
+    });
+
+    it('returns a new object containing only the four known fields', () => {
+      const raw = {
+        dir: 'db/migrations',
+        collection: '_migrations',
+        lockTtlMs: 5000,
+        allowNoTransaction: true,
+      };
+
+      const result = validateConfigShape(raw, 'mongoat.config.json');
+
+      expect(result).toEqual(raw);
+      expect(result).not.toBe(raw);
+    });
+  });
+
+  describe('mensagens sem jargão de planejamento interno', () => {
+    // Guarda genérica: replica as três regexes já usadas em
+    // test/migrate/lock-acquisition.test.ts — toda mensagem nova precisa
+    // satisfazê-las, já que é lida por quem OPERA a lib.
+    const assertNoPlanningJargon = (message: string): void => {
+      expect(message).not.toMatch(/\b[A-Z]{2,5}-\d{2}\b/);
+      expect(message).not.toMatch(/\bD-\d{1,2}\b/);
+      expect(message).not.toMatch(/\b(Fase|Phase|Plano|Plan|Task|Wave)\s+\d/i);
+    };
+
+    it('the AMBIGUOUS_CONFIG message stays free of planning identifiers', async () => {
+      const dir = makeTmpDir();
+      try {
+        writeFileSync(path.join(dir, 'mongoat.config.json'), '{}', 'utf-8');
+        writeFileSync(
+          path.join(dir, 'mongoat.config.js'),
+          'module.exports = {};',
+          'utf-8'
+        );
+
+        let caught: unknown;
+        try {
+          await resolveConfigPath(dir);
+        } catch (err) {
+          caught = err;
+        }
+
+        assertNoPlanningJargon((caught as Error).message);
+      } finally {
+        rmSync(dir, { recursive: true, force: true });
+      }
+    });
+
+    it('the INVALID_CONFIG_PATH message stays free of planning identifiers', async () => {
+      const dir = makeTmpDir();
+      try {
+        let caught: unknown;
+        try {
+          await resolveConfigPath(dir, path.join(dir, 'mongoat.config.yaml'));
+        } catch (err) {
+          caught = err;
+        }
+
+        assertNoPlanningJargon((caught as Error).message);
+      } finally {
+        rmSync(dir, { recursive: true, force: true });
+      }
+    });
+
+    it('the CONFIG_NOT_FOUND message stays free of planning identifiers', async () => {
+      const dir = makeTmpDir();
+      try {
+        let caught: unknown;
+        try {
+          await resolveConfigPath(dir, path.join(dir, 'mongoat.config.json'));
+        } catch (err) {
+          caught = err;
+        }
+
+        assertNoPlanningJargon((caught as Error).message);
+      } finally {
+        rmSync(dir, { recursive: true, force: true });
+      }
+    });
+
+    it('the CONFIG_LOAD_FAILED message stays free of planning identifiers', async () => {
+      const dir = makeTmpDir();
+      try {
+        const configPath = path.join(dir, 'mongoat.config.json');
+        writeFileSync(configPath, '{ not valid json', 'utf-8');
+
+        let caught: unknown;
+        try {
+          await loadConfigFile(configPath);
+        } catch (err) {
+          caught = err;
+        }
+
+        assertNoPlanningJargon((caught as Error).message);
+      } finally {
+        rmSync(dir, { recursive: true, force: true });
+      }
+    });
+
+    it('the INVALID_CONFIG_SHAPE message stays free of planning identifiers', () => {
+      let caught: unknown;
+      try {
+        validateConfigShape({ unknownField: 'value' }, 'mongoat.config.json');
+      } catch (err) {
+        caught = err;
+      }
+
+      assertNoPlanningJargon((caught as Error).message);
+    });
+  });
+});
