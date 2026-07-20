@@ -1,4 +1,6 @@
 import type { ClientSession, Db } from 'mongodb';
+import { randomUUID } from 'node:crypto';
+import { hostname } from 'node:os';
 import { pathToFileURL } from 'node:url';
 
 import { Database } from '@/database';
@@ -11,6 +13,7 @@ import { attachSuppressed, runBestEffort } from '@/errors/suppress';
 import { computeChecksum } from '@/migrate/checksum';
 import { discoverMigrations } from '@/migrate/discover';
 import { MIGRATION_ERROR_CODES } from '@/migrate/errors';
+import { acquireLock, releaseIfOwner } from '@/migrate/lock';
 import { createMigrationSchemaHelpers } from '@/migrate/schema-helpers';
 import { assertReplicaSetOrThrow } from '@/migrate/topology';
 import type {
@@ -279,6 +282,12 @@ async function applyOne(
  * re-verifies the checksum of every already-applied migration still on disk
  * and refuses to proceed on any drift (`MIGRATION_CHECKSUM_MISMATCH`).
  *
+ * Acquires an exclusive run lock before reading any migration state and
+ * releases it once the run finishes (successfully, on failure, or on
+ * `config.signal` abort) — this guarantees two concurrent runs against the
+ * same control collection can never act on the same snapshot of pending
+ * migrations.
+ *
  * Each migration's `up(ctx)` runs with a `ClientSession` bound to an active
  * MongoDB transaction (requires a replica set/mongos — see
  * `assertReplicaSetOrThrow`); `ctx.schema.*` calls never enlist that
@@ -293,8 +302,9 @@ async function applyOne(
  * for a migration that never ran.
  *
  * @param database - A connected `Database` instance.
- * @param config - Migration directory, control collection name, and the
- * `allowNoTransaction` opt-in.
+ * @param config - Migration directory, control collection name, the
+ * `allowNoTransaction` opt-in, an optional `lockTtlMs`, and an optional
+ * graceful-stop `signal`.
  */
 export async function runMigrations(
   database: Database,
@@ -305,10 +315,63 @@ export async function runMigrations(
   const { hasReplicaSet } = await assertReplicaSetOrThrow(nativeDb, {
     allowNoTransaction: config.allowNoTransaction,
   });
-  const pending = await collectPending(nativeDb, config);
 
-  for (const entry of pending) {
-    await applyOne(database, nativeDb, entry, config, hasReplicaSet);
+  // Own lock ownership token for this run — the only proof `releaseIfOwner`
+  // trusts, so a run whose TTL already lapsed can never delete a lock
+  // another runner has since acquired.
+  const ownerId = randomUUID();
+
+  // Acquired BEFORE any state read (collectPending below) — reading state
+  // first would reopen the TOCTOU window two concurrent runners could
+  // exploit (D-13). No release needed here: if this throws, the lock was
+  // never ours.
+  await acquireLock(nativeDb, config, ownerId, {
+    hostname: hostname(),
+    pid: process.pid,
+    operation: 'up',
+  });
+
+  try {
+    const pending = await collectPending(nativeDb, config);
+
+    for (const [index, entry] of pending.entries()) {
+      // Checked ONLY between migrations, never mid-`applyOne` — an abort
+      // must never interrupt DDL/a transaction halfway through.
+      if (config.signal?.aborted) {
+        throw new MongoatError(
+          `Migration run aborted before applying "${entry.version}_${entry.name}" — ` +
+            `${pending.length - index} migration(s) still pending.`,
+          { code: MIGRATION_ERROR_CODES.MIGRATION_ABORTED }
+        );
+      }
+
+      await applyOne(database, nativeDb, entry, config, hasReplicaSet);
+    }
+  } catch (primary: unknown) {
+    const releaseResult = await releaseIfOwner(nativeDb, config, ownerId);
+
+    // The primary error always wins — a failed release is threaded onto it
+    // as a suppressed secondary, never thrown in its place.
+    if (!releaseResult.ok && primary instanceof MongoatError) {
+      attachSuppressed(primary, releaseResult.error);
+    }
+
+    throw primary;
+  }
+
+  const releaseResult = await releaseIfOwner(nativeDb, config, ownerId);
+
+  if (!releaseResult.ok) {
+    // The run itself succeeded — a failed release must never turn a
+    // successful run into a rejection (the public return type stays
+    // `Promise<void>`). Surfaced as a non-fatal process warning, the same
+    // channel `attachSuppressed` uses; the lock self-heals on TTL expiry, or
+    // `mongoat unlock` clears it immediately.
+    process.emitWarning(
+      '[mongoat] Migration run succeeded, but releasing the run lock afterwards failed — ' +
+        'it remains held until its TTL expires. Run `mongoat unlock` if this recurs.',
+      { type: 'MongoatLockReleaseWarning' }
+    );
   }
 }
 
@@ -318,7 +381,9 @@ export async function runMigrations(
  * Same as {@link runMigrations}, but only applies pending migrations whose
  * `version` is lexicographically `<= version` (D-01 ordering) — lets a
  * caller stop at a specific point in the migration history instead of
- * always applying everything pending.
+ * always applying everything pending. Acquires and releases the same
+ * exclusive run lock as {@link runMigrations}, under the same ordering
+ * guarantees.
  *
  * CR-01 fix: same as {@link runMigrations} — the topology precondition runs
  * once, before the apply loop, and propagates `REPLICA_SET_REQUIRED`
@@ -326,8 +391,9 @@ export async function runMigrations(
  *
  * @param database - A connected `Database` instance.
  * @param version - The last version (inclusive) to apply, `YYYYMMDDHHMMSS`.
- * @param config - Migration directory, control collection name, and the
- * `allowNoTransaction` opt-in.
+ * @param config - Migration directory, control collection name, the
+ * `allowNoTransaction` opt-in, an optional `lockTtlMs`, and an optional
+ * graceful-stop `signal`.
  */
 export async function runTo(
   database: Database,
@@ -339,10 +405,52 @@ export async function runTo(
   const { hasReplicaSet } = await assertReplicaSetOrThrow(nativeDb, {
     allowNoTransaction: config.allowNoTransaction,
   });
-  const pending = await collectPending(nativeDb, config, version);
 
-  for (const entry of pending) {
-    await applyOne(database, nativeDb, entry, config, hasReplicaSet);
+  const ownerId = randomUUID();
+
+  // Acquired BEFORE any state read (collectPending below) — same TOCTOU
+  // guard as runMigrations (D-13).
+  await acquireLock(nativeDb, config, ownerId, {
+    hostname: hostname(),
+    pid: process.pid,
+    operation: `to ${version}`,
+  });
+
+  try {
+    const pending = await collectPending(nativeDb, config, version);
+
+    for (const [index, entry] of pending.entries()) {
+      // Checked ONLY between migrations, never mid-`applyOne`.
+      if (config.signal?.aborted) {
+        throw new MongoatError(
+          `Migration run aborted before applying "${entry.version}_${entry.name}" — ` +
+            `${pending.length - index} migration(s) still pending.`,
+          { code: MIGRATION_ERROR_CODES.MIGRATION_ABORTED }
+        );
+      }
+
+      await applyOne(database, nativeDb, entry, config, hasReplicaSet);
+    }
+  } catch (primary: unknown) {
+    const releaseResult = await releaseIfOwner(nativeDb, config, ownerId);
+
+    if (!releaseResult.ok && primary instanceof MongoatError) {
+      attachSuppressed(primary, releaseResult.error);
+    }
+
+    throw primary;
+  }
+
+  const releaseResult = await releaseIfOwner(nativeDb, config, ownerId);
+
+  if (!releaseResult.ok) {
+    // Same non-fatal warning channel as runMigrations — the run succeeded,
+    // the release did not.
+    process.emitWarning(
+      '[mongoat] Migration run succeeded, but releasing the run lock afterwards failed — ' +
+        'it remains held until its TTL expires. Run `mongoat unlock` if this recurs.',
+      { type: 'MongoatLockReleaseWarning' }
+    );
   }
 }
 
@@ -357,11 +465,15 @@ export async function runTo(
  * ever touched (guard-precondition-first) — `revertMigration` throws
  * `MIGRATION_IRREVERSIBLE` purely from the on-disk module shape.
  *
+ * Acquires the same exclusive run lock as {@link runMigrations}/{@link
+ * runTo} once every precondition above has cleared, and releases it once the
+ * revert finishes (successfully or on failure).
+ *
  * @param database - A `Database` instance (only required to be connected if
  * the target migration turns out to be reversible).
  * @param version - The version to revert, `YYYYMMDDHHMMSS`.
- * @param config - Migration directory, control collection name, and the
- * `allowNoTransaction` opt-in.
+ * @param config - Migration directory, control collection name, the
+ * `allowNoTransaction` opt-in, and an optional `lockTtlMs`.
  * @throws {MongoatValidationError} `MIGRATION_NOT_FOUND` when no migration
  * file exists for `version`, or when it is not currently recorded as
  * applied.
@@ -418,6 +530,17 @@ export async function revertMigration(
     allowNoTransaction: config.allowNoTransaction,
   });
 
+  const ownerId = randomUUID();
+
+  // Acquired AFTER every read-only precondition above (down-export guard,
+  // connection, applied-record lookup, topology) and BEFORE any mutation —
+  // same D-13 ordering as runMigrations/runTo.
+  await acquireLock(nativeDb, config, ownerId, {
+    hostname: hostname(),
+    pid: process.pid,
+    operation: `down ${version}`,
+  });
+
   const runDown = async (session: ClientSession): Promise<void> => {
     const ctx: MigrationContext = {
       db: nativeDb,
@@ -429,26 +552,48 @@ export async function revertMigration(
   };
 
   try {
-    await runInSessionOrTransaction(database, hasReplicaSet, runDown);
-  } catch (err: unknown) {
-    throw new MongoatError(
-      `Reverting migration "${onDisk.version}_${onDisk.name}" failed.`,
-      { cause: err, code: MIGRATION_ERROR_CODES.MIGRATION_FAILED }
-    );
+    try {
+      await runInSessionOrTransaction(database, hasReplicaSet, runDown);
+    } catch (err: unknown) {
+      throw new MongoatError(
+        `Reverting migration "${onDisk.version}_${onDisk.name}" failed.`,
+        { cause: err, code: MIGRATION_ERROR_CODES.MIGRATION_FAILED }
+      );
+    }
+
+    try {
+      await recordCollection.deleteOne({ version });
+    } catch (writeErr: unknown) {
+      throw new MongoatError(
+        `Migration "${onDisk.version}_${onDisk.name}" was reverted successfully, but its ` +
+          `record could NOT be removed from "${config.collection}" — it will continue to be ` +
+          'tracked as applied. Do NOT re-run down() without first verifying the effects of ' +
+          'this revert manually.',
+        {
+          cause: writeErr,
+          code: MIGRATION_ERROR_CODES.MIGRATION_STATE_WRITE_FAILED,
+        }
+      );
+    }
+  } catch (primary: unknown) {
+    const releaseResult = await releaseIfOwner(nativeDb, config, ownerId);
+
+    if (!releaseResult.ok && primary instanceof MongoatError) {
+      attachSuppressed(primary, releaseResult.error);
+    }
+
+    throw primary;
   }
 
-  try {
-    await recordCollection.deleteOne({ version });
-  } catch (writeErr: unknown) {
-    throw new MongoatError(
-      `Migration "${onDisk.version}_${onDisk.name}" was reverted successfully, but its ` +
-        `record could NOT be removed from "${config.collection}" — it will continue to be ` +
-        'tracked as applied. Do NOT re-run down() without first verifying the effects of ' +
-        'this revert manually.',
-      {
-        cause: writeErr,
-        code: MIGRATION_ERROR_CODES.MIGRATION_STATE_WRITE_FAILED,
-      }
+  const releaseResult = await releaseIfOwner(nativeDb, config, ownerId);
+
+  if (!releaseResult.ok) {
+    // Same non-fatal warning channel as runMigrations/runTo — the revert
+    // succeeded, the release did not.
+    process.emitWarning(
+      '[mongoat] Migration revert succeeded, but releasing the run lock afterwards failed — ' +
+        'it remains held until its TTL expires. Run `mongoat unlock` if this recurs.',
+      { type: 'MongoatLockReleaseWarning' }
     );
   }
 }
