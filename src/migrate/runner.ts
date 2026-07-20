@@ -538,6 +538,19 @@ export async function revertMigration(
   };
 
   try {
+    // WR-03: mirrors the same signal guard `runMigrations`/`runTo` already
+    // apply before their first migration — a signal already aborted by the
+    // time the lock was acquired (e.g. a SIGINT received during `connect()`/
+    // preconditions/lock acquisition itself) must not let `down()` run.
+    // Checked ONLY here, never mid-`runInSessionOrTransaction` — an abort
+    // must never interrupt DDL/a transaction halfway through.
+    if (config.signal?.aborted) {
+      throw new MongoatError(
+        `Migration revert aborted before reverting "${onDisk.version}_${onDisk.name}".`,
+        { code: MIGRATION_ERROR_CODES.MIGRATION_ABORTED }
+      );
+    }
+
     try {
       await runInSessionOrTransaction(database, hasReplicaSet, runDown);
     } catch (err: unknown) {

@@ -16,7 +16,7 @@ import {
 import { Database } from '@/database';
 import { MongoatError } from '@/errors';
 import { getLockStatus } from '@/migrate/lock';
-import { runMigrations } from '@/migrate/runner';
+import { revertMigration, runMigrations } from '@/migrate/runner';
 import type { MigrateConfig, MigrationRecord } from '@/types/migrate';
 
 /**
@@ -187,6 +187,73 @@ export async function up({ db, session }: MigrationContext): Promise<void> {
 
     expect(recordCount).toBe(0);
 
+    const status = await getLockStatus(db, config);
+
+    expect(status.held).toBe(false);
+  });
+
+  it('revertMigration rejects with MIGRATION_ABORTED before running down() when the signal is already aborted (WR-03)', async () => {
+    await writeFile(
+      path.join(dir, '20260301110300_reversible.ts'),
+      `import type { MigrationContext } from '@/types/migrate';
+
+export async function up({ db, session }: MigrationContext): Promise<void> {
+  await db.collection('${markerCollection}').insertOne({ step: 'up' }, { session });
+}
+
+export async function down({ db, session }: MigrationContext): Promise<void> {
+  await db.collection('${markerCollection}').insertOne({ step: 'down' }, { session });
+}
+`
+    );
+
+    // Applies the migration first — revertMigration below requires an
+    // applied record to revert.
+    await runMigrations(db, config);
+
+    const controller = new AbortController();
+
+    controller.abort();
+
+    let caught: unknown;
+
+    try {
+      await revertMigration(db, '20260301110300', {
+        ...config,
+        signal: controller.signal,
+      });
+    } catch (err) {
+      caught = err;
+    }
+
+    expect(caught).toBeInstanceOf(MongoatError);
+    const err = caught as MongoatError;
+
+    expect(err.code).toBe('MIGRATION_ABORTED');
+    expect(err.message).not.toMatch(/\bD-\d/);
+
+    // down() never ran — only the "up" marker is present.
+    const markerDocs = await nativeDb
+      .collection(markerCollection)
+      .find()
+      .toArray();
+
+    expect(markerDocs).toHaveLength(1);
+    expect(markerDocs[0]).toMatchObject({ step: 'up' });
+
+    // The migration is STILL recorded as applied — the revert never ran.
+    const records = await nativeDb
+      .collection<MigrationRecord>(config.collection)
+      .find()
+      .toArray();
+
+    expect(records).toHaveLength(1);
+    expect(records[0]).toMatchObject({
+      version: '20260301110300',
+      status: 'applied',
+    });
+
+    // The lock acquired by revertMigration was released despite the abort.
     const status = await getLockStatus(db, config);
 
     expect(status.held).toBe(false);
