@@ -1,9 +1,45 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import {
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+vi.mock('node:module', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('node:module')>();
+
+  return {
+    ...actual,
+    // Forces the CLI's tsx-resolution helper down its "tsx is not
+    // installed" branch WITHOUT touching the real optional peer this repo
+    // actually has installed — the only way a unit test can observe the
+    // resulting runtime error message.
+    createRequire: (...args: Parameters<typeof actual.createRequire>) => {
+      const real = actual.createRequire(...args);
+      const patched = ((id: string) => real(id)) as unknown as NodeRequire;
+
+      patched.resolve = ((
+        specifier: string,
+        options?: { paths?: string[] }
+      ) => {
+        if (specifier === 'tsx/cli') {
+          throw new Error("Cannot find module 'tsx/cli'");
+        }
+
+        return real.resolve(specifier, options);
+      }) as typeof real.resolve;
+
+      return patched;
+    },
+  };
+});
+
+import { parseBooleanEnv, resolveMigrateConfig } from '@/bin/mongoat';
 import { MongoatError, MongoatValidationError } from '@/errors';
 import {
   loadConfigFile,
@@ -531,6 +567,69 @@ describe('mongoat config loader', () => {
       }
 
       assertNoPlanningJargon((caught as Error).message);
+    });
+
+    it('the INVALID_ALLOW_NO_TRANSACTION message stays free of planning identifiers', () => {
+      let caught: unknown;
+      try {
+        parseBooleanEnv('maybe');
+      } catch (err) {
+        caught = err;
+      }
+
+      assertNoPlanningJargon((caught as Error).message);
+    });
+
+    it('the TSX_NOT_AVAILABLE message stays free of planning identifiers', async () => {
+      const dir = makeTmpDir();
+      try {
+        writeFileSync(
+          path.join(dir, 'mongoat.config.ts'),
+          'export default {};',
+          'utf-8'
+        );
+
+        let caught: unknown;
+        try {
+          // A `.ts` config alone is enough to trigger the tsx-resolution
+          // checkpoint, before the file is ever loaded — no `.ts` migration
+          // needed. `createRequire` is mocked at the top of this file so
+          // `tsx/cli` cannot be resolved, forcing the "not installed" branch.
+          await resolveMigrateConfig({}, dir);
+        } catch (err) {
+          caught = err;
+        }
+
+        expect(caught).toBeInstanceOf(MongoatError);
+        expect((caught as MongoatError).code).toBe('TSX_NOT_AVAILABLE');
+        assertNoPlanningJargon((caught as Error).message);
+      } finally {
+        rmSync(dir, { recursive: true, force: true });
+      }
+    });
+
+    describe('static scan of the phase source files', () => {
+      // Mensagens de erro só cobrem o que RODA em tempo de execução —
+      // um identificador de planejamento vazado num comentário de JSDoc
+      // nunca dispararia nenhuma das asserções acima, mas chegaria intacto
+      // na documentação de API gerada (o pacote é público). Lendo o
+      // conteúdo INTEIRO dos dois arquivos-fonte tocados nesta fase e
+      // aplicando as MESMAS três regexes fecha essa lacuna — reutiliza os
+      // literais de `assertNoPlanningJargon` acima para que os dois lugares
+      // nunca divirjam com o tempo.
+      const PROJECT_ROOT = path.resolve(__dirname, '../..');
+
+      it.each([['src/migrate/config.ts'], ['src/bin/mongoat.ts']] as const)(
+        '%s never leaks a planning identifier, comments included',
+        (relativePath) => {
+          const content = readFileSync(
+            path.join(PROJECT_ROOT, relativePath),
+            'utf-8'
+          );
+
+          assertNoPlanningJargon(content);
+        }
+      );
     });
   });
 });
