@@ -20,6 +20,18 @@ export async function runBestEffort(
   }
 }
 
+// Best-effort text for the warning message below. `String(secondary)` can
+// itself throw (e.g. `Object.create(null)` has no reachable `toString`, or a
+// `toString`/`Symbol.toPrimitive` implementation that throws) — this helper
+// never propagates that, falling back to a fixed placeholder instead.
+function describeSuppressed(secondary: unknown): string {
+  try {
+    return secondary instanceof Error ? secondary.message : String(secondary);
+  } catch {
+    return '[unstringifiable secondary error]';
+  }
+}
+
 /**
  * @internal
  *
@@ -27,14 +39,14 @@ export async function runBestEffort(
  * first use — a primary error can accumulate more than one suppressed
  * failure over its lifecycle) and emits a non-fatal process warning with a
  * stable, filterable `type`. Never throws, even if `secondary` is not an
- * `Error` instance.
+ * `Error` instance and even if stringifying it throws.
  */
 export function attachSuppressed(primary: MongoatError, secondary: unknown): void {
   (primary.suppressed ??= []).push(secondary);
 
   process.emitWarning(
     `[mongoat] A secondary operation failed while handling the error above and was ` +
-      `suppressed: ${secondary instanceof Error ? secondary.message : String(secondary)}`,
+      `suppressed: ${describeSuppressed(secondary)}`,
     { type: 'MongoatSuppressedError' }
   );
 }

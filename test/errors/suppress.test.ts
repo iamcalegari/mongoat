@@ -90,4 +90,69 @@ describe('attachSuppressed (unit, sem driver)', () => {
     expect(primary.suppressed).toEqual([secondary]);
     expect(warnings[0]?.message).toContain(String(secondary));
   });
+
+  it('nunca lança quando secondary não tem toString alcançável (Object.create(null))', async () => {
+    const primary = new MongoatError('primary failed');
+    const secondary = Object.create(null) as unknown;
+
+    const warnings: Error[] = [];
+    const handler = (warning: Error) => warnings.push(warning);
+    process.once('warning', handler);
+
+    expect(() => attachSuppressed(primary, secondary)).not.toThrow();
+
+    await new Promise((resolve) => setImmediate(resolve));
+
+    process.removeListener('warning', handler);
+
+    expect(primary.suppressed).toEqual([secondary]);
+    expect(primary.suppressed?.[0]).toBe(secondary);
+    expect(warnings).toHaveLength(1);
+  });
+
+  it('nunca lança quando secondary.toString lança', async () => {
+    const primary = new MongoatError('primary failed');
+    const secondary = {
+      toString() {
+        throw new Error('boom');
+      },
+    };
+
+    const warnings: Error[] = [];
+    const handler = (warning: Error) => warnings.push(warning);
+    process.once('warning', handler);
+
+    expect(() => attachSuppressed(primary, secondary)).not.toThrow();
+
+    await new Promise((resolve) => setImmediate(resolve));
+
+    process.removeListener('warning', handler);
+
+    expect(primary.suppressed).toEqual([secondary]);
+    expect(primary.suppressed?.[0]).toBe(secondary);
+    expect(warnings).toHaveLength(1);
+  });
+
+  it('nunca lança quando secondary[Symbol.toPrimitive] lança', async () => {
+    const primary = new MongoatError('primary failed');
+    const secondary = {
+      [Symbol.toPrimitive]() {
+        throw new Error('boom');
+      },
+    };
+
+    const warnings: Error[] = [];
+    const handler = (warning: Error) => warnings.push(warning);
+    process.once('warning', handler);
+
+    expect(() => attachSuppressed(primary, secondary)).not.toThrow();
+
+    await new Promise((resolve) => setImmediate(resolve));
+
+    process.removeListener('warning', handler);
+
+    expect(primary.suppressed).toEqual([secondary]);
+    expect(primary.suppressed?.[0]).toBe(secondary);
+    expect(warnings).toHaveLength(1);
+  });
 });
