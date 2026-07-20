@@ -3,7 +3,6 @@ import { createRequire } from 'node:module';
 import { spawnSync } from 'node:child_process';
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import { pathToFileURL } from 'node:url';
 import { parseArgs } from 'node:util';
 
 import { Database } from '@/database';
@@ -741,9 +740,16 @@ export async function dispatch(
   return handler(rest, deps);
 }
 
-const isMainModule =
-  process.argv[1] !== undefined &&
-  pathToFileURL(__filename).href === pathToFileURL(process.argv[1]).href;
+// CR-01: the published bin (`lib/mongoat.cjs`) is invoked via the symlink
+// npm creates at `node_modules/.bin/mongoat` on Unix. A `pathToFileURL`
+// comparison between `__filename` (Node resolves the module's REAL path,
+// following the symlink, by default) and `process.argv[1]` (the symlink
+// path itself, left unresolved) always diverges under that install path —
+// `dispatch()` would never run and the CLI would silently exit 0. Since the
+// published bin is CJS, `require.main === module` is the canonical check:
+// both sides are the same in-process object, immune to how the entry point
+// was invoked (direct path, npm symlink, or `.cmd` shim on Windows).
+const isMainModule = require.main === module;
 
 if (isMainModule) {
   // WR-02: defense-in-depth `.catch()` at the true top-level boundary — on
