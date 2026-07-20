@@ -133,6 +133,24 @@ export interface MigrateConfig {
 }
 
 /**
+ * @public
+ *
+ * The authorable subset of `MigrateConfig` — the four migrations knobs a
+ * `mongoat.config.{json,js,ts}` file may set. Every field is optional and
+ * merges with CLI flags/env vars/defaults on a per-field basis.
+ *
+ * Deliberately excludes the runtime-only `AbortSignal` channel `MigrateConfig`
+ * carries — the CLI attaches it while a run is already in progress, never a
+ * value an author writes to a static file.
+ */
+export interface MongoatMigrationsConfig {
+  allowNoTransaction?: boolean;
+  collection?: string;
+  dir?: string;
+  lockTtlMs?: number;
+}
+
+/**
  * @internal
  *
  * Persisted shape of the singleton run-lock document held in the lock

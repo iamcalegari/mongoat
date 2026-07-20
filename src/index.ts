@@ -6,6 +6,7 @@ export {
   MongoatValidationError,
 } from './errors';
 export {
+  defineConfig,
   defineMigration,
   getStatus,
   revertMigration,
@@ -38,6 +39,7 @@ export type {
   ModelDbValidationProps,
   ModelSetup,
   ModelValidationSchema,
+  MongoatMigrationsConfig,
   OnHookError,
   Plugin,
   PluginContext,
