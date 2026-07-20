@@ -70,7 +70,7 @@ const kPluginsLocked = Symbol('kPluginsLocked');
 /**
  * @internal
  *
- * Symbol module-private (D-11) — NÃO re-exportado do barrel público
+ * Symbol module-private — NÃO re-exportado do barrel público
  * (`src/index.ts`). Exportado apenas do módulo `@/model` para que suítes de
  * teste internas possam chamar `Model[kResetPlugins]()` em `beforeEach`/
  * `afterAll` e isolar o estado global de plugins entre casos, o mesmo
@@ -79,7 +79,7 @@ const kPluginsLocked = Symbol('kPluginsLocked');
 export const kResetPlugins = Symbol('kResetPlugins');
 
 /**
- * WR-05: serialização com chaves ordenadas. `JSON.stringify` puro é sensível
+ * Serialização com chaves ordenadas. `JSON.stringify` puro é sensível
  * à ordem de inserção das chaves — o mesmo schema declarado com `properties`
  * em ordem distinta em dois módulos geraria um falso `MongoatError:
  * already registered with a different configuration`. Ordenar as chaves de
@@ -100,7 +100,7 @@ function stableStringify(value: unknown): string {
 }
 
 /**
- * SEC-03/D-03/D-04: mapa de códigos numéricos estáveis do driver
+ * Mapa de códigos numéricos estáveis do driver
  * (`MongoServerError.code`) para o `code` string do `MongoatDriverError`.
  * `11000` é o código de violação de chave duplicada — fonte: `err.code`/
  * `err.codeName` em `MongoServerError`, verificado em
@@ -114,7 +114,7 @@ const DRIVER_CODE_MAP: Record<number, string> = {
 /**
  * Extrai APENAS o nome do índice da mensagem E11000 do driver (formato
  * `... index: <nome> dup key: { ... }`) — nunca o valor duplicado, que
- * pode ser dado do usuário (Pitfall 3 / Open Question 2 do 03-RESEARCH.md).
+ * pode ser dado do usuário.
  * Retorna `undefined` se o formato não bater (mensagem de outro shape),
  * caso em que o chamador cai para uma mensagem genérica sem nome de índice.
  */
@@ -123,16 +123,15 @@ function extractDuplicateKeyIndexName(message: string): string | undefined {
 }
 
 /**
- * WR-11/SEC-03: evoluído da Fase 2 para emitir `MongoatDriverError`
- * (D-01/D-04) com `code` mapeado de `err.code` do driver. `.message`
- * permanece estável e sanitizada — nunca `JSON.stringify(err)` (D-03); o
- * erro original inteiro segue acessível via `.cause` para quem quiser
+ * Emite `MongoatDriverError` com `code` mapeado de `err.code` do driver.
+ * `.message` permanece estável e sanitizada — nunca `JSON.stringify(err)`;
+ * o erro original inteiro segue acessível via `.cause` para quem quiser
  * inspecionar.
  *
  * Caso especial `DUPLICATE_KEY` (E11000): o `.message` do driver inclui o
  * VALOR do campo duplicado (`dup key: { email: "user@example.com" }`) — a
  * mensagem própria construída aqui expõe só o NOME do índice, nunca o
- * valor; o valor completo segue disponível via `.cause` (Pitfall 3).
+ * valor; o valor completo segue disponível via `.cause`.
  */
 function wrapDriverError(err: unknown): MongoatDriverError {
   const originalMessage = err instanceof Error ? err.message : String(err);
@@ -157,11 +156,11 @@ function wrapDriverError(err: unknown): MongoatDriverError {
 }
 
 /**
- * SEC-01/D-05: guard incondicional de `$where`, embutido nos 7 métodos que
+ * Guard incondicional de `$where`, embutido nos 7 métodos que
  * recebem `filter` (find, findMany, update, updateMany, delete,
  * deleteMany, total). Sempre ativo e NÃO-desligável pelo dev — reusa o
  * MESMO scanner (`findForbiddenOperator`) de `src/utils/sanitize.ts`,
- * usado também por `sanitizeFilter` (Task 2), em vez de duplicar a lógica
+ * usado também por `sanitizeFilter`, em vez de duplicar a lógica
  * de percorrer o filtro em qualquer profundidade (dentro de
  * `$and`/`$or`/`$nor`/arrays). `$where` executa JavaScript arbitrário no
  * servidor MongoDB — sem uso legítimo defensável numa lib de dados.
@@ -176,7 +175,7 @@ function assertNoWhere(filter: unknown): void {
 }
 
 /**
- * WR-06: deep-clone de `documentDefaults` restrito a plain objects/arrays.
+ * Deep-clone de `documentDefaults` restrito a plain objects/arrays.
  *
  * `this.documentDefaults` guardava a referência do usuário e os merges eram
  * spreads rasos — um default aninhado (ex.: `{ meta: { source: 'api' } }`)
@@ -214,7 +213,7 @@ function cloneDocumentDefaults<T>(value: T): T {
 }
 
 /**
- * D-12/Pitfall 3: `useDefineForClassFields` (default at the project's ES2022+
+ * `useDefineForClassFields` (default at the project's ES2022+
  * compile target) makes EVERY declared class field an own property — even
  * one without an initializer, which then holds `undefined`. Spreading a
  * freshly-instantiated decorated schema class straight into a document
@@ -235,10 +234,10 @@ function ownDefinedProperties(instance: object): Record<string, unknown> {
 /**
  * Lightweight structural comparison used by the `Model` constructor to
  * detect a divergent re-registration of an already-registered
- * `collectionName` (D-06). Compares the fields that define a model's
+ * `collectionName`. Compares the fields that define a model's
  * behavior — `allowedMethods` (order-independent), the fully-built
  * `validator` (which already embeds the schema + validationQueryExpressions),
- * `documentDefaults` and `indexes` (WR-04) — via `JSON.stringify`.
+ * `documentDefaults` and `indexes` — via `JSON.stringify`.
  * Deliberately hand-rolled instead of pulling in a deep-equal dependency
  * (`lodash.isequal`/`fast-deep-equal`): the surface being compared is small
  * and known, and a generic deep-equal lib would violate the project's
@@ -261,10 +260,9 @@ function isSameConfig(
     stableStringify(existing.validator) ===
     stableStringify(candidate.validator);
 
-  // WR-04: `documentDefaults` e `indexes` afetam materialmente o
-  // comportamento do model — uma re-registração com defaults/índices
-  // diferentes também deve falhar alto em vez de ser descartada em
-  // silêncio (mesma classe de mascaramento que D-06 eliminou).
+  // `documentDefaults` e `indexes` afetam materialmente o comportamento do
+  // model — uma re-registração com defaults/índices diferentes também deve
+  // falhar alto em vez de ser descartada em silêncio.
   const sameDocumentDefaults =
     stableStringify(existing.documentDefaults) ===
     stableStringify(candidate.documentDefaults);
@@ -281,7 +279,7 @@ function isSameConfig(
 }
 
 /**
- * D-06/D-08: reads the default `collectionName` written on a decorated
+ * Reads the default `collectionName` written on a decorated
  * schema class by `@Schema('name')` (`kMongoatSchemaClass` marker). Returns
  * `undefined` when the class carries no marker (never happens for a class
  * that went through `@Schema`, since `Schema.compile` already throws
@@ -312,10 +310,10 @@ export class Model<ModelType extends Document = Document> {
   documentDefaults!: DocumentDefaults<ModelType>;
 
   /**
-   * D-08/D-12: reference to the decorated schema class this model was built
-   * from — `undefined` when the model was built from a plain
+   * Reference to the decorated schema class this model was built from —
+   * `undefined` when the model was built from a plain
    * `ModelValidationSchema` object. Used by `insert`/`insertMany`/
-   * `bulkWrite` to instantiate a FRESH instance per document (D-12),
+   * `bulkWrite` to instantiate a FRESH instance per document,
    * collecting its field initializers as per-insert defaults.
    */
   private schemaClass: SchemaClass<ModelType> | undefined;
@@ -360,7 +358,7 @@ export class Model<ModelType extends Document = Document> {
   /**
    * @internal
    *
-   * Trava de ordem (Pitfall 5): setada `true` na PRIMEIRA construção
+   * Trava de ordem: setada `true` na PRIMEIRA construção
    * bem-sucedida de QUALQUER model — inclusive quando essa primeira
    * construção cai no early-return de reuso de config idêntica. Consumida
    * por `Model.plugin()` para recusar registro de plugin global (código
@@ -370,7 +368,7 @@ export class Model<ModelType extends Document = Document> {
   static [kPluginsLocked] = false;
 
   /**
-   * D-07 — per-instance `AsyncLocalStorage` reentrancy guard (Pattern 5).
+   * Per-instance `AsyncLocalStorage` reentrancy guard.
    * A hook (or an internal method delegation, e.g. `findById` → `find`)
    * that calls another method of THIS SAME model runs inside the same
    * async context established by the outer method's dispatch, so it sees
@@ -412,7 +410,7 @@ export class Model<ModelType extends Document = Document> {
         ]
       : allowedMethods;
 
-    // D-08: `schema` accepts a plain `ModelValidationSchema` OR a class
+    // `schema` accepts a plain `ModelValidationSchema` OR a class
     // decorated with `@Schema`/`@Prop` — a decorated class is, at runtime,
     // just a `function` (the constructor); a plain schema object is never
     // callable and declares `bsonType` directly. Resolved BEFORE
@@ -425,7 +423,7 @@ export class Model<ModelType extends Document = Document> {
       ? Schema.compile(schema as SchemaClass<ModelType>)
       : (schema as ModelValidationSchema);
 
-    // D-06: the class-level `@Schema('name')` collectionName is only a
+    // The class-level `@Schema('name')` collectionName is only a
     // DEFAULT — an explicit `collectionName` in the model config always
     // wins.
     const resolvedCollectionName =
@@ -442,16 +440,16 @@ export class Model<ModelType extends Document = Document> {
     }
 
     // Built before the existing-registration check (still fully
-    // synchronous — no `await` between this and `registerModel()` below,
-    // D-07) so `isSameConfig` has the fully-resolved validator to compare
-    // against when the collection is already registered (D-06).
+    // synchronous — no `await` between this and `registerModel()` below)
+    // so `isSameConfig` has the fully-resolved validator to compare
+    // against when the collection is already registered.
     const { validationAction, validationLevel, validator } =
       buildJsonSchemaValidator({
         schema: resolvedSchema,
         validationQueryExpressions,
       });
 
-    // D-06: a second `new Model(...)` for an already-registered
+    // A second `new Model(...)` for an already-registered
     // collectionName used to be silently ignored (`if (!!model) return
     // model;`), discarding whatever config it was called with — even a
     // config that conflicts with the first registration. Now the
@@ -460,15 +458,14 @@ export class Model<ModelType extends Document = Document> {
     // divergent → fail loudly instead of masking the mismatch.
     const existing = Model[kDatabase].getModel(resolvedCollectionName);
 
-    // D-11/DECO-02 (Plano 06-04): hooks decorados (`@Pre`/`@Post`) extraídos
-    // ANTES do branch de re-registro abaixo — `extractDecoratorHooks`
+    // Hooks decorados (`@Pre`/`@Post`) extraídos ANTES do branch de
+    // re-registro abaixo — `extractDecoratorHooks`
     // devolve arrays vazios (nunca lança) para um `schema` não-decorado.
     const decoratedHooks = isDecoratedSchemaClass
       ? extractDecoratorHooks(schema as SchemaClass<ModelType>)
       : { pre: [], post: [] };
 
-    // WR-04 (Pitfall 4/05-REVIEW.md, fechado no Plano 06-02, estendido no
-    // 06-04): functions are not structurally comparable via
+    // Functions are not structurally comparable via
     // `stableStringify` — `isSameConfig` never compared `hooks`, so a
     // re-registration of an already-registered `collectionName` that
     // declared hooks used to fall through the "identical config"
@@ -486,8 +483,8 @@ export class Model<ModelType extends Document = Document> {
         ))
     );
 
-    // Pitfall 4: mesma classe de mascaramento que `candidateHasHooks`
-    // fecha para hooks — um `plugins[]` declarado numa re-registração do
+    // Mesma classe de mascaramento que `candidateHasHooks` fecha para
+    // hooks — um `plugins[]` declarado numa re-registração do
     // mesmo `collectionName` nunca é descartado em silêncio. Plugins não
     // são estruturalmente comparáveis (são funções/objetos com `setup`),
     // então o único comportamento seguro é falhar alto.
@@ -519,7 +516,7 @@ export class Model<ModelType extends Document = Document> {
           validator,
         })
       ) {
-        // Pitfall 5: a trava de ordem é setada mesmo neste early-return —
+        // A trava de ordem é setada mesmo neste early-return —
         // a PRIMEIRA construção bem-sucedida (mesmo reusando config
         // idêntica) já fixa a ordem de aplicação de plugins.
         Model[kPluginsLocked] = true;
@@ -528,7 +525,7 @@ export class Model<ModelType extends Document = Document> {
       }
 
       // Only the collectionName + the fact of divergence — never the
-      // schema content itself (Information Disclosure, T-01-05-01).
+      // schema content itself (avoids information disclosure).
       throw new MongoatValidationError(
         `Model "${resolvedCollectionName}" already registered with a different configuration`,
         { code: 'MODEL_CONFIG_CONFLICT' }
@@ -541,7 +538,7 @@ export class Model<ModelType extends Document = Document> {
       : undefined;
     this.indexes = indexes;
     this.allowedMethods = _allowedMethods;
-    // WR-06: nunca guardar a referência do chamador — mutações posteriores
+    // Nunca guardar a referência do chamador — mutações posteriores
     // no objeto original não devem vazar para os inserts do model.
     this.documentDefaults = cloneDocumentDefaults(documentDefaults);
     this.validator = validator;
@@ -550,12 +547,11 @@ export class Model<ModelType extends Document = Document> {
     this.methods = Object.values(METHODS);
     this.onHookError = props.onHookError ?? defaultOnHookError;
 
-    // D-11 (Plano 06-04): hooks decorados (`@Pre`/`@Post`) registrados
-    // ANTES de `props.hooks` (abaixo) — que por sua vez roda antes de
-    // qualquer `.pre()`/`.post()` encadeável chamado pelo dev depois que o
-    // construtor retorna. `extractDecoratorHooks` já devolve `pre` na
-    // ordem final campo→classe (D-11 (1)→(2)) — o push abaixo só preserva
-    // essa ordem, nunca reordena.
+    // Hooks decorados (`@Pre`/`@Post`) registrados ANTES de `props.hooks`
+    // (abaixo) — que por sua vez roda antes de qualquer `.pre()`/`.post()`
+    // encadeável chamado pelo dev depois que o construtor retorna.
+    // `extractDecoratorHooks` já devolve `pre` na ordem final
+    // campo→classe — o push abaixo só preserva essa ordem, nunca reordena.
     for (const { method, fn } of decoratedHooks.pre as unknown as {
       method: METHODS;
       fn: HookFn<HookContextMap<ModelType>[METHODS]>;
@@ -570,22 +566,22 @@ export class Model<ModelType extends Document = Document> {
       this.hooks[method].post.push({ fn });
     }
 
-    // D-06/D-13/D-14: slot ÚNICO e determinístico para aplicar plugins —
-    // depois dos hooks decorados (`@Pre`/`@Post` de campo/classe, já
-    // registrados acima) e ANTES de `props.hooks`. Um `@Pre`/`@Post` de
-    // plugin registrado aqui sempre executa DEPOIS do decorado e ANTES do
-    // hook declarado em `props.hooks` (D-06). `applyPlugins` reusa a MESMA
-    // mecânica de hooks já existente — nenhum pipeline novo (D-14); um
-    // `setup()` que lança aborta a construção ANTES de `registerModel`
-    // (fail-loud, D-10), então o model nunca é registrado. A lista global
-    // (`Model[kGlobalPlugins]`) fica vazia até `Model.plugin()` (Plano 03).
+    // Slot ÚNICO e determinístico para aplicar plugins — depois dos hooks
+    // decorados (`@Pre`/`@Post` de campo/classe, já registrados acima) e
+    // ANTES de `props.hooks`. Um `@Pre`/`@Post` de plugin registrado aqui
+    // sempre executa DEPOIS do decorado e ANTES do hook declarado em
+    // `props.hooks`. `applyPlugins` reusa a MESMA mecânica de hooks já
+    // existente — nenhum pipeline novo; um `setup()` que lança aborta a
+    // construção ANTES de `registerModel` (fail-loud), então o model nunca
+    // é registrado. A lista global (`Model[kGlobalPlugins]`) fica vazia até
+    // que `Model.plugin()` seja chamado.
     applyPlugins<ModelType>(
       this as unknown as PluginTarget,
       Model[kGlobalPlugins] as Plugin<ModelType>[],
       props.plugins ?? []
     );
 
-    // D-01/D-02: hooks declarados no construtor populam a registry ANTES
+    // Hooks declarados no construtor populam a registry ANTES
     // de qualquer `.pre()`/`.post()` encadeável chamado depois (que só
     // faz `push`, nunca sobrescreve — ver `pre()`/`post()` abaixo).
     if (props.hooks) {
@@ -607,7 +603,7 @@ export class Model<ModelType extends Document = Document> {
       }
     }
 
-    // Pitfall 5: a trava de ordem é setada na PRIMEIRA construção
+    // A trava de ordem é setada na PRIMEIRA construção
     // bem-sucedida — este é o caminho "de verdade" (nenhum registro
     // anterior para este collectionName); o early-return de reuso acima
     // também seta a mesma flag.
@@ -620,7 +616,7 @@ export class Model<ModelType extends Document = Document> {
     // first construction, silently bypassing the allowedMethods guard
     // (only the second `new Model(...)` call for the same collectionName,
     // which hits the early-return registry lookup above, would return the
-    // proxy). See Phase 1 Plan 04 (QUAL-01 — Proxy binding).
+    // proxy).
     return Model[kDatabase].registerModel(
       this as unknown as Model<Document>
     ) as unknown as Model<ModelType>;
@@ -630,8 +626,8 @@ export class Model<ModelType extends Document = Document> {
    * @private
    *
    * Retrieves the collection for this model, throwing a typed
-   * `MongoatError` instead of handing callers an `undefined` collection
-   * (D-10). Without this guard, calling a CRUD method before
+   * `MongoatError` instead of handing callers an `undefined` collection.
+   * Without this guard, calling a CRUD method before
    * `db.connect()` let the unchecked `as Collection<ModelType>` cast
    * through, and the driver threw a cryptic `TypeError` on the first
    * property access on `undefined`.
@@ -653,9 +649,9 @@ export class Model<ModelType extends Document = Document> {
   /**
    * @private
    *
-   * D-12: instantiates `this.schemaClass` FRESH (a new instance) and
-   * strips `undefined` keys (Pitfall 3, `ownDefinedProperties`) — the
-   * lowest-precedence layer of the per-insert defaults merge (D-13). Called
+   * Instantiates `this.schemaClass` FRESH (a new instance) and strips
+   * `undefined` keys (see `ownDefinedProperties`) — the
+   * lowest-precedence layer of the per-insert defaults merge. Called
    * once per DOCUMENT (not once per call) by `insert`/`insertMany`/
    * `bulkWrite`, so a field initializer like `createdAt = new Date()` is
    * evaluated fresh for every document, never reused/frozen across inserts.
@@ -699,8 +695,8 @@ export class Model<ModelType extends Document = Document> {
     method: M,
     fn: HookFn<HookContextMap<ModelType>[M]>
   ): this {
-    // D-01: acumula (push), nunca sobrescreve — encadeável (D-02: depois
-    // dos hooks declarados no construtor).
+    // Acumula (push), nunca sobrescreve — encadeável, e sempre depois
+    // dos hooks declarados no construtor.
     this.hooks[method].pre.push(fn);
 
     return this;
@@ -724,7 +720,7 @@ export class Model<ModelType extends Document = Document> {
    * pass — see `insertMany()`). `rawFn` reads its arguments from `ctx`
    * (not from the original public-method parameters) so a pre-hook
    * mutation of `ctx.options`/`ctx.filter`/`ctx.document` reaches the
-   * driver call (Pitfall 4).
+   * driver call.
    */
   private async executeHooked<M extends METHODS>(
     method: M,
@@ -748,8 +744,8 @@ export class Model<ModelType extends Document = Document> {
   /**
    * @private
    *
-   * Reentrancy dispatch shared by every CRUD method except `insertMany`
-   * (Pattern 5/D-07): if this Model's async context is already marked
+   * Reentrancy dispatch shared by every CRUD method except `insertMany`:
+   * if this Model's async context is already marked
    * `raw` (this call is nested inside a hook, or inside another
    * already-hooked method of the same instance — e.g. `findById` →
    * `find`), skip straight to `rawFn` — no hooks re-fire, no new async
@@ -794,7 +790,7 @@ export class Model<ModelType extends Document = Document> {
     update: UpdateFilter<ModelType>,
     options: FindOneAndUpdateOptions = {}
   ): Promise<WithId<ModelType> | null> {
-    // SEC-01/D-05: guard ANTES de tocar o driver — `Promise.reject` (não
+    // Guard ANTES de tocar o driver — `Promise.reject` (não
     // `throw` síncrono) preserva o contrato de Promise do método.
     try {
       assertNoWhere(filter);
@@ -880,7 +876,7 @@ export class Model<ModelType extends Document = Document> {
   private rawFindMany(filter: Filter<ModelType>, options: FindOptions) {
     const collection = this.getCollectionOrThrow();
 
-    // WR-07: sem `?? []` — `toArray()` retorna uma Promise, que nunca é
+    // Sem `?? []` — `toArray()` retorna uma Promise, que nunca é
     // nullish; o fallback era código morto que mentia sobre um retorno
     // síncrono `[]` impossível.
     return collection.find(filter, options).toArray();
@@ -913,12 +909,12 @@ export class Model<ModelType extends Document = Document> {
     document: OptionalUnlessRequiredId<ModelType>,
     options: InsertOneOptions = {}
   ): Promise<WithId<ModelType> & DefaultProperties> {
-    // WR-06: clone por insert — o spread raso compartilharia defaults
+    // Clone por insert — o spread raso compartilharia defaults
     // aninhados entre todos os documentos (e com o próprio model). Feito
     // ANTES do ctx ser montado, então os pre-hooks veem/mutam a cópia já
     // mesclada com os defaults (não o objeto original do chamador).
     //
-    // D-13: precedência doc do usuário > documentDefaults do config >
+    // Precedência: doc do usuário > documentDefaults do config >
     // inicializadores da classe decorada — `classDefaults` entra com a
     // MENOR precedência (spreadado primeiro), `document` do chamador com a
     // MAIOR (spreadado por último).
@@ -965,10 +961,10 @@ export class Model<ModelType extends Document = Document> {
     documents: OptionalUnlessRequiredId<ModelType>[],
     options: BulkWriteOptions = {}
   ): Promise<InsertManyResult<ModelType>> {
-    // WR-06: clone por documento — cada doc precisa da própria instância
+    // Clone por documento — cada doc precisa da própria instância
     // dos defaults aninhados.
     //
-    // D-12: `buildClassDefaults()` instancia `this.schemaClass` FRESCO por
+    // `buildClassDefaults()` instancia `this.schemaClass` FRESCO por
     // DOCUMENTO (não uma vez para o batch inteiro) — cada doc do array
     // precisa do próprio `createdAt`/inicializador, não um valor
     // compartilhado congelado no momento da chamada.
@@ -985,7 +981,7 @@ export class Model<ModelType extends Document = Document> {
     }
 
     return this[kHookContext].run({ raw: true }, async () => {
-      // Pitfall 1: paralelo ENTRE documentos, sequencial DENTRO de cada
+      // Paralelo ENTRE documentos, sequencial DENTRO de cada
       // documento — nunca `Promise.all` para os hooks de UM documento.
       await Promise.all(
         _documents.map((document) => {
@@ -1004,15 +1000,15 @@ export class Model<ModelType extends Document = Document> {
         options,
       });
 
-      // Pitfall 4: ler de `postCtx.options` (não do parâmetro `options`
-      // original) — consistente com os outros 11 métodos, todos que lêem
-      // `c.options` na chamada ao driver dentro do `rawFn` passado a
-      // `runHooked`. Como cada `preCtx` por documento compartilha a MESMA
-      // referência de `options` (Pattern 3), uma mutação in-place feita
-      // por um pre-hook (`ctx.options.campo = x`) já é visível aqui
-      // independentemente de qual variável é lida — mas ler explicitamente
-      // de `postCtx.options` documenta a intenção e fecha o pitfall por
-      // completo, não só "por coincidência de referência compartilhada".
+      // Ler de `postCtx.options` (não do parâmetro `options` original) —
+      // consistente com os outros 11 métodos, todos que lêem `c.options`
+      // na chamada ao driver dentro do `rawFn` passado a `runHooked`.
+      // Como cada `preCtx` por documento compartilha a MESMA referência
+      // de `options`, uma mutação in-place feita por um pre-hook
+      // (`ctx.options.campo = x`) já é visível aqui independentemente de
+      // qual variável é lida — mas ler explicitamente de
+      // `postCtx.options` documenta a intenção, em vez de depender de uma
+      // coincidência de referência compartilhada.
       postCtx.result = await this.rawInsertMany(_documents, postCtx.options);
 
       await runPostHooks(
@@ -1034,7 +1030,7 @@ export class Model<ModelType extends Document = Document> {
     const collection = this.getCollectionOrThrow();
 
     try {
-      // WR-01: `return await` — sem ele, a Promise rejeitada do driver
+      // `return await` — sem ele, a Promise rejeitada do driver
       // escapava do try/catch (código morto).
       return await collection.insertMany(documents, options);
     } catch (err: unknown) {
@@ -1069,10 +1065,10 @@ export class Model<ModelType extends Document = Document> {
     documentId: ObjectId | string,
     options: FindOptions = {}
   ): Promise<WithId<ModelType> | null> {
-    // SEC-02/D-02: nullish é erro explícito do caller — NÃO delega a
+    // Nullish é erro explícito do caller — NÃO delega a
     // `toObjectId(undefined)`, que geraria um ObjectId aleatório e
-    // mascararia o bug (Pitfall 2 / 03-RESEARCH.md, `findById(undefined)`
-    // "funcionava" silenciosamente retornando `null`). `Promise.reject`
+    // mascararia o bug (`findById(undefined)` "funcionaria"
+    // silenciosamente retornando `null`). `Promise.reject`
     // (não `throw` síncrono) preserva o contrato de Promise do método.
     if (documentId === undefined || documentId === null) {
       return Promise.reject(
@@ -1095,10 +1091,10 @@ export class Model<ModelType extends Document = Document> {
 
   private rawFindById(documentId: ObjectId | string, options: FindOptions) {
     // Delega ao `find()` público — a chamada roda dentro do mesmo
-    // contexto `{ raw: true }` já aberto por `findById`'s dispatch
-    // (Pattern 5/D-07), então `find()` também pula seu próprio pipeline
-    // de hooks (não apenas o gating do Proxy, já pulado por estar
-    // vinculado a `target` — ver QUAL-01).
+    // contexto `{ raw: true }` já aberto pelo dispatch de `findById`,
+    // então `find()` também pula seu próprio pipeline de hooks (não
+    // apenas o gating do Proxy, já pulado por estar vinculado a
+    // `target`).
     return this.find(
       { _id: toObjectId(documentId) } as unknown as Filter<ModelType>,
       options
@@ -1161,7 +1157,7 @@ export class Model<ModelType extends Document = Document> {
     operations: AnyBulkWriteOperation<ModelType>[],
     options: BulkWriteOptions = {}
   ): Promise<BulkWriteResult> {
-    // WR-02: clonar a operação em vez de reatribuir `insertOne.document`
+    // Clonar a operação em vez de reatribuir `insertOne.document`
     // in-place — a versão anterior mutava os objetos de operação do
     // próprio chamador (o map retornava as mesmas referências).
     const _operations = operations.map((operation) => {
@@ -1178,8 +1174,8 @@ export class Model<ModelType extends Document = Document> {
           insertOne: {
             ...insertOperation.insertOne,
             document: {
-              // WR-06: clone por operação (ver comentário em insert()).
-              // D-12: instância fresca da classe decorada POR operação.
+              // Clone por operação (ver comentário em insert()) —
+              // instância fresca da classe decorada POR operação.
               ...this.buildClassDefaults(),
               ...cloneDocumentDefaults(this.documentDefaults),
               ...insertOperation.insertOne.document,
@@ -1208,7 +1204,7 @@ export class Model<ModelType extends Document = Document> {
     const collection = this.getCollectionOrThrow();
 
     try {
-      // WR-01: `return await` — ver comentário equivalente em insertMany.
+      // `return await` — ver comentário equivalente em insertMany.
       return await collection.bulkWrite(operations, options);
     } catch (err: unknown) {
       throw wrapDriverError(err);
@@ -1252,13 +1248,13 @@ export class Model<ModelType extends Document = Document> {
    * @internal
    *
    * Clears the global plugin registry (`kGlobalPlugins`) and unlocks the
-   * PLUG-02 order flag (`kPluginsLocked`).
+   * plugin order flag (`kPluginsLocked`).
    *
    * Not part of the public API — intended for test suites that need to
    * isolate global plugin state between cases, the same role
    * `Database.resetRegistry()` plays for the model registry. Using this
    * outside of tests will make `Model.plugin()` accept registrations again
-   * after models have already been constructed, defeating the PLUG-02
+   * after models have already been constructed, defeating the plugin
    * ordering guarantee.
    */
   static [kResetPlugins](): void {

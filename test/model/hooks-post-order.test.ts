@@ -7,10 +7,10 @@ import { ModelValidationSchema } from '@/types';
 import { METHODS } from '@/utils/enums';
 
 /**
- * HOOK-02 — múltiplos post hooks no mesmo método, em ordem de registro,
+ * Múltiplos post hooks no mesmo método, em ordem de registro,
  * recebendo `ctx.result`. Por padrão observam (retorno `undefined` não
  * altera o resultado entregue ao caller); um post hook que RETORNA um
- * valor transforma o resultado final (D-04, opt-in via retorno).
+ * valor transforma o resultado final (opt-in via retorno).
  */
 interface Doc extends Document {
   name: string;
@@ -22,7 +22,7 @@ const schema: ModelValidationSchema = {
   required: ['name'],
 };
 
-describe('Model — post hooks múltiplos, ctx.result, transform via retorno (HOOK-02)', () => {
+describe('Model — post hooks múltiplos, ctx.result, transform via retorno', () => {
   let db: Database;
 
   beforeAll(async () => {
@@ -67,7 +67,7 @@ describe('Model — post hooks múltiplos, ctx.result, transform via retorno (HO
     expect(seenResults).toEqual(['alpha', 'alpha']);
   });
 
-  it('post hook que RETORNA um valor transforma o resultado entregue ao caller (D-04)', async () => {
+  it('post hook que RETORNA um valor transforma o resultado entregue ao caller', async () => {
     const model = new Model<Doc>({
       collectionName: 'hooks_post_order_transform',
       allowedMethods: [METHODS.INSERT],
@@ -98,7 +98,7 @@ describe('Model — post hooks múltiplos, ctx.result, transform via retorno (HO
 
     model.post(METHODS.INSERT, () => {
       observed = true;
-      // Sem `return` — apenas observa (D-04).
+      // Sem `return` — apenas observa.
     });
 
     const result = await model.insert({ name: 'gamma' });

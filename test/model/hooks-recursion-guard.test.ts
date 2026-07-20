@@ -7,8 +7,8 @@ import { ModelValidationSchema } from '@/types';
 import { METHODS } from '@/utils/enums';
 
 /**
- * HOOK-05 — guard de recursão via `AsyncLocalStorage` por instância de
- * Model (D-07): quando um hook chama um método do próprio model, a
+ * Guard de recursão via `AsyncLocalStorage` por instância de
+ * Model: quando um hook chama um método do próprio model, a
  * chamada aninhada roda em modo raw — não re-dispara os hooks do método
  * aninhado nem estoura a pilha.
  */
@@ -22,7 +22,7 @@ const schema: ModelValidationSchema = {
   required: ['name'],
 };
 
-describe('Model — guard de recursão via AsyncLocalStorage (HOOK-05)', () => {
+describe('Model — guard de recursão via AsyncLocalStorage', () => {
   let db: Database;
 
   beforeAll(async () => {

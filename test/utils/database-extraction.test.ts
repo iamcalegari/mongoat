@@ -8,14 +8,12 @@ import { METHODS } from '@/utils/enums';
 import { buildJsonSchemaValidator } from '@utils/database';
 
 /**
- * Plano 08-01, Task 2 — T-08-04.
- *
  * Prova de paridade: `buildJsonSchemaValidator` (extraído para
- * `@utils/database` no Plano 08-01) precisa produzir, para o MESMO schema
+ * `@utils/database`) precisa produzir, para o MESMO schema
  * plano, um validador BYTE-IDÊNTICO ao que `new Model(...)` expõe em
- * `.validator` — a fundação para as migrations (Plano 08-04) reusarem o
+ * `.validator` — a fundação para as migrations reusarem o
  * caminho de código exato, em vez de re-derivar um validador
- * potencialmente mais fraco (RESEARCH.md Pitfall 1).
+ * potencialmente mais fraco.
  */
 interface Doc extends Document {
   name: string;
@@ -52,7 +50,7 @@ describe('buildJsonSchemaValidator — paridade com Model#validator (unit, sem d
     );
   });
 
-  it('não muta o schema original do chamador (QUAL-01)', () => {
+  it('não muta o schema original do chamador', () => {
     const original = structuredClone(schema);
 
     buildJsonSchemaValidator({ schema });

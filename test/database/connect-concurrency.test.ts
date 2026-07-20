@@ -3,8 +3,6 @@ import { afterAll, describe, expect, it } from 'vitest';
 import { Database } from '@/database';
 
 /**
- * Regressão de WR-08 (Code Review da Fase 01).
- *
  * Bug original: `isConnected()` só retorna `true` DEPOIS que
  * `kCreateClientConnection` conclui e atribui `kClient`/`kDb`. Duas chamadas
  * concorrentes a `connect()` (ex.: bootstrap de dois módulos em paralelo)
@@ -13,7 +11,7 @@ import { Database } from '@/database';
  *
  * Fix: a Promise de conexão em andamento é guardada e reutilizada.
  */
-describe('Database — connect() concorrente (WR-08)', () => {
+describe('Database — connect() concorrente', () => {
   const openDatabases: Database[] = [];
 
   afterAll(async () => {

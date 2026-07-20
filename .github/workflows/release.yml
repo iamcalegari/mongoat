@@ -1,5 +1,5 @@
-# Release workflow — SEPARADO do ci.yml (testes) e docs.yml (Pages), conforme
-# D-04. Publica no npm com provenance (atestacao de origem via OIDC do GitHub
+# Release workflow — SEPARADO do ci.yml (testes) e docs.yml (Pages).
+# Publica no npm com provenance (atestacao de origem via OIDC do GitHub
 # Actions, o mesmo padrao id-token:write ja usado em docs.yml).
 #
 # Fluxo (changesets): num push para `main` com changesets pendentes, a
@@ -7,11 +7,11 @@
 # changesets). Quando esse PR e mergeado (ou quando ha versoes nao-publicadas),
 # a action roda `npm run release` (= `changeset publish`) e publica.
 #
-# Gate (D-03): o job usa o Environment `npm-publish`, que tem um required
+# Gate: o job usa o Environment `npm-publish`, que tem um required
 # reviewer (o autor). Isso pausa a PUBLICACAO ate aprovacao humana explicita —
 # a primeira release (1.1.0, irreversivel) exige 1 clique. Para tornar as
 # releases seguintes totalmente zero-clique, basta remover o required reviewer
-# do Environment depois da 1a release (research Pattern 3, estrategia (a)).
+# do Environment depois da 1a release.
 name: Release
 
 on:
@@ -23,12 +23,12 @@ concurrency: ${{ github.workflow }}-${{ github.ref }}
 permissions:
   contents: write
   pull-requests: write
-  id-token: write # habilita `npm publish --provenance` via OIDC (D-04)
+  id-token: write # habilita `npm publish --provenance` via OIDC
 
 jobs:
   release:
     runs-on: ubuntu-latest
-    environment: npm-publish # gate humano (required reviewer) — D-03
+    environment: npm-publish # gate humano (required reviewer)
     steps:
       - uses: actions/checkout@v5
         with:

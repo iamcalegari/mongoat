@@ -8,8 +8,6 @@ import { ModelValidationSchema } from '@/types';
 import { METHODS } from '@/utils/enums';
 
 /**
- * SEC-01/D-05 (03-02, Task 3).
- *
  * Guard incondicional de `$where` embutido nos 7 métodos com `filter`
  * (find, findMany, update, updateMany, delete, deleteMany, total) — sempre
  * ativo, não-desligável. Rejeita `$where` em qualquer profundidade (topo e
@@ -31,7 +29,7 @@ const schema: ModelValidationSchema = {
   required: ['name', 'age'],
 };
 
-describe('Guard incondicional de $where nos 7 métodos com filter (SEC-01/D-05)', () => {
+describe('Guard incondicional de $where nos 7 métodos com filter', () => {
   let db: Database;
   let model: Model<Doc>;
 

@@ -8,17 +8,14 @@ import { ModelValidationSchema } from '@/types';
 import { METHODS } from '@/utils/enums';
 
 /**
- * D-09 (03-04, Task 1) — gap-fill de cenários de ERRO por método, fechando
- * as lacunas identificadas em 03-RESEARCH.md §"Pattern 3: Matriz de
- * cobertura por método": `aggregate`, `total`, `update`/`updateMany`,
+ * Cenários de ERRO por método: `aggregate`, `total`, `update`/`updateMany`,
  * `delete`/`deleteMany` e `bulkWrite` não tinham nenhum teste de erro
  * dedicado (só os happy paths, em `crud-happy-path.test.ts`).
  *
  * Só `insert`/`insertMany`/`bulkWrite` passam por `wrapDriverError`
  * (`src/model/index.ts`) — os demais (`aggregate`/`total`/`update`/
  * `updateMany`/`delete`/`deleteMany`) propagam o erro NATIVO do driver sem
- * wrap (decisão da Fase 3/Plano 01, não alterada aqui — fora do escopo
- * desta task de gap-fill de testes). Onde o erro de fato passa por
+ * wrap — decisão deliberada, não alterada aqui. Onde o erro de fato passa por
  * `wrapDriverError` (`bulkWrite`), o teste asserta `MongoatDriverError` com
  * `.cause` preservado, igual ao padrão já usado em `insert-error-cause.test.ts`.
  */
@@ -36,7 +33,7 @@ const schema: ModelValidationSchema = {
   required: ['name', 'age'],
 };
 
-describe('Model — gap-fill de cenários de erro por método (D-09)', () => {
+describe('Model — gap-fill de cenários de erro por método', () => {
   let db: Database;
   let model: Model<Doc>;
 

@@ -9,7 +9,7 @@ import { ModelValidationSchema } from '@/types';
 import { METHODS } from '@/utils/enums';
 
 /**
- * D-10 (Plano 07-02): erro no `setup()` de um plugin local aborta
+ * Erro no `setup()` de um plugin local aborta
  * `new Model(...)` ANTES de `registerModel` — o model nunca fica
  * meio-configurado no registry (`Database.getModel(name)` → `undefined`).
  */
@@ -23,7 +23,7 @@ const schema: ModelValidationSchema = {
   required: ['name'],
 };
 
-describe('Model — fail-loud de plugin (setup() lança) nunca registra o model (D-10)', () => {
+describe('Model — fail-loud de plugin (setup() lança) nunca registra o model', () => {
   let db: Database;
 
   beforeAll(() => {

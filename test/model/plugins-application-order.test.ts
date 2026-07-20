@@ -8,11 +8,11 @@ import { ModelValidationSchema } from '@/types';
 import { METHODS } from '@/utils/enums';
 
 /**
- * PLUG-01/D-06 (Plano 07-02): `new Model({ plugins: [p] })` aplica plugins
+ * `new Model({ plugins: [p] })` aplica plugins
  * locais DENTRO do construtor, ANTES do wrap do Proxy — hook/static de um
  * plugin já estão presentes/disponíveis na 1ª construção. O slot
  * determinístico é ENTRE os hooks decorados (`@Pre`/`@Post`, vazios para um
- * schema não-decorado) e o hook declarado em `props.hooks` (D-06): um
+ * schema não-decorado) e o hook declarado em `props.hooks`: um
  * plugin registrando `pre` no mesmo método de um hook de `props.hooks`
  * sempre executa ANTES dele.
  */
@@ -26,7 +26,7 @@ const schema: ModelValidationSchema = {
   required: ['name'],
 };
 
-describe('Model — plugins locais aplicados no construtor, ANTES do wrap (PLUG-01)', () => {
+describe('Model — plugins locais aplicados no construtor, ANTES do wrap', () => {
   let db: Database;
 
   beforeAll(async () => {
@@ -94,7 +94,7 @@ describe('Model — plugins locais aplicados no construtor, ANTES do wrap (PLUG-
     );
   });
 
-  it('ordem D-06: pre de plugin executa ANTES do hook declarado em props.hooks, e AMBOS antes do encadeável (.pre())', async () => {
+  it('ordem: pre de plugin executa ANTES do hook declarado em props.hooks, e AMBOS antes do encadeável (.pre())', async () => {
     const executionOrder: string[] = [];
 
     const plugin: Plugin<Doc> = {

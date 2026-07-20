@@ -10,7 +10,7 @@ import { MongoatConnectionError } from '@/errors';
  * established by `Database#withTransaction` — a migration operation
  * attempted against a disconnected `Database` must never silently no-op.
  *
- * WR-02: lives in its own leaf module (imports nothing from `@/migrate`)
+ * Lives in its own leaf module (imports nothing from `@/migrate`)
  * specifically so both `@/migrate/runner` and `@/migrate/lock` — which
  * already import from EACH OTHER (`runner` calls `acquireLock`/
  * `releaseIfOwner`; `lock` calls this function) — can depend on it without

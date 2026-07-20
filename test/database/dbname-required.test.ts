@@ -4,8 +4,6 @@ import { Database } from '@/database';
 import { MongoatError } from '@/errors';
 
 /**
- * Regressão de D-08 (Plan 04, Task 2).
- *
  * `kGetDbName` não deve mais cair num fallback silencioso ("mongoat-test" /
  * `${PACKAGE}-test-${JEST_WORKER_ID}`) quando nenhum nome de banco está
  * configurado — deve lançar `MongoatError` de forma explícita.
@@ -16,7 +14,7 @@ import { MongoatError } from '@/errors';
  * restauram no `afterEach`, para não vazar estado para outros testes deste
  * arquivo.
  */
-describe('Database — kGetDbName sem fallback de teste (D-08)', () => {
+describe('Database — kGetDbName sem fallback de teste', () => {
   const originalEnvDbName = process.env.MONGODB_DB_NAME;
   const openDatabases: Database[] = [];
 

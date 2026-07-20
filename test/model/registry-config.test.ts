@@ -8,17 +8,15 @@ import { ModelValidationSchema } from '@/types';
 import { METHODS } from '@/utils/enums';
 
 /**
- * Regressão de D-06 (Plan 05, Task 3).
- *
  * Bug original: `if (!!model) return model;` ignorava silenciosamente uma
  * segunda `new Model(props)` para a mesma collection com config DIVERGENTE
  * (schema/allowedMethods diferentes) — as novas props eram descartadas sem
  * qualquer aviso. Fix: `isSameConfig()` compara a config recebida com a
  * registrada; se igual, reaproveita a instância existente; se divergente,
  * lança `MongoatError` (sem despejar o schema na mensagem — Information
- * Disclosure, T-01-05-01).
+ * Disclosure).
  *
- * Usa `Database.resetRegistry()` (D-09, plan 04) para isolar cada caso.
+ * Usa `Database.resetRegistry()` para isolar cada caso.
  */
 interface Doc extends Document {
   name: string;
@@ -30,7 +28,7 @@ const schema: ModelValidationSchema = {
   required: ['name'],
 };
 
-describe('Model — registro atômico com detecção de config divergente (D-06)', () => {
+describe('Model — registro atômico com detecção de config divergente', () => {
   beforeEach(() => {
     Database.resetRegistry();
 
@@ -98,7 +96,7 @@ describe('Model — registro atômico com detecção de config divergente (D-06)
     );
   });
 
-  // Regressão de WR-05 (Code Review da Fase 01): a comparação usava
+  // Regressão: a comparação usava
   // `JSON.stringify` puro, sensível à ordem de inserção das chaves — o mesmo
   // schema declarado com `properties` em ordem distinta gerava um falso
   // "already registered with a different configuration".
@@ -132,7 +130,7 @@ describe('Model — registro atômico com detecção de config divergente (D-06)
     expect(second).toBe(first);
   });
 
-  // Regressão de WR-04 (Code Review da Fase 01): `isSameConfig` comparava
+  // Regressão: `isSameConfig` comparava
   // apenas allowedMethods + validator — re-registração com mesmo schema mas
   // documentDefaults ou indexes diferentes retornava a primeira instância
   // silenciosamente, descartando os novos defaults/índices sem aviso.
@@ -174,7 +172,7 @@ describe('Model — registro atômico com detecção de config divergente (D-06)
     ).toThrow(MongoatError);
   });
 
-  // WR-04 (05-REVIEW.md, fechado no Plano 06-02): `isSameConfig` nunca
+  // `isSameConfig` nunca
   // comparou `hooks` — funções não são comparáveis estruturalmente via
   // `stableStringify`. Uma re-registração do MESMO collectionName que
   // declara `props.hooks` costumava cair no early-return de config
@@ -184,7 +182,7 @@ describe('Model — registro atômico com detecção de config divergente (D-06)
   // re-registro agora falha alto com MODEL_CONFIG_CONFLICT sempre que o
   // candidato declara hooks para uma collectionName já registrada, em vez
   // de tentar comparar as funções.
-  it('new Model() com props.hooks presente na re-registração da mesma collectionName lança MongoatError/MODEL_CONFIG_CONFLICT em vez de descartar o hook (WR-04)', () => {
+  it('new Model() com props.hooks presente na re-registração da mesma collectionName lança MongoatError/MODEL_CONFIG_CONFLICT em vez de descartar o hook', () => {
     const first = new Model<Doc>({
       collectionName: 'registry_config_hooks_conflict',
       allowedMethods: [METHODS.FIND],

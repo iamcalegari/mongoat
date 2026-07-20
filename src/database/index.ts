@@ -72,7 +72,7 @@ export class Database {
     this[kClient] = client;
     this[kDb] = db;
 
-    // CR-01: a URI nunca deve ser descartada por falta de credenciais —
+    // A URI nunca deve ser descartada por falta de credenciais —
     // exigir `uri && username && password` fazia `new Database({ uri })`
     // (ou config puramente por env var) conectar silenciosamente no
     // default localhost, com risco real de escrita no banco errado.
@@ -82,7 +82,7 @@ export class Database {
       const username = process.env.MONGODB_USERNAME || this.config.username;
       const password = process.env.MONGODB_PASSWORD || this.config.password;
 
-      // WR-09: percent-encoding obrigatório — senhas com caracteres
+      // Percent-encoding obrigatório — senhas com caracteres
       // reservados de URI (`@`, `/`, `:`, `%`, `?`, `#`) quebrariam o parse
       // da connection string ou deslocariam sua semântica (tudo após `@`
       // vira host; `?` permitiria injetar opções de conexão).
@@ -121,7 +121,7 @@ export class Database {
       return;
     }
 
-    // WR-08: duas chamadas concorrentes a connect() passavam ambas pelo
+    // Duas chamadas concorrentes a connect() passavam ambas pelo
     // guard acima (isConnected() só vira true DEPOIS que kClient/kDb são
     // atribuídos) e criavam DOIS MongoClient — o primeiro era sobrescrito
     // sem close(), vazando o pool de conexões. Reusar a Promise em
@@ -195,7 +195,7 @@ export class Database {
    * Clears the static model registry (`KModelMap`).
    *
    * Not part of the public API — intended for test suites that need to
-   * isolate registry state between cases (D-09). Using this outside of
+   * isolate registry state between cases. Using this outside of
    * tests will make every previously registered `Model` instance
    * unreachable via `getModel()`.
    */
@@ -307,10 +307,10 @@ export class Database {
     fn: (session: ClientSession) => Promise<T> | undefined,
     options?: ClientSessionOptions
   ): Promise<T | undefined> {
-    // CR-02: sem este guard, `this[kClient]?.startSession(...)` retornava
+    // Sem este guard, `this[kClient]?.startSession(...)` retornava
     // `undefined` com o banco desconectado e o método resolvia com
     // `undefined` SEM nunca invocar `fn` — perda de escrita silenciosa.
-    // Mesmo padrão D-10 de `getCollectionOrThrow`: falhar alto pré-conexão.
+    // Mesmo padrão de `getCollectionOrThrow`: falhar alto pré-conexão.
     if (!this[kClient]) {
       throw new MongoatConnectionError(
         'Database not connected — call db.connect() first'
@@ -357,7 +357,7 @@ export class Database {
         // (the Proxy itself) — binding to `receiver` would make every
         // internal `this.xxx` access inside the method re-enter this trap,
         // which can incorrectly re-trigger (or mask) the allowedMethods
-        // guard above for internal calls (QUAL-01 — Proxy binding bug).
+        // guard above for internal calls.
         if (typeof value === 'function') {
           return value.bind(target);
         }
@@ -395,7 +395,7 @@ export class Database {
   private async setupIndexes(model: Model<Document>) {
     if (!this[kDb]) return;
 
-    // WR-10: `applyCollectionIndexes` (`@utils/database`) diffs instead of
+    // `applyCollectionIndexes` (`@utils/database`) diffs instead of
     // an unconditional `dropIndexes()` — see its own doc comment.
     await applyCollectionIndexes(
       this[kDb],
@@ -429,7 +429,7 @@ export class Database {
    * Resolves the database name to connect to: `MONGODB_DB_NAME` env var
    * first, then `config.dbName`. No implicit fallback — if neither is
    * configured, throws a `MongoatConnectionError` instead of silently
-   * connecting to a hardcoded test database name (D-08).
+   * connecting to a hardcoded test database name.
    */
   [kGetDbName](): string {
     if (process.env.MONGODB_DB_NAME) {

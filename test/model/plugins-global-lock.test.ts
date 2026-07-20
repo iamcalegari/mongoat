@@ -9,11 +9,11 @@ import { ModelValidationSchema } from '@/types';
 import { METHODS } from '@/utils/enums';
 
 /**
- * PLUG-02 (Plano 07-03): `Model.plugin()` chamado DEPOIS que o primeiro
+ * `Model.plugin()` chamado DEPOIS que o primeiro
  * model já foi construído lança `PLUGIN_REGISTERED_TOO_LATE` — a trava
- * (`kPluginsLocked`, setada pelo construtor no Plano 02) fixa a ordem de
+ * (`kPluginsLocked`, setada pelo construtor) fixa a ordem de
  * aplicação de globais assim que qualquer model real existe. Cobre também
- * o Pitfall 5: um `new Model(mesmaConfig)` repetido, que cai no
+ * o caso-limite: um `new Model(mesmaConfig)` repetido, que cai no
  * early-return de reuso de config idêntica, JÁ trava o registro global.
  */
 interface Doc extends Document {
@@ -26,7 +26,7 @@ const schema: ModelValidationSchema = {
   required: ['name'],
 };
 
-describe('Model.plugin() — enforcement de ordem fail-loud (PLUG-02)', () => {
+describe('Model.plugin() — enforcement de ordem fail-loud', () => {
   beforeEach(() => {
     Database.resetRegistry();
     Model[kResetPlugins]();
@@ -74,7 +74,7 @@ describe('Model.plugin() — enforcement de ordem fail-loud (PLUG-02)', () => {
     );
   });
 
-  // Pitfall 5: o early-return de reuso de config idêntica (`isSameConfig`)
+  // O early-return de reuso de config idêntica (`isSameConfig`)
   // TAMBÉM seta a trava — um segundo `new Model(mesmaConfig)` que reusa a
   // instância já registrada é, ainda assim, uma construção "bem-sucedida"
   // que fixa a ordem de globais.

@@ -9,26 +9,24 @@ import { CreateModelProps, ModelValidationSchema } from '@/types';
 import { METHODS } from '@/utils/enums';
 
 /**
- * Detecção classe-decorada vs objeto-plano no construtor do Model (D-08) +
- * collectionName default de @Schema (D-06).
+ * Detecção classe-decorada vs objeto-plano no construtor do Model +
+ * collectionName default de @Schema.
  *
  * Testes puros de unidade (sem Mongo real) — só o SHAPE do validator e o
  * collectionName resolvido importam aqui; a paridade de validação contra
  * MongoDB real fica em decorated-vs-plain-parity.test.ts.
  *
- * `as unknown as CreateModelProps<Doc>` é usado deliberadamente: neste ponto
- * (Task 1, RED) `CreateModelProps.schema` ainda só aceita
- * `ModelValidationSchema` e `collectionName` ainda é obrigatório — o cast
- * mantém `npm run typecheck` verde tanto ANTES quanto DEPOIS da Task 2
- * mudar os tipos (a asserção segue válida mesmo quando deixa de ser
- * estritamente necessária).
+ * `as unknown as CreateModelProps<Doc>` é usado deliberadamente: o cast
+ * mantém `npm run typecheck` verde independentemente de `schema` aceitar
+ * ou não uma classe decorada em `CreateModelProps` (a asserção segue
+ * válida mesmo quando o cast deixa de ser estritamente necessário).
  */
 interface Doc extends Document {
   username?: string;
   age?: number;
 }
 
-describe('Model — construtor aceita classe decorada OU objeto plano (D-08)', () => {
+describe('Model — construtor aceita classe decorada OU objeto plano', () => {
   beforeEach(() => {
     Database.resetRegistry();
 
@@ -73,7 +71,7 @@ describe('Model — construtor aceita classe decorada OU objeto plano (D-08)', (
     expect(decoratedModel.validator).toEqual(plainModel.validator);
   });
 
-  it('D-06: classe decorada sem collectionName no config herda o default de @Schema', () => {
+  it('classe decorada sem collectionName no config herda o default de @Schema', () => {
     @Schema('parity_default_name')
     class DefaultNameSchema {
       @Prop({ bsonType: 'string' })
@@ -88,7 +86,7 @@ describe('Model — construtor aceita classe decorada OU objeto plano (D-08)', (
     expect(model.collectionName).toBe('parity_default_name');
   });
 
-  it('D-06: collectionName no config sobrescreve o default de @Schema', () => {
+  it('collectionName no config sobrescreve o default de @Schema', () => {
     @Schema('parity_overridden_default')
     class OverriddenSchema {
       @Prop({ bsonType: 'string' })

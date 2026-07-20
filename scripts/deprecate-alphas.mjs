@@ -1,6 +1,6 @@
-// Deprecação das 34 versões `1.0.x-alpha` do npm por VERSÃO EXATA (D-05, REL-04).
+// Deprecação das 34 versões `1.0.x-alpha` do npm por VERSÃO EXATA.
 //
-// Pitfall crítico (05-RESEARCH.md Pitfall 1 / Open Question 2): `npm deprecate` por
+// Pitfall crítico: `npm deprecate` por
 // RANGE (`<1.1.0`, `1.0.x-alpha`, `1.x`) NÃO casa com nenhuma pre-release publicada
 // — o comando não retorna erro, simplesmente marca zero versões silenciosamente.
 // Por isso este script NUNCA usa range: ele obtém a lista real de versões via
@@ -81,7 +81,7 @@ async function main() {
 
   if (alphaVersions.length === 0) {
     console.error(
-      '[deprecate-alphas] nenhuma versao -alpha encontrada — abortando (guarda contra Pitfall 1: matching zero silencioso)'
+      '[deprecate-alphas] nenhuma versao -alpha encontrada — abortando (guarda contra matching zero silencioso)'
     );
     process.exitCode = 1;
     return;

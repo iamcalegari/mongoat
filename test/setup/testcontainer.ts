@@ -1,17 +1,17 @@
 import { MongoDBContainer, StartedMongoDBContainer } from '@testcontainers/mongodb';
 
 /**
- * globalSetup do vitest (D-12/D-13).
+ * globalSetup do vitest.
  *
  * Sobe um MongoDB real via Docker (@testcontainers/mongodb) — não usamos
  * nenhum servidor Mongo em memória. A tag da imagem é fixada em `mongo:7`
  * (versionada, nunca `latest`) para reprodutibilidade e integridade de
- * supply-chain (T-01-03-SC).
+ * supply-chain.
  *
  * Expõe a connection string via `process.env.MONGODB_URI` /
  * `process.env.MONGODB_DB_NAME` para todos os testes, e retorna a função de
  * teardown que o vitest chama ao final da run — encerra o container e evita
- * containers órfãos (T-01-03-02).
+ * containers órfãos.
  */
 export default async function setup(): Promise<() => Promise<void>> {
   let container: StartedMongoDBContainer;

@@ -120,7 +120,7 @@ export function buildJsonSchemaValidator({
   // Clonar antes de mutar — `includeAdditionalPropertiesFalse` mutates its
   // argument in-place; sem o clone, um objeto de schema reusado (por
   // referência) em dois models/migrations vazaria a mutação de volta para o
-  // objeto do usuário (QUAL-01). `structuredClone` é global desde Node 17
+  // objeto do usuário. `structuredClone` é global desde Node 17
   // (sem import) e cobre o shape de `ModelValidationSchema` (plain
   // objects/arrays/strings/booleans — sem funções nem tipos não-cloneáveis).
   const clonedSchema = structuredClone(schema);
@@ -175,7 +175,7 @@ export async function applyCollectionValidator(
 /**
  * @internal
  *
- * WR-10: applies a set of managed indexes to a collection WITHOUT an
+ * Applies a set of managed indexes to a collection WITHOUT an
  * unconditional `dropIndexes()` — that destroyed every index on the
  * collection (including ones created outside Mongoat by DBAs/migrations)
  * and opened a window without uniqueness between the drop and the recreate

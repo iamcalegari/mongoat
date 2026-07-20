@@ -18,11 +18,11 @@ import { runMigrations } from '@/migrate/runner';
 import { MigrateConfig, MigrationRecord } from '@/types/migrate';
 
 /**
- * Proves MIG-02/D-02 idempotency: applying pending migrations twice records
+ * Proves applying pending migrations twice records
  * each version exactly once in the control collection, and never re-runs
  * an already-applied migration's `up()`.
  */
-describe('runMigrations — idempotency (MIG-02, D-02)', () => {
+describe('runMigrations — idempotency', () => {
   let db: Database;
   let nativeDb: Db;
   let dir: string;

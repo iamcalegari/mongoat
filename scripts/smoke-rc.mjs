@@ -1,4 +1,4 @@
-// Smoke test do RC publicado (D-02): instala @iamcalegari/mongoat@rc num
+// Smoke test do RC publicado: instala @iamcalegari/mongoat@rc num
 // diretório temporário e confirma que o pacote importa nos DOIS formatos —
 // `require(...)` (CJS) e `import ... from` (ESM) — expondo `Database` e `Model`.
 // Roda contra o TARBALL realmente publicado no npm (não contra o working tree),

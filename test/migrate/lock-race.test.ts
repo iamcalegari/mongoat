@@ -9,13 +9,13 @@ import { acquireLock, lockCollectionName } from '@/migrate/lock';
 import type { MigrateConfig } from '@/types/migrate';
 
 /**
- * Proves LOCK-01's N-way race guarantee (10-RESEARCH.md D-31): N parallel,
+ * Proves the N-way race guarantee: N parallel,
  * in-process `acquireLock` calls against MongoDB real — the atomicity that
  * matters is the server's `findOneAndUpdate`, not anything client-side.
  * Exactly one call wins; every other call rejects with `MIGRATION_LOCK_HELD`
  * — never a raw driver error.
  */
-describe('lock — N-way race (LOCK-01, D-31)', () => {
+describe('lock — N-way race', () => {
   let db: Database;
   let nativeDb: Db;
   const config: MigrateConfig = { dir: '.', collection: '_lock_race_test' };
@@ -31,7 +31,7 @@ describe('lock — N-way race (LOCK-01, D-31)', () => {
     nativeDb = db.getDb() as Db;
   });
 
-  // WR-05: see lock-acquisition.test.ts — without this, MongoClient sockets/
+  // See lock-acquisition.test.ts — without this, MongoClient sockets/
   // monitors stay open past this suite's last test.
   afterAll(async () => {
     await db.disconnect();

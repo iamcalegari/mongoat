@@ -11,7 +11,7 @@ import {
 } from '@/errors';
 import { attachSuppressed, runBestEffort } from '@/errors/suppress';
 import { computeChecksum } from '@/migrate/checksum';
-// WR-02: moved to its own leaf module — `getNativeDbOrThrow` used to live
+// Moved to its own leaf module — `getNativeDbOrThrow` used to live
 // here and be imported by `@/migrate/lock`, which THIS module also imports
 // from (`acquireLock`/`releaseIfOwner` below): a real `runner.ts ↔ lock.ts`
 // import cycle, despite a since-removed comment here claiming otherwise.
@@ -55,7 +55,7 @@ async function importMigrationModule(
 /**
  * @internal
  *
- * Pitfall 4 — re-verifies the checksum of every ALREADY-applied migration
+ * Re-verifies the checksum of every ALREADY-applied migration
  * still present on disk, not just the migration about to run. Any drift
  * (a retroactive edit to an already-applied file) refuses to apply anything
  * pending until resolved.
@@ -126,7 +126,7 @@ async function collectPending(
  * plain (non-transactional) session when the caller explicitly opted into
  * `allowNoTransaction` against a standalone server.
  *
- * CR-01 fix: `hasReplicaSet` is now RESOLVED ONCE by the caller (via
+ * `hasReplicaSet` is now RESOLVED ONCE by the caller (via
  * `assertReplicaSetOrThrow`, called before the apply loop and outside any
  * failure-recording `try`) and threaded down here — this function no longer
  * re-probes the topology per migration, and a `REPLICA_SET_REQUIRED` failure
@@ -176,14 +176,14 @@ async function upsertRecord(
  *
  * Applies a single pending migration: builds `ctx` (native `db`, bound
  * `session`, `ctx.schema.*` helpers), runs `module.up(ctx)`, and records the
- * outcome. On success, upserts `{ status: 'applied' }` (D-02 idempotency —
+ * outcome. On success, upserts `{ status: 'applied' }` (idempotent —
  * `version` is the natural key, so a re-run of `runMigrations` never
  * duplicates the record). On failure, marks `{ status: 'failed' }` and
- * rethrows wrapped as `MIGRATION_FAILED` — D-03 fail-loud, no automatic DDL
+ * rethrows wrapped as `MIGRATION_FAILED` — fail-loud, no automatic DDL
  * rollback, the loop stops here.
  *
  * `hasReplicaSet` is the ALREADY-RESOLVED topology decision from the caller
- * (`runMigrations`/`runTo`) — CR-01 fix: the topology precondition itself
+ * (`runMigrations`/`runTo`): the topology precondition itself
  * never runs inside this function's `try`, so a `REPLICA_SET_REQUIRED`
  * failure can never be caught here and misrecorded as a `failed` migration.
  */
@@ -261,19 +261,19 @@ async function applyOne(
 /**
  * @internal
  *
- * WR-04: `releaseIfOwner`'s `released: false` (with `ok: true`, i.e. the
+ * `releaseIfOwner`'s `released: false` (with `ok: true`, i.e. the
  * delete itself did not error) is the ONLY observable signal that this
  * run's lease expired mid-run and another runner has since acquired the
- * lock — a real LOCK-01 mutual-exclusion violation, possibly still in
- * flight concurrently right now. Silently discarding it (as the pre-fix
- * code did) leaves an operator with zero indication anything went wrong.
+ * lock — a real mutual-exclusion violation, possibly still in
+ * flight concurrently right now. Silently discarding it leaves an
+ * operator with zero indication anything went wrong.
  * Never called for a driver-error release failure (`ok: false`) — that case
  * already gets its own `MongoatLockReleaseWarning` at each call site.
  */
 /**
  * @internal
  *
- * WR-06: `attachSuppressed` — which is also what emits the
+ * `attachSuppressed` — which is also what emits the
  * `MongoatSuppressedError` warning for a failed release — previously only
  * ran when `primary instanceof MongoatError` (the only case it CAN attach
  * to, since `.suppressed` lives on `MongoatError`). A release failure
@@ -336,10 +336,10 @@ function warnIfLeaseExpiredDuringRun(
  * MongoDB transaction (requires a replica set/mongos — see
  * `assertReplicaSetOrThrow`); `ctx.schema.*` calls never enlist that
  * session, so DDL (`collMod`/`createIndex`) is never part of the
- * transaction, per D-03. A failing migration is recorded `{ status: 'failed'
+ * transaction. A failing migration is recorded `{ status: 'failed'
  * }` and the run stops — no automatic rollback of any DDL already applied.
  *
- * CR-01 fix: the topology precondition (`assertReplicaSetOrThrow`) runs
+ * The topology precondition (`assertReplicaSetOrThrow`) runs
  * ONCE here, before the apply loop and OUTSIDE any failure-recording `try` —
  * a `REPLICA_SET_REQUIRED` failure propagates to the caller UNWRAPPED (own
  * `.code`, actionable message) and never persists a bogus `failed` record
@@ -355,7 +355,7 @@ export async function runMigrations(
   config: MigrateConfig
 ): Promise<void> {
   const nativeDb = getNativeDbOrThrow(database);
-  // Precondition — never recorded as a migration failure (CR-01).
+  // Precondition — never recorded as a migration failure.
   const { hasReplicaSet } = await assertReplicaSetOrThrow(nativeDb, {
     allowNoTransaction: config.allowNoTransaction,
   });
@@ -367,7 +367,7 @@ export async function runMigrations(
 
   // Acquired BEFORE any state read (collectPending below) — reading state
   // first would reopen the TOCTOU window two concurrent runners could
-  // exploit (D-13). No release needed here: if this throws, the lock was
+  // exploit. No release needed here: if this throws, the lock was
   // never ours.
   await acquireLock(nativeDb, config, ownerId, {
     hostname: hostname(),
@@ -395,8 +395,8 @@ export async function runMigrations(
     const releaseResult = await releaseIfOwner(nativeDb, config, ownerId);
 
     // The primary error always wins — a failed release is threaded onto it
-    // as a suppressed secondary (when possible) or warned about on its own
-    // (WR-06), never thrown in its place.
+    // as a suppressed secondary (when possible) or warned about on its
+    // own, never thrown in its place.
     handleReleaseFailureAlongsidePrimaryError(primary, releaseResult);
     warnIfLeaseExpiredDuringRun(releaseResult, 'run');
 
@@ -425,13 +425,13 @@ export async function runMigrations(
  * @public
  *
  * Same as {@link runMigrations}, but only applies pending migrations whose
- * `version` is lexicographically `<= version` (D-01 ordering) — lets a
+ * `version` is lexicographically `<= version` — lets a
  * caller stop at a specific point in the migration history instead of
  * always applying everything pending. Acquires and releases the same
  * exclusive run lock as {@link runMigrations}, under the same ordering
  * guarantees.
  *
- * CR-01 fix: same as {@link runMigrations} — the topology precondition runs
+ * Same as {@link runMigrations} — the topology precondition runs
  * once, before the apply loop, and propagates `REPLICA_SET_REQUIRED`
  * unwrapped.
  *
@@ -447,7 +447,7 @@ export async function runTo(
   config: MigrateConfig
 ): Promise<void> {
   const nativeDb = getNativeDbOrThrow(database);
-  // Precondition — never recorded as a migration failure (CR-01).
+  // Precondition — never recorded as a migration failure.
   const { hasReplicaSet } = await assertReplicaSetOrThrow(nativeDb, {
     allowNoTransaction: config.allowNoTransaction,
   });
@@ -455,7 +455,7 @@ export async function runTo(
   const ownerId = randomUUID();
 
   // Acquired BEFORE any state read (collectPending below) — same TOCTOU
-  // guard as runMigrations (D-13).
+  // guard as runMigrations.
   await acquireLock(nativeDb, config, ownerId, {
     hostname: hostname(),
     pid: process.pid,
@@ -480,7 +480,7 @@ export async function runTo(
   } catch (primary: unknown) {
     const releaseResult = await releaseIfOwner(nativeDb, config, ownerId);
 
-    // WR-06: warned about unconditionally (attached to `primary` when
+    // Warned about unconditionally (attached to `primary` when
     // possible) — never silently discarded.
     handleReleaseFailureAlongsidePrimaryError(primary, releaseResult);
     warnIfLeaseExpiredDuringRun(releaseResult, 'run');
@@ -507,9 +507,9 @@ export async function runTo(
  * @public
  *
  * Reverts a single applied migration via its `down(ctx)` export, removing
- * its record from the control collection on success (D-02).
+ * its record from the control collection on success.
  *
- * A migration with no `down` export is irreversible by design (D-04): this
+ * A migration with no `down` export is irreversible by design: this
  * is checked BEFORE the control collection or the database connection is
  * ever touched (guard-precondition-first) — `revertMigration` throws
  * `MIGRATION_IRREVERSIBLE` purely from the on-disk module shape.
@@ -547,7 +547,7 @@ export async function revertMigration(
   const migrationModule = await importMigrationModule(onDisk.filePath);
   const migrationDown = migrationModule.down;
 
-  // Guard-precondition-first (D-04): reject an irreversible migration
+  // Guard-precondition-first: reject an irreversible migration
   // BEFORE the control collection or the connection is ever touched.
   if (typeof migrationDown !== 'function') {
     throw new MongoatValidationError(
@@ -571,7 +571,7 @@ export async function revertMigration(
     );
   }
 
-  // Precondition — CR-01 fix: resolved BEFORE the failure-recording `try`
+  // Precondition — resolved BEFORE the failure-recording `try`
   // below, so `REPLICA_SET_REQUIRED` propagates to the caller unwrapped
   // (own `.code`, actionable message) instead of being demoted to `.cause`
   // under `MIGRATION_FAILED`.
@@ -583,7 +583,7 @@ export async function revertMigration(
 
   // Acquired AFTER every read-only precondition above (down-export guard,
   // connection, applied-record lookup, topology) and BEFORE any mutation —
-  // same D-13 ordering as runMigrations/runTo.
+  // same ordering as runMigrations/runTo.
   await acquireLock(nativeDb, config, ownerId, {
     hostname: hostname(),
     pid: process.pid,
@@ -601,7 +601,7 @@ export async function revertMigration(
   };
 
   try {
-    // WR-03: mirrors the same signal guard `runMigrations`/`runTo` already
+    // Mirrors the same signal guard `runMigrations`/`runTo` already
     // apply before their first migration — a signal already aborted by the
     // time the lock was acquired (e.g. a SIGINT received during `connect()`/
     // preconditions/lock acquisition itself) must not let `down()` run.
@@ -640,7 +640,7 @@ export async function revertMigration(
   } catch (primary: unknown) {
     const releaseResult = await releaseIfOwner(nativeDb, config, ownerId);
 
-    // WR-06: warned about unconditionally (attached to `primary` when
+    // Warned about unconditionally (attached to `primary` when
     // possible) — never silently discarded.
     handleReleaseFailureAlongsidePrimaryError(primary, releaseResult);
     warnIfLeaseExpiredDuringRun(releaseResult, 'revert');
@@ -672,7 +672,7 @@ export async function revertMigration(
  * it only flags it (`drifted: true`) so a caller (e.g. the CLI's `status`
  * command) can surface a warning without blocking.
  *
- * WR-01 fix: `row.applied` is `true` only for a record whose
+ * `row.applied` is `true` only for a record whose
  * `status === 'applied'` — reconciled with `collectPending`'s own
  * `find({ status: 'applied' })`, so a migration is never simultaneously
  * "applied" in `status` and "pending" for `up`. A `status: 'failed'` record

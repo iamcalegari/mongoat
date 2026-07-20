@@ -1,5 +1,5 @@
 /**
- * SEC-01/D-06/D-07 — sanitização de filtro de input não-confiável.
+ * Sanitização de filtro de input não-confiável.
  *
  * `sanitizeFilter` é um utilitário OPT-IN: o dev aplica explicitamente ao
  * filtro vindo de HTTP/JSON não confiável (query string, body) — NÃO é
@@ -7,7 +7,7 @@
  * automática agressiva quebraria queries legítimas com operadores; o guard
  * incondicional de `$where` (`assertNoWhere`, `src/model/index.ts`) é a
  * responsabilidade DIFERENTE, sempre ativa, que cobre o caso não-desligável
- * (D-05). As duas se sobrepõem em detectar `$where`, mas têm gatilhos e
+ *. As duas se sobrepõem em detectar `$where`, mas têm gatilhos e
  * call-sites diferentes.
  */
 
@@ -28,8 +28,8 @@ const CODE_EXECUTION_OPERATORS = new Set(['$where', '$function', '$accumulator']
  * ex. `{ age: { $gt: 1 } }`) — nunca aparecem como chave de topo legítima
  * de um filtro, então NÃO entram nesta lista; um `{ $ne: null }` de topo é
  * o padrão clássico de query-selector injection e é removido. Esses
- * operadores de campo continuam preservados normalmente (D-07: "preserva
- * $gt, $in, $and, $or, ...") porque este passo só inspeciona as chaves do
+ * operadores de campo continuam preservados normalmente (`$gt`, `$in`,
+ * `$and`, `$or`, ...) porque este passo só inspeciona as chaves do
  * NÍVEL MAIS EXTERNO do filtro — nunca desce recursivamente — então um
  * `$gt` aninhado dentro de `$and`/`tags: { $in: [...] }` nunca é tocado
  * por este loop.
@@ -63,7 +63,7 @@ export function isPlainObject(value: unknown): value is Record<string, unknown> 
 /**
  * Scanner recursivo único, reusado tanto por `sanitizeFilter` (lista maior:
  * operadores de execução de código) quanto pelo guard incondicional de
- * `$where` do `Model` (`assertNoWhere`, `src/model/index.ts`, Task 3) —
+ * `$where` do `Model` (`assertNoWhere`, `src/model/index.ts`) —
  * evita duplicar a lógica de percorrer objetos/arrays em qualquer
  * profundidade (`$and`/`$or`/`$nor`/`$in` etc.).
  *

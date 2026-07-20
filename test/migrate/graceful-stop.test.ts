@@ -26,7 +26,7 @@ import type { MigrateConfig, MigrationRecord } from '@/types/migrate';
  * `afterEach`) is the only in-process channel available, and keeps the
  * abort deterministic: the FIRST migration's own `up()` triggers it, so the
  * runner observes `signal.aborted` only on the loop's NEXT iteration —
- * never mid-`up()` (D-33).
+ * never mid-`up()`.
  */
 const ABORT_CONTROLLER_GLOBAL_KEY = '__mongoat_graceful_stop_controller__';
 
@@ -35,13 +35,13 @@ type GracefulStopGlobal = typeof globalThis & {
 };
 
 /**
- * Proves LOCK-03's graceful-stop half: an `AbortSignal` passed via
+ * Proves the graceful-stop half: an `AbortSignal` passed via
  * `config.signal` stops `runMigrations` BETWEEN migrations, never mid-DDL —
  * the in-flight migration always completes and is recorded, the run rejects
  * with `MIGRATION_ABORTED`, no further migration executes, and the run lock
  * is released regardless.
  */
-describe('runner — graceful stop via AbortSignal (LOCK-03, D-33)', () => {
+describe('runner — graceful stop via AbortSignal', () => {
   let db: Database;
   let nativeDb: Db;
   let dir: string;
@@ -192,7 +192,7 @@ export async function up({ db, session }: MigrationContext): Promise<void> {
     expect(status.held).toBe(false);
   });
 
-  it('revertMigration rejects with MIGRATION_ABORTED before running down() when the signal is already aborted (WR-03)', async () => {
+  it('revertMigration rejects with MIGRATION_ABORTED before running down() when the signal is already aborted', async () => {
     await writeFile(
       path.join(dir, '20260301110300_reversible.ts'),
       `import type { MigrationContext } from '@/types/migrate';

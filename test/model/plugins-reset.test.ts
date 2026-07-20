@@ -9,7 +9,7 @@ import { ModelValidationSchema } from '@/types';
 import { METHODS } from '@/utils/enums';
 
 /**
- * D-11 (Plano 07-03): `Model[kResetPlugins]()` limpa `Model[kGlobalPlugins]`
+ * `Model[kResetPlugins]()` limpa `Model[kGlobalPlugins]`
  * e destrava `Model[kPluginsLocked]` — depois dele, `Model.plugin()` volta
  * a aceitar registros, mesmo tendo sido chamado tarde demais antes do
  * reset. Isola estado global de plugins entre casos de teste, o mesmo papel
@@ -25,7 +25,7 @@ const schema: ModelValidationSchema = {
   required: ['name'],
 };
 
-describe('Model[kResetPlugins]() — isolamento de estado global entre testes (D-11)', () => {
+describe('Model[kResetPlugins]() — isolamento de estado global entre testes', () => {
   let db: Database;
 
   beforeAll(async () => {

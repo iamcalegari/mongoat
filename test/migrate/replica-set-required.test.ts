@@ -49,7 +49,7 @@ async function newStandaloneDatabase(): Promise<Database> {
 }
 
 /**
- * Proves `assertReplicaSetOrThrow` (Pitfall 3 / D-03) against a GENUINE
+ * Proves `assertReplicaSetOrThrow` against a GENUINE
  * standalone MongoDB — not the shared replica-set container used by every
  * other test file (`test/setup/testcontainer.ts`'s `globalSetup`), which
  * would make this test pass even if the detection logic were broken.
@@ -66,7 +66,7 @@ async function newStandaloneDatabase(): Promise<Database> {
  * precedence, matching the "escape hatch, no ODM abstraction" philosophy
  * `assertReplicaSetOrThrow` itself is built on (it takes a raw `Db`).
  */
-describe('assertReplicaSetOrThrow — standalone MongoDB (Pitfall 3)', () => {
+describe('assertReplicaSetOrThrow — standalone MongoDB', () => {
   let teardown: () => Promise<void>;
   let client: MongoClient;
   let nativeDb: Db;
@@ -103,7 +103,7 @@ describe('assertReplicaSetOrThrow — standalone MongoDB (Pitfall 3)', () => {
   });
 
   /**
-   * CR-01 regression — proves the topology precondition failure is NOT
+   * Regression — proves the topology precondition failure is NOT
    * misclassified as a migration failure: `runMigrations` against this
    * GENUINE standalone container, with at least one pending migration and
    * NO `allowNoTransaction`, must reject with the original
@@ -111,7 +111,7 @@ describe('assertReplicaSetOrThrow — standalone MongoDB (Pitfall 3)', () => {
    * and must NOT persist any record — `failed` or otherwise — to the
    * control collection for the migration that never ran.
    */
-  describe('runMigrations — CR-01 regression (topology precondition is not a migration failure)', () => {
+  describe('runMigrations — Regression (topology precondition is not a migration failure)', () => {
     let dir: string;
     const collection = '_migrations_cr01_test';
 
@@ -152,8 +152,8 @@ export async function up({ db, session }: MigrationContext): Promise<void> {
           .find()
           .toArray();
 
-        // No record at all — not "applied", not the bogus "failed" record
-        // CR-01 used to write for a migration that never ran.
+        // No record at all — not "applied", not a bogus "failed" record
+        // for a migration that never ran.
         expect(records).toHaveLength(0);
 
         const markerCount = await nativeDb

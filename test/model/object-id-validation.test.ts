@@ -9,8 +9,6 @@ import { METHODS } from '@/utils/enums';
 import { toObjectId } from '@/utils';
 
 /**
- * SEC-02/D-02 (03-02, Task 1).
- *
  * Cobre:
  * (a) `toObjectId` (unit, sem driver): sem argumento gera novo id; com
  *     argumento inválido (string malformada, número, array) lança
@@ -18,7 +16,7 @@ import { toObjectId } from '@/utils';
  *     retorna o ObjectId correspondente.
  * (b) `findById` (integração, testcontainer): id nullish rejeita
  *     explicitamente — NÃO gera _id aleatório nem retorna `null`
- *     silenciosamente (Pitfall 2); id malformado rejeita; id válido
+ *     silenciosamente; id malformado rejeita; id válido
  *     continua funcionando.
  */
 interface Doc extends Document {
@@ -82,7 +80,7 @@ describe('toObjectId — fail-loud (unit, sem driver)', () => {
   });
 });
 
-describe('findById — nullish é erro explícito (integração, SEC-02/D-02)', () => {
+describe('findById — nullish é erro explícito (integração)', () => {
   let db: Database;
   let model: Model<Doc>;
 

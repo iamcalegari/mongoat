@@ -8,8 +8,8 @@ import { handleCreate } from '@/bin/mongoat';
 import { MIGRATION_VERSION_REGEX } from '@/migrate/discover';
 
 /**
- * MIG-03 — `mongoat create <name>` generates a correctly-named
- * `YYYYMMDDHHMMSS_name.ts` stub with `up`/`down` present (D-01/D-05). No DB
+ * `mongoat create <name>` generates a correctly-named
+ * `YYYYMMDDHHMMSS_name.ts` stub with `up`/`down` present. No DB
  * required — `create` is pure filesystem I/O.
  */
 describe('handleCreate (mongoat create)', () => {

@@ -19,13 +19,13 @@ import { runMigrations } from '@/migrate/runner';
 import { MigrateConfig, MigrationRecord } from '@/types/migrate';
 
 /**
- * Proves D-03: when a pending migration's `up()` throws, the runner (a)
+ * Proves when a pending migration's `up()` throws, the runner (a)
  * records `{ status: 'failed' }` for THAT migration, (b) stops the loop —
  * a later pending migration is NOT applied, and (c) rejects with a
  * `MongoatError` whose `.code === 'MIGRATION_FAILED'` and `.cause` is the
  * original error.
  */
-describe('runMigrations — mid-migration failure recording (D-03)', () => {
+describe('runMigrations — mid-migration failure recording', () => {
   let db: Database;
   let nativeDb: Db;
   let dir: string;
@@ -52,7 +52,7 @@ describe('runMigrations — mid-migration failure recording (D-03)', () => {
     await writeFile(
       path.join(dir, '20260201090000_will_fail.ts'),
       `export async function up(): Promise<void> {
-  throw new Error('boom — intentional failure for D-03 test');
+  throw new Error('boom — intentional failure for test');
 }
 `
     );
@@ -87,7 +87,7 @@ export async function up({ db, session }: MigrationContext): Promise<void> {
     expect((caughtError as MongoatError).code).toBe('MIGRATION_FAILED');
     expect((caughtError as MongoatError).cause).toBeInstanceOf(Error);
     expect(((caughtError as MongoatError).cause as Error).message).toBe(
-      'boom — intentional failure for D-03 test'
+      'boom — intentional failure for test'
     );
 
     const records = await nativeDb

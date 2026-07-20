@@ -7,8 +7,7 @@ import { ModelValidationSchema } from '@/types';
 import { METHODS } from '@/utils/enums';
 
 /**
- * Regressão do bug de hooks não aguardados no `insertMany` (QUAL-01 — Plan
- * 05, Task 1).
+ * Regressão do bug de hooks não aguardados no `insertMany`.
  *
  * Bug original: `documents.forEach(async (doc) => { await
  * this.preMethod[...] })` não aguarda o callback assíncrono (`forEach`
@@ -31,7 +30,7 @@ const schema: ModelValidationSchema = {
   required: ['name'],
 };
 
-describe('Model — insertMany aguarda pre-hooks assíncronos (QUAL-01)', () => {
+describe('Model — insertMany aguarda pre-hooks assíncronos', () => {
   let db: Database;
 
   beforeAll(async () => {
@@ -61,8 +60,8 @@ describe('Model — insertMany aguarda pre-hooks assíncronos (QUAL-01)', () => 
       // Simula um pre-hook assíncrono real (ex.: uma consulta externa) — se
       // o insertMany não aguardar corretamente, o insert corre antes desta
       // linha rodar e o campo não é persistido. Migrado para o contrato de
-      // `ctx` explícito (D-03) — `this` deixou de ser vinculado ao
-      // documento (Fase 2).
+      // `ctx` explícito — `this` deixou de ser vinculado ao
+      // documento.
       await new Promise((resolve) => setTimeout(resolve, 20));
       ctx.document!.processedAt = 'hook-applied';
     });

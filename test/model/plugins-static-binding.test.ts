@@ -8,7 +8,7 @@ import { ModelValidationSchema } from '@/types';
 import { METHODS } from '@/utils/enums';
 
 /**
- * D-12 (Plano 07-04): prova de integração — o bind de um static registrado
+ * Prova de integração — o bind de um static registrado
  * por plugin (`ctx.static`) vem do MESMO Proxy trap que já faz o bind dos
  * 12 métodos nativos do `Model` (`value.bind(target)`,
  * `src/database/index.ts:357-358`). `registerPluginStatic`
@@ -55,7 +55,7 @@ function paginatePlugin(): Plugin<Doc> {
   };
 }
 
-describe('Model — bind de static de plugin via Proxy contra MongoDB real (D-12)', () => {
+describe('Model — bind de static de plugin via Proxy contra MongoDB real', () => {
   let db: Database;
   let model: Model<Doc> & {
     paginate: (page: number, pageSize: number) => Promise<Doc[]>;

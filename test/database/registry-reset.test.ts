@@ -6,11 +6,10 @@ import { ModelValidationSchema } from '@/types';
 import { METHODS } from '@/utils/enums';
 
 /**
- * D-09 (Plan 04, Task 2) — API mínima `@internal` de reset do registry
- * estático (`KModelMap`), destinada à suíte de testes (isola models
- * registrados entre casos/plans, ex.: Plan 05).
+ * API mínima `@internal` de reset do registry estático (`KModelMap`),
+ * destinada à suíte de testes — isola os models registrados entre casos.
  */
-describe('Database — resetRegistry (@internal, D-09)', () => {
+describe('Database — resetRegistry (@internal)', () => {
   it('limpa o KModelMap: getModel retorna undefined para models registrados antes do reset', () => {
     const db = new Database({
       uri: process.env.MONGODB_URI,

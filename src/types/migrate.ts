@@ -104,8 +104,8 @@ export interface MigrationStatusRow {
   appliedAt?: Date;
   drifted?: boolean;
   /** `true` when the most recent recorded attempt for this version has
-   * `status: 'failed'` — distinct from `applied` (WR-01: a failed record is
-   * never rendered as `applied`). */
+   * `status: 'failed'` — distinct from `applied`: a failed record is
+   * never rendered as `applied`. */
   failed?: boolean;
   name: string;
   version: string;

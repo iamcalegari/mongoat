@@ -8,7 +8,7 @@ import { ModelValidationSchema } from '@/types';
 import { METHODS } from '@/utils/enums';
 
 /**
- * PLUG-03/D-03 (Plano 07-02): o `PluginContext` recebido por `setup()`
+ * O `PluginContext` recebido por `setup()`
  * nunca expõe a referência viva de schema/validator/allowedMethods do model
  * sendo construído — `ctx.schema` é um `structuredClone` desconectado,
  * `ctx.allowedMethods` é uma cópia congelada. Mutar (ou tentar mutar)
@@ -26,7 +26,7 @@ const schema: ModelValidationSchema = {
   required: ['name'],
 };
 
-describe('Model — selo read-only do PluginContext (PLUG-03/D-03)', () => {
+describe('Model — selo read-only do PluginContext', () => {
   let db: Database;
 
   beforeAll(async () => {

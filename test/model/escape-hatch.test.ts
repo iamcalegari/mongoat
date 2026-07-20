@@ -7,7 +7,7 @@ import { ModelValidationSchema } from '@/types';
 import { METHODS } from '@/utils/enums';
 
 /**
- * Escape hatch honesto de `Model.getCollection()` (D-08/API-02).
+ * Escape hatch honesto de `Model.getCollection()`.
  *
  * `getCollection()` devolve a `Collection<ModelType>` CRUA do driver —
  * bypass simultâneo de hooks (nunca dispara o pipeline pre/post) e de
@@ -26,7 +26,7 @@ const schema: ModelValidationSchema = {
   required: ['name'],
 };
 
-describe('Model — escape hatch getCollection() (D-08/API-02)', () => {
+describe('Model — escape hatch getCollection()', () => {
   let db: Database;
 
   beforeAll(async () => {

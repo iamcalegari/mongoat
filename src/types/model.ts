@@ -18,7 +18,7 @@ import type { SchemaClass } from '@/types/schema';
  * `enum`, `additionalProperties`).
  *
  * Vendoring avoids re-exporting a third-party type in the published
- * `.d.ts`/`.d.mts` — `json-schema` is not a runtime dependency (QUAL-04).
+ * `.d.ts`/`.d.mts` — `json-schema` is not a runtime dependency.
  * @see https://www.npmjs.com/package/json-schema
  */
 export interface JSONSchema4Subset {
@@ -26,17 +26,17 @@ export interface JSONSchema4Subset {
   description?: string;
   enum?: unknown[];
   /**
-   * D-02 (Fase 6): fragmentos usados pelos açúcares `@MaxLength`/`@MinLength`
+   * Fragmentos usados pelos açúcares `@MaxLength`/`@MinLength`
    * sobre `@Prop` — mesma semântica de `$jsonSchema` do MongoDB para strings.
    */
   maxLength?: number;
   /**
-   * D-02 (Fase 6): fragmento usado pelo açúcar `@Max` sobre `@Prop`.
+   * Fragmento usado pelo açúcar `@Max` sobre `@Prop`.
    */
   maximum?: number;
   minLength?: number;
   /**
-   * D-02 (Fase 6): fragmento usado pelo açúcar `@Min` sobre `@Prop`.
+   * Fragmento usado pelo açúcar `@Min` sobre `@Prop`.
    */
   minimum?: number;
   pattern?: string;
@@ -63,7 +63,7 @@ export interface CreateModelProps<ModelType extends Document> {
   /**
    * Optional when `schema` is a class decorated with `@Schema('name')` — the
    * decorated class provides a default `collectionName`. When provided
-   * here, it always overrides the class default (D-06).
+   * here, it always overrides the class default.
    */
   collectionName?: string;
   documentDefaults?: DocumentDefaults<ModelType>;

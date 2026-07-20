@@ -9,7 +9,7 @@ const PROJECT_ROOT = path.resolve(__dirname, '../..');
 const BUILT_BIN = path.join(PROJECT_ROOT, 'lib', 'mongoat.cjs');
 
 /**
- * CR-01 regression — empirically proves the PUBLISHED bin still runs
+ * Regression — empirically proves the PUBLISHED bin still runs
  * `dispatch()` when invoked through a symlink, the exact install shape npm
  * creates on Unix at `node_modules/.bin/mongoat` (a symlink pointing at
  * `lib/mongoat.cjs`).
@@ -26,7 +26,7 @@ const BUILT_BIN = path.join(PROJECT_ROOT, 'lib', 'mongoat.cjs');
  * assertion would not have caught the original defect, which only surfaced
  * against the compiled CJS output invoked via symlink.
  */
-describe('CLI bin — npm symlink install shape (CR-01)', () => {
+describe('CLI bin — npm symlink install shape', () => {
   it('runs dispatch() when invoked via a symlink to the built CJS bin', () => {
     execFileSync('npm', ['run', 'build'], {
       cwd: PROJECT_ROOT,
@@ -47,7 +47,7 @@ describe('CLI bin — npm symlink install shape (CR-01)', () => {
         { encoding: 'utf-8' }
       );
 
-      // Before the CR-01 fix, this invocation exited 0 with EMPTY stdout
+      // Before the fix, this invocation exited 0 with EMPTY stdout
       // and stderr — `dispatch()` never ran. `bogus-subcommand` is chosen
       // deliberately: it never touches the database, so a failure here can
       // only mean `isMainModule` resolved false again.

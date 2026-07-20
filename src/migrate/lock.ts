@@ -3,7 +3,7 @@ import { Db, MongoServerError } from 'mongodb';
 import type { Database } from '@/database';
 import { MongoatError } from '@/errors';
 import { runBestEffort } from '@/errors/suppress';
-// WR-02: `getNativeDbOrThrow` lives in its own leaf module — never
+// `getNativeDbOrThrow` lives in its own leaf module — never
 // `@/migrate/runner`, which itself imports `acquireLock`/`releaseIfOwner`
 // from THIS module below. Importing from `runner.ts` here would create a
 // real `runner.ts ↔ lock.ts` cycle.
@@ -70,7 +70,7 @@ function safeIso(value: unknown): string {
  * message, the dry-run output of the manual unlock command, and the lock row
  * of the status report.
  *
- * CR-02: never throws, even against a partially corrupted lock document —
+ * Never throws, even against a partially corrupted lock document —
  * every field is read defensively (`?? '<unknown>'`/`safeIso`), in the same
  * spirit as `describeSuppressed` in `@/errors/suppress`. This is exactly the
  * break-glass path (`mongoat unlock`/`mongoat status`) the
@@ -224,10 +224,10 @@ export async function acquireLock(
  * caller decides what to do with a failed release (e.g. a loud warning —
  * this function itself never writes to stderr nor throws).
  *
- * WR-04: `released` reports whether the `{ _id, ownerId }` filter actually
+ * `released` reports whether the `{ _id, ownerId }` filter actually
  * matched a document (`deletedCount === 1`) — the ONLY observable signal
  * that this run's lease expired and was reacquired by another runner while
- * this run was still in flight (a real LOCK-01 mutual-exclusion violation).
+ * this run was still in flight (a real mutual-exclusion violation).
  * `ok: true, released: false` means the delete itself succeeded (no driver
  * error) but matched nothing — the caller should warn loudly, this is never
  * a silent no-op.

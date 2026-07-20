@@ -1,5 +1,5 @@
 /**
- * Plugin parametrizável via factory pattern (D-02): uma função comum que
+ * Plugin parametrizável via factory pattern: uma função comum que
  * recebe opções e devolve o plugin (objeto `{ name, setup }`) — nenhuma API
  * extra do core é necessária para suportar opções. O autor do plugin tipa
  * as próprias opções (`TimestampsOptions`) livremente, como qualquer código
@@ -20,7 +20,7 @@ export interface TimestampsOptions {
  * Registra um pre hook de `insert` (grava o campo de criação) e um pre hook
  * de `update` (grava o campo de atualização a cada chamada). Composição
  * pura sobre `ctx.pre` — o mesmo canal de efeito que qualquer plugin usa
- * para hooks (PLUG-03).
+ * para hooks.
  */
 export function timestamps<ModelType extends Document = Document>(
   options: TimestampsOptions = {}

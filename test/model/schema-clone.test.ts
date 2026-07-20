@@ -7,7 +7,7 @@ import { ModelValidationSchema } from '@/types';
 import { METHODS } from '@/utils/enums';
 
 /**
- * Regressão da mutação de schema entre models (QUAL-01 — Plan 05, Task 2).
+ * Regressão da mutação de schema entre models.
  *
  * Bug original: `includeAdditionalPropertiesFalse()` mutava in-place o
  * objeto `schema` recebido (`schema.additionalProperties = false`) — se o
@@ -21,7 +21,7 @@ interface Doc extends Document {
   address?: { city: string };
 }
 
-describe('Model — schema compartilhado não é mutado entre models (QUAL-01)', () => {
+describe('Model — schema compartilhado não é mutado entre models', () => {
   it('o mesmo objeto de schema usado em dois models permanece intacto após ambas as construções', () => {
     new Database({
       uri: process.env.MONGODB_URI,

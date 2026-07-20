@@ -10,14 +10,14 @@ import { MigrateConfig } from '@/types/migrate';
 const FIXTURES_DIR = path.resolve(__dirname, '../fixtures/migrations');
 
 /**
- * Proves MIG-02/D-04: reverting a migration with no `down` export throws
+ * Proves reverting a migration with no `down` export throws
  * `MIGRATION_IRREVERSIBLE` — and does so BEFORE the control collection or
  * the database connection is ever touched (guard-precondition-first).
  *
  * `db` is deliberately never connected here — a fast, module-shape-only
- * check, no testcontainer round-trip required (08-VALIDATION.md).
+ * check, no testcontainer round-trip required.
  */
-describe('revertMigration — MIGRATION_IRREVERSIBLE (MIG-02, D-04)', () => {
+describe('revertMigration — MIGRATION_IRREVERSIBLE', () => {
   it('throws MIGRATION_IRREVERSIBLE for a migration with no down() export, before touching the DB', async () => {
     const db = new Database({
       uri: process.env.MONGODB_URI,

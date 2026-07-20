@@ -16,7 +16,7 @@ import { ModelValidationSchema } from '@/types';
 import { METHODS } from '@/utils/enums';
 
 /**
- * WR-02 (Fase 3/T-03-07) — regressão de robustez complementar a
+ * Regressão de robustez complementar a
  * `hooks-fire-and-forget.test.ts`: aquele arquivo prova que um post-hook
  * `fireAndForget` que lança não propaga (é roteado a `onHookError`). Este
  * arquivo prova a camada seguinte — o PRÓPRIO `onHookError` fornecido pelo
@@ -36,7 +36,7 @@ const schema: ModelValidationSchema = {
   required: ['name'],
 };
 
-describe('Model — onHookError que lança/rejeita não gera unhandledRejection (WR-02)', () => {
+describe('Model — onHookError que lança/rejeita não gera unhandledRejection', () => {
   let db: Database;
   const unhandled: unknown[] = [];
 
@@ -138,7 +138,7 @@ describe('Model — onHookError que lança/rejeita não gera unhandledRejection 
     expect(unhandled).toHaveLength(0);
   });
 
-  it('caminho normal (post-hook NÃO-fireAndForget) continua propagando o erro ao caller — sem regressão de D-05', async () => {
+  it('caminho normal (post-hook NÃO-fireAndForget) continua propagando o erro ao caller', async () => {
     const model = new Model<Doc>({
       collectionName: 'hooks_onhookerror_throws_normal_path_still_propagates',
       allowedMethods: [METHODS.INSERT],

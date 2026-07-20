@@ -8,8 +8,8 @@ import { CreateModelProps } from '@/types';
 import { METHODS } from '@/utils/enums';
 
 /**
- * WR-06/DECO-03: `Schema.compile` de uma classe aninhada totalmente opcional
- * omite `required` quando vazio (Task 2) — este teste prova o efeito
+ * `Schema.compile` de uma classe aninhada totalmente opcional
+ * omite `required` quando vazio — este teste prova o efeito
  * SERVER-SIDE dessa correção: o `$jsonSchema` resultante é ACEITO pelo
  * `setupCollection` (createCollection/collMod) contra MongoDB real. Uma
  * comparação deep-equal puramente unitária (nested-compile.test.ts) NÃO
@@ -48,7 +48,7 @@ class ParentWithProfile {
 
   // @Optional() aqui é NO NÍVEL DO PAI (o campo `profile` em si pode faltar
   // do documento) — independente de AllOptionalProfile ter todos os seus
-  // PRÓPRIOS campos opcionais (o gap WR-06 testado é a chave `required`
+  // PRÓPRIOS campos opcionais (o gap testado é a chave `required`
   // vazia DENTRO do subschema aninhado, não a obrigatoriedade do campo pai).
   @Optional()
   @Prop({ type: AllOptionalProfile })
@@ -65,7 +65,7 @@ class ParentWithTags {
   tags?: AllOptionalTag[];
 }
 
-describe('setupCollection — classe aninhada totalmente opcional é aceita pelo $jsonSchema (WR-06/DECO-03)', () => {
+describe('setupCollection — classe aninhada totalmente opcional é aceita pelo $jsonSchema', () => {
   let db: Database;
   let modelWithProfile: Model<Doc>;
   let modelWithTags: Model<Doc>;
@@ -88,7 +88,7 @@ describe('setupCollection — classe aninhada totalmente opcional é aceita pelo
       allowedMethods: [METHODS.INSERT],
     } as unknown as CreateModelProps<Doc>);
 
-    // Antes da correção da Task 2, isto rejeitaria com um erro de
+    // Antes da correção, isto rejeitaria com um erro de
     // criação/validação de coleção — required: [] aninhado é inválido
     // para o $jsonSchema do MongoDB.
     await expect(

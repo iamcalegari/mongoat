@@ -62,23 +62,23 @@ function getOrInitMeta(metadata: Record<PropertyKey, unknown>): FieldMeta {
  * ```
  */
 export function Prop(fragment: PropFragment) {
-  // D-01: decorator canônico — os açúcares (@BsonType, @Description, ...)
+  // Decorator canônico — os açúcares (@BsonType, @Description, ...)
   // são implementados por cima dele (src/schema/sugars.ts).
   return function (
     _value: undefined,
     context: ClassFieldDecoratorContext
   ): void {
-    assertStandardDecoratorMode(context); // D-16
+    assertStandardDecoratorMode(context);
 
     const meta = getOrInitMeta(
       context.metadata as unknown as Record<PropertyKey, unknown>
     );
     const fieldName = String(context.name);
 
-    // D-02/composição: MERGE no MESMO fragmento por campo (não replace) —
+    // Composição: MERGE no MESMO fragmento por campo (não replace) —
     // múltiplos açúcares/`@Prop` no mesmo campo agregam um único fragmento
     // (ex.: `@BsonType('string')` + `@Pattern('^x')` → `{ bsonType, pattern }`).
-    // D-03: o fragmento entra como declarado (sem default mágico de
+    // O fragmento entra como declarado (sem default mágico de
     // bsonType); clone raso do fragmento recebido desacopla do objeto do
     // dev (mutação futura do objeto original do dev não vaza para cá).
     meta.properties[fieldName] = {
@@ -86,7 +86,7 @@ export function Prop(fragment: PropFragment) {
       ...fragment,
     };
 
-    // D-04: required por padrão — @Optional() (abaixo) não remove daqui
+    // Required por padrão — @Optional() (abaixo) não remove daqui
     // diretamente; ver optionalFields para o porquê.
     if (!meta.required.includes(fieldName)) {
       meta.required.push(fieldName);
@@ -99,7 +99,7 @@ export function Prop(fragment: PropFragment) {
 /**
  * @public
  *
- * D-04: marca o campo como opcional — removido de `required` no
+ * Marca o campo como opcional — removido de `required` no
  * `Schema.compile` (fiel ao rascunho do autor). Diferente dos demais
  * açúcares (`src/schema/sugars.ts`), `Optional` NÃO agrega um fragmento em
  * `meta.properties` — apenas registra o nome do campo em
@@ -122,7 +122,7 @@ export function Optional() {
     _value: undefined,
     context: ClassFieldDecoratorContext
   ): void {
-    assertStandardDecoratorMode(context); // D-16
+    assertStandardDecoratorMode(context);
 
     const meta = getOrInitMeta(
       context.metadata as unknown as Record<PropertyKey, unknown>
@@ -138,7 +138,7 @@ export function Optional() {
 /**
  * @public
  *
- * D-09: registra um hook `pre` no pipeline de hooks JÁ EXISTENTE da Fase 2
+ * Registra um hook `pre` no pipeline de hooks JÁ EXISTENTE do Model
  * (nenhum novo dispatch) — aplicável em CLASSE e em CAMPO:
  * - Nível de CLASSE: `fn` recebe o `ctx` COMPLETO, mesmo contrato de
  *   `.pre()`/`props.hooks` (`(ctx) => void | unknown | Promise<...>`).
@@ -149,11 +149,11 @@ export function Optional() {
  *   pipeline acontece em `extractDecoratorHooks`
  *   (`src/schema/compile.ts`), consumido pelo constructor do `Model`.
  *
- * D-11: a ORDEM de execução final por método é campo → classe → hooks do
+ * A ORDEM de execução final por método é campo → classe → hooks do
  * config do Model → `.pre()`/`.post()` encadeados — fixada no wiring do
  * `Model`, não aqui (este decorator só ACUMULA metadata).
  *
- * D-14: `method` é validado contra o enum `METHODS` JÁ NA DECORAÇÃO — um
+ * `method` é validado contra o enum `METHODS` JÁ NA DECORAÇÃO — um
  * nome de método inexistente estoura `MongoatValidationError` com
  * `code: 'INVALID_HOOK_METHOD'` imediatamente, em vez de registrar um hook
  * que nunca dispara.
@@ -172,8 +172,8 @@ export function Pre(method: string, fn: (...args: unknown[]) => unknown) {
     _value: unknown,
     context: ClassDecoratorContext | ClassFieldDecoratorContext
   ): void {
-    assertStandardDecoratorMode(context); // D-16
-    assertKnownHookMethod(method); // D-14
+    assertStandardDecoratorMode(context);
+    assertKnownHookMethod(method);
 
     const meta = getOrInitMeta(
       context.metadata as unknown as Record<PropertyKey, unknown>
@@ -194,13 +194,13 @@ export function Pre(method: string, fn: (...args: unknown[]) => unknown) {
 /**
  * @public
  *
- * D-10: simétrico a `@Pre`, mas SÓ no nível de CLASSE — post por campo não
+ * Simétrico a `@Pre`, mas SÓ no nível de CLASSE — post por campo não
  * tem semântica clara (não há um "valor de campo" simétrico ao resultado de
  * uma operação inteira). `fn` recebe o `ctx` completo, mesmo contrato de
  * `.post()`/`props.hooks`; aplicar `@Post` a um campo lança
  * `MongoatValidationError`.
  *
- * D-14: `method` é validado contra o enum `METHODS` já na decoração — mesmo
+ * `method` é validado contra o enum `METHODS` já na decoração — mesmo
  * guard de `@Pre`.
  *
  * @example
@@ -218,8 +218,8 @@ export function Post(method: string, fn: (...args: unknown[]) => unknown) {
     _value: unknown,
     context: ClassDecoratorContext | ClassFieldDecoratorContext
   ): void {
-    assertStandardDecoratorMode(context); // D-16
-    assertKnownHookMethod(method); // D-14
+    assertStandardDecoratorMode(context);
+    assertKnownHookMethod(method);
 
     if (context.kind === 'field') {
       throw new MongoatValidationError(
@@ -259,14 +259,14 @@ export function Post(method: string, fn: (...args: unknown[]) => unknown) {
  */
 export function Schema(collectionName?: string) {
   return function (value: unknown, context: ClassDecoratorContext): void {
-    assertStandardDecoratorMode(context); // D-16
+    assertStandardDecoratorMode(context);
 
     const meta = getOrInitMeta(
       context.metadata as unknown as Record<PropertyKey, unknown>
     );
 
     if (Object.keys(meta.properties).length === 0) {
-      // D-14: erro estrutural detectável já na decoração (o @Schema roda ao
+      // Erro estrutural detectável já na decoração (o @Schema roda ao
       // DEFINIR a classe) — falha alto aqui, não espera o compile.
       throw new MongoatValidationError(
         'Class decorated with @Schema has no decorated field — add at least one @Prop (or sugar decorator) to a field',
@@ -274,7 +274,7 @@ export function Schema(collectionName?: string) {
       );
     }
 
-    // D-06/D-08: marker interno para o Model detectar "classe decorada" e
+    // Marker interno para o Model detectar "classe decorada" e
     // herdar o collectionName default. Mutação direta — a classe original é
     // preservada (decorator retorna void).
     (value as Record<PropertyKey, unknown>)[kMongoatSchemaClass] = {
@@ -283,6 +283,6 @@ export function Schema(collectionName?: string) {
   };
 }
 
-// D-15: símbolo único — `Schema` é a função-decorator E carrega o estático
-// `Schema.compile` (API pública de introspecção/debug/testes, D-07).
+// Símbolo único — `Schema` é a função-decorator E carrega o estático
+// `Schema.compile` (API pública de introspecção/debug/testes).
 Schema.compile = compile;

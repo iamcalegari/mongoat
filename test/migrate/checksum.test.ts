@@ -11,7 +11,7 @@ const FIXTURES_DIR = path.resolve(__dirname, '../fixtures/migrations');
 const FIRST = path.join(FIXTURES_DIR, '20260101090000_first.ts');
 const SECOND = path.join(FIXTURES_DIR, '20260101100000_second.ts');
 
-describe('computeChecksum (D-02 — sha256 of raw bytes)', () => {
+describe('computeChecksum (sha256 of raw bytes)', () => {
   it('returns a 64-char lowercase hex string', async () => {
     const checksum = await computeChecksum(FIRST);
 

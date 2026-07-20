@@ -8,11 +8,9 @@ import { ModelValidationSchema } from '@/types';
 import { METHODS } from '@/utils/enums';
 
 /**
- * D-09 — cobertura de concorrência em estado compartilhado, fechando o gap
- * de `CONCERNS.md` §"Test Coverage Gaps" ("No tests for concurrent model
- * registration") e formalizando o item de `03-RESEARCH.md` §"Pattern 3"
- * ("verificar se cobre 2 `new Model()` SIMULTÂNEOS (race), não só
- * sequenciais" — `registry-config.test.ts` já cobre o caso sequencial).
+ * Cobertura de concorrência em estado compartilhado: 2 `new Model()`
+ * SIMULTÂNEOS (race), não só sequenciais — `registry-config.test.ts` já
+ * cobre o caso sequencial.
  *
  * Duas frentes:
  * (a) registro concorrente do MESMO `collectionName` — 2 `new Model()`
@@ -39,7 +37,7 @@ const schema: ModelValidationSchema = {
   required: ['name', 'tag'],
 };
 
-describe('Model — registro concorrente do mesmo collectionName (D-09)', () => {
+describe('Model — registro concorrente do mesmo collectionName', () => {
   let db: Database;
 
   beforeEach(() => {
@@ -116,7 +114,7 @@ describe('Model — registro concorrente do mesmo collectionName (D-09)', () => 
   });
 });
 
-describe('Model — operações CRUD paralelas no mesmo model (D-09)', () => {
+describe('Model — operações CRUD paralelas no mesmo model', () => {
   let db: Database;
   let model: Model<Doc>;
 

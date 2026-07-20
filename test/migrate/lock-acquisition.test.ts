@@ -9,14 +9,14 @@ import { acquireLock, getLockStatus, lockCollectionName } from '@/migrate/lock';
 import type { MigrateConfig } from '@/types/migrate';
 
 /**
- * Proves LOCK-01's core acquisition behavior against a real MongoDB: a free
+ * Proves the core acquisition behavior against a real MongoDB: a free
  * lock is acquired successfully, and a SEQUENTIAL attempt (no concurrency
  * involved) against an already-active lock also fails loud with
  * `MIGRATION_LOCK_HELD` — the E11000 signal is deterministic whenever the
  * filter does not match an existing `_id`, not only under a genuine race
- * (10-RESEARCH.md Open Question 1).
+ *.
  */
-describe('lock — acquisition (LOCK-01)', () => {
+describe('lock — acquisition', () => {
   let db: Database;
   let nativeDb: Db;
   const config: MigrateConfig = { dir: '.', collection: '_lock_acq_test' };
@@ -31,7 +31,7 @@ describe('lock — acquisition (LOCK-01)', () => {
     nativeDb = db.getDb() as Db;
   });
 
-  // WR-05: the sibling suites in this phase (lock-release.test.ts,
+  // The sibling suites in this phase (lock-release.test.ts,
   // graceful-stop.test.ts) already disconnect in afterAll — without it here,
   // this suite's `MongoClient` keeps sockets/monitors open past the last
   // test, which can hang the vitest worker process.

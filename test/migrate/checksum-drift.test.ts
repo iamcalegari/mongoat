@@ -19,12 +19,12 @@ import { runMigrations } from '@/migrate/runner';
 import { MigrateConfig, MigrationRecord } from '@/types/migrate';
 
 /**
- * Proves MIG-02/Pitfall 4: the drift guard covers ALL previously-applied
+ * Proves the drift guard covers ALL previously-applied
  * migrations, not just the next pending one — editing an already-applied
  * migration's file after the fact must be detected and refuse the whole
  * apply, even when there's a legitimately new pending migration too.
  */
-describe('runMigrations — checksum drift (MIG-02, Pitfall 4)', () => {
+describe('runMigrations — checksum drift', () => {
   let db: Database;
   let nativeDb: Db;
   let dir: string;

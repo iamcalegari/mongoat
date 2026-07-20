@@ -7,8 +7,7 @@ import { ModelValidationSchema } from '@/types';
 import { METHODS } from '@/utils/enums';
 
 /**
- * Happy-path CRUD por método público contra Mongo real (D-12, Plan 05,
- * Task 3).
+ * Happy-path CRUD por método público contra Mongo real.
  *
  * Cada método público do Model é exercitado uma vez, encadeado (insert →
  * find → findMany → findById → update → updateMany → total → aggregate →
@@ -31,7 +30,7 @@ const schema: ModelValidationSchema = {
   required: ['name', 'tag'],
 };
 
-describe('Model — happy-path CRUD por método público (D-12)', () => {
+describe('Model — happy-path CRUD por método público', () => {
   let db: Database;
   let model: Model<Doc>;
 

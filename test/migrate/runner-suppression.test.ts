@@ -22,9 +22,9 @@ import { MigrateConfig, MigrationRecord } from '@/types/migrate';
 /**
  * Proves that a control-collection write that fails AFTER a migration's
  * primary outcome (failure or success) is already decided never masks that
- * outcome: the original error always wins (IN-01/HARD-01), and a write
+ * outcome: the original error always wins, and a write
  * failure after a SUCCESSFUL up()/down() surfaces via its own dedicated,
- * discriminable code (D-08) instead of being silently swallowed. Every
+ * discriminable code instead of being silently swallowed. Every
  * failure here is forced against a real MongoDB (the shared container from
  * `test/setup/testcontainer.ts`) via standard driver mechanisms — a hostile
  * `$jsonSchema` validator for blocked inserts/upserts, and a capped
@@ -67,7 +67,7 @@ describe('runner robustness — suppressed secondary write failures', () => {
     });
   }
 
-  describe('applyOne catch — up() fails AND the "failed" write also fails (IN-01/HARD-01)', () => {
+  describe('applyOne catch — up() fails AND the "failed" write also fails', () => {
     let dir: string;
     let config: MigrateConfig;
 
@@ -123,8 +123,7 @@ describe('runner robustness — suppressed secondary write failures', () => {
       expect(err.suppressed).toBeInstanceOf(Array);
       expect((err.suppressed as unknown[]).length).toBeGreaterThanOrEqual(1);
       // The record could not be persisted — status will show as pending,
-      // never silently claim the record was recorded (D-06 non-persisted
-      // branch).
+      // never silently claim the record was recorded.
       expect(err.message.toLowerCase()).toContain('pending');
       expect(err.message).not.toMatch(/\bD-\d/);
 
@@ -136,7 +135,7 @@ describe('runner robustness — suppressed secondary write failures', () => {
     });
   });
 
-  describe('applyOne catch — up() fails but the "failed" write SUCCEEDS (D-06 dynamic message)', () => {
+  describe('applyOne catch — up() fails but the "failed" write SUCCEEDS (dynamic message)', () => {
     let dir: string;
     let config: MigrateConfig;
 
@@ -183,7 +182,7 @@ describe('runner robustness — suppressed secondary write failures', () => {
     });
   });
 
-  describe('applyOne — up() SUCCEEDS but recording "applied" fails (D-08 mirror 1)', () => {
+  describe('applyOne — up() SUCCEEDS but recording "applied" fails (mirror 1)', () => {
     let dir: string;
     let config: MigrateConfig;
     const markerCollection = 'suppression_applied_marker';
@@ -237,7 +236,7 @@ export async function up({ db, session }: MigrationContext): Promise<void> {
     });
   });
 
-  describe('revertMigration — down() SUCCEEDS but removing the record fails (D-08 mirror 2)', () => {
+  describe('revertMigration — down() SUCCEEDS but removing the record fails (mirror 2)', () => {
     let dir: string;
     let config: MigrateConfig;
     const markerCollection = 'suppression_reverted_marker';
@@ -270,7 +269,7 @@ export async function down({ db, session }: MigrationContext): Promise<void> {
       // (insert/update/delete) with a dedicated server error ("is a view,
       // not a collection"), which is exactly what we need to force the
       // post-down() deleteOne to fail deterministically, without touching
-      // production code (D-10). The applied record lives in the underlying
+      // production code. The applied record lives in the underlying
       // source collection; `config.collection` (the view) is what the
       // runner actually reads/writes.
       await nativeDb.collection<MigrationRecord>(sourceCollection).insertOne({

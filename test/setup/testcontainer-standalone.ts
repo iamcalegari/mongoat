@@ -10,7 +10,7 @@ import { GenericContainer, StartedTestContainer } from 'testcontainers';
  * wrapper class (used by `test/setup/testcontainer.ts`), which always
  * provisions a single-node replica set. This is the only way to exercise the
  * `REPLICA_SET_REQUIRED` fail-loud path against a real, non-transaction-
- * capable server (Pitfall 3).
+ * capable server.
  *
  * The image tag is pinned (`mongo:7`, never `latest`) for reproducibility,
  * matching `test/setup/testcontainer.ts`'s own precedent.

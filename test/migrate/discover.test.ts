@@ -12,7 +12,7 @@ import {
 
 const FIXTURES_DIR = path.resolve(__dirname, '../fixtures/migrations');
 
-describe('MIGRATION_VERSION_REGEX (D-01 — single source of truth)', () => {
+describe('MIGRATION_VERSION_REGEX (single source of truth)', () => {
   it('matches a 14-digit version', () => {
     expect(MIGRATION_VERSION_REGEX.test('20260101090000')).toBe(true);
   });

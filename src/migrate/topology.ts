@@ -16,7 +16,7 @@ import { MongoatConnectionError } from '@/errors';
  * via sharded transactions). Absence of both means standalone.
  *
  * `allowNoTransaction` is an explicit, non-default, non-silent opt-in
- * (D-03/CR-02 idiom: fail loud by default, escape hatch always explicit) —
+ * (fail loud by default, escape hatch always explicit) —
  * when set, topology detection resolves instead of throwing even against a
  * standalone server, letting the caller run data ops WITHOUT atomicity. The
  * caller (CLI, wired in a later plan) is responsible for surfacing a loud,
@@ -39,7 +39,7 @@ export async function assertReplicaSetOrThrow(
 
   if (!hasReplicaSet && !allowNoTransaction) {
     throw new MongoatConnectionError(
-      // WR-04: this message must not assert the migration "includes data
+      // This message must not assert the migration "includes data
       // operations" — the runner cannot inspect an opaque up()/down() body,
       // so a pure schema/DDL migration is blocked by this same check too.
       // State only the actual, always-true reason: migrations run inside a

@@ -17,14 +17,14 @@ import { ModelValidationSchema } from '@/types';
 import { METHODS } from '@/utils/enums';
 
 /**
- * D-07 (Plano 07-03): dedup por REFERÊNCIA entre plugins globais
+ * Dedup por REFERÊNCIA entre plugins globais
  * (`Model.plugin()`) e locais (`plugins[]`) — o mesmo plugin registrado nos
  * dois grupos roda `setup()` UMA única vez; dois plugins com o mesmo `name`
  * mas referências diferentes lançam `DUPLICATE_PLUGIN_NAME`. Sem mudança de
  * código de produção — o comportamento já foi entregue por
- * `resolvePluginList` (Plano 01) e integrado ao construtor (Plano 02);
+ * `resolvePluginList` e integrado ao construtor;
  * este arquivo prova o caminho GLOBAL+LOCAL de ponta a ponta, agora que
- * `Model.plugin()` (Plano 03) existe para popular a lista global de fato.
+ * `Model.plugin()` existe para popular a lista global de fato.
  */
 interface Doc extends Document {
   name: string;
@@ -36,7 +36,7 @@ const schema: ModelValidationSchema = {
   required: ['name'],
 };
 
-describe('Model — dedup por referência global+local e colisão de nome (D-07)', () => {
+describe('Model — dedup por referência global+local e colisão de nome', () => {
   let db: Database;
 
   beforeAll(async () => {
@@ -118,7 +118,7 @@ describe('Model — dedup por referência global+local e colisão de nome (D-07)
     );
   });
 
-  it('dois plugins anônimos distintos (bare functions) NÃO colidem com DUPLICATE_PLUGIN_NAME (WR-02)', async () => {
+  it('dois plugins anônimos distintos (bare functions) NÃO colidem com DUPLICATE_PLUGIN_NAME', async () => {
     const firstSpy = vi.fn();
     const secondSpy = vi.fn();
 

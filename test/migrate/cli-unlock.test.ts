@@ -17,7 +17,7 @@ import { forceUnlock, getLockStatus } from '@/migrate';
 import type { MigrationLockDocument } from '@/types/migrate';
 
 /**
- * LOCK-04 — `mongoat unlock` is dry by default (shows the diagnostic,
+ * `mongoat unlock` is dry by default (shows the diagnostic,
  * deletes nothing) and only deletes with an explicit `--force`; both paths
  * are idempotent (no lock present → "nothing to do", exit 0). `getLockStatus`
  * and `forceUnlock` (and the `Database` connection) are mocked/faked — no
@@ -127,12 +127,12 @@ describe('handleUnlock (mongoat unlock)', () => {
     expect(forceUnlock).toHaveBeenCalledTimes(1);
   });
 
-  // CR-02: a corrupted lock document (e.g. missing acquiredAt, or expiresAt
+  // A corrupted lock document (e.g. missing acquiredAt, or expiresAt
   // stored as a non-Date value) must never crash the dry-run/--force
   // diagnostic output — exactly the break-glass path the MIGRATION_LOCK_HELD
   // message itself tells an operator to use for a document it cannot fully
   // parse.
-  describe('against a corrupted lock document (CR-02)', () => {
+  describe('against a corrupted lock document', () => {
     const corruptedLock = {
       _id: 'lock',
       hostname: 'legacy-host',

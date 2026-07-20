@@ -10,7 +10,7 @@ import { CreateModelProps } from '@/types';
 import { METHODS } from '@/utils/enums';
 
 /**
- * DECO-02/CR-01/WR-05: o `@Pre` de campo precisa AGUARDAR um transform
+ * O `@Pre` de campo precisa AGUARDAR um transform
  * assíncrono (ex.: `hashPassword`) antes de gravar `document[field]` — sem o
  * `await`, o BSON serializa uma Promise pendente (objeto vazio/descartado)
  * em vez do valor resolvido. O wrapper também NUNCA pode materializar um
@@ -38,7 +38,7 @@ class UserSchema {
   password?: string;
 }
 
-describe('extractDecoratorHooks — @Pre de campo aguarda transform assíncrono (DECO-02/CR-01/WR-05)', () => {
+describe('extractDecoratorHooks — @Pre de campo aguarda transform assíncrono', () => {
   describe('unit: wrapper do @Pre de campo aguarda fn async antes de gravar document[field]', () => {
     it('ctx.document[field] termina como o valor RESOLVIDO, nunca uma Promise pendente', async () => {
       const { pre } = extractDecoratorHooks(UserSchema);
@@ -107,7 +107,7 @@ describe('extractDecoratorHooks — @Pre de campo aguarda transform assíncrono 
       expect(typeof inserted.password).toBe('string');
     });
 
-    it('campo required com @Pre de campo ausente do doc de entrada segue rejeitado pelo required do MongoDB (WR-05)', async () => {
+    it('campo required com @Pre de campo ausente do doc de entrada segue rejeitado pelo required do MongoDB', async () => {
       const missingPasswordDoc = { username: 'bob' };
 
       await expect(

@@ -5,14 +5,11 @@ import { Model } from '@/model';
 import { METHODS } from '@/utils/enums';
 
 /**
- * Smoke test da infra de teste da Fase 1 (D-12/D-13).
+ * Smoke test da infra de teste.
  *
  * Prova a cadeia inteira infra → driver: sobe/conecta num MongoDB real
  * (container gerenciado pelo globalSetup em test/setup/testcontainer.ts),
  * registra um Model simples, insere um documento e o lê de volta.
- *
- * Serve de template para os testes de regressão dos plans 04/05 — pode ser
- * removido/substituído quando eles adicionarem as suítes reais.
  */
 describe('infra de teste (smoke)', () => {
   it('insere e lê um documento contra o Mongo do container', async () => {

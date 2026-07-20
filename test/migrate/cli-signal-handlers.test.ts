@@ -5,7 +5,7 @@ import { MongoatError } from '@/errors';
 import { MIGRATION_ERROR_CODES } from '@/migrate/errors';
 
 /**
- * LOCK-03/D-33 — SIGINT/SIGTERM wiring is proved by invoking
+ * SIGINT/SIGTERM wiring is proved by invoking
  * `runWithSignalHandling` directly and simulating a signal via
  * `process.emit('SIGINT'|'SIGTERM')` — this only calls the JS listeners this
  * helper itself installs (never a real signal delivered to a child

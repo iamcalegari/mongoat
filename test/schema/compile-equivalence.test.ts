@@ -5,7 +5,7 @@ import { Prop, Schema } from '@/schema';
 import { ModelValidationSchema } from '@/types';
 
 /**
- * Equivalência DECO-03: `Schema.compile(ClasseDecorada)` produz um
+ * Equivalência: `Schema.compile(ClasseDecorada)` produz um
  * `ModelValidationSchema` byte-a-byte igual (via stableStringify) ao objeto
  * plano equivalente escrito à mão — as duas APIs (decorators e objetos)
  * compilam para exatamente o mesmo validator.
@@ -17,7 +17,7 @@ import { ModelValidationSchema } from '@/types';
  */
 
 /**
- * Mesmo algoritmo do stableStringify interno de src/model/index.ts (WR-05):
+ * Mesmo algoritmo do stableStringify interno de src/model/index.ts:
  * chaves de objetos planos ordenadas, arrays preservados. Reimplementado
  * localmente porque o original é privado do módulo model — e o teste quer
  * exatamente a comparação estrutural byte-a-byte, não `toEqual`.
@@ -35,7 +35,7 @@ function stableStringify(value: unknown): string {
   );
 }
 
-describe('Schema.compile — equivalência com a API de objetos (DECO-03)', () => {
+describe('Schema.compile — equivalência com a API de objetos', () => {
   it('produz um ModelValidationSchema byte-a-byte igual ao objeto plano equivalente', () => {
     @Schema('users')
     class UserSchema {

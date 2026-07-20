@@ -7,8 +7,6 @@ import { ModelValidationSchema } from '@/types';
 import { METHODS } from '@/utils/enums';
 
 /**
- * Regressão de WR-02 (Code Review da Fase 01).
- *
  * Bugs originais (divergências de `insertMany`/`bulkWrite` em relação a
  * `insert()`):
  * 1. O pre-hook de `insertMany` era vinculado ao objeto CRU do chamador
@@ -34,7 +32,7 @@ const schema: ModelValidationSchema = {
   required: ['name'],
 };
 
-describe('Model — insertMany/bulkWrite não mutam o input e hooks enxergam defaults (WR-02)', () => {
+describe('Model — insertMany/bulkWrite não mutam o input e hooks enxergam defaults', () => {
   let db: Database;
   let model: Model<Doc>;
 
@@ -68,7 +66,7 @@ describe('Model — insertMany/bulkWrite não mutam o input e hooks enxergam def
   it('insertMany: hook enxerga documentDefaults via this e mutações não vazam para o array do chamador', async () => {
     model.pre(METHODS.INSERT_MANY, (ctx) => {
       // `ctx.document` deve ser a cópia já mesclada com os defaults (como
-      // em insert()). Migrado para o contrato de `ctx` explícito (D-03).
+      // em insert()). Migrado para o contrato de `ctx` explícito.
       ctx.document!.seenStatus = ctx.document!.status;
       ctx.document!.name = `${ctx.document!.name}-hooked`;
     });
@@ -112,11 +110,11 @@ describe('Model — insertMany/bulkWrite não mutam o input e hooks enxergam def
     );
   });
 
-  // Regressão de WR-06 (Code Review da Fase 01): `documentDefaults` era
+  // Regressão: `documentDefaults` era
   // guardado por referência e os merges eram spreads rasos — um default
   // aninhado era compartilhado entre TODOS os inserts; um hook que mutasse
   // `this.meta.source` poluía o default permanentemente.
-  it('default aninhado mutado por um hook não vaza para inserts subsequentes (WR-06)', async () => {
+  it('default aninhado mutado por um hook não vaza para inserts subsequentes', async () => {
     interface MetaDoc extends Document {
       name: string;
       meta?: { source: string };
@@ -149,12 +147,12 @@ describe('Model — insertMany/bulkWrite não mutam o input e hooks enxergam def
     const first = await metaModel.insert({ name: 'first' });
     expect(first.meta?.source).toBe('mutated-by-hook');
 
-    // D-01 (Fase 2): `.pre()` passou a ACUMULAR em vez de sobrescrever —
+    // `.pre()` passou a ACUMULAR em vez de sobrescrever —
     // não há mais como "resetar" o hook registrando um no-op por cima, e
     // o hook acima seguirá mutando `ctx.document.meta` em todo insert
     // subsequente. A asserção original (segundo insert com default
     // intacto) deixou de ser observável pela SAÍDA do model; o invariante
-    // de WR-06 (o default INTERNO compartilhado nunca é corrompido pela
+    // real (o default INTERNO compartilhado nunca é corrompido pela
     // mutação do hook no clone por-insert) é verificado diretamente.
     expect(metaModel.documentDefaults.meta?.source).toBe('api');
   });

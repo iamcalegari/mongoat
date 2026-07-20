@@ -3,12 +3,12 @@
  * `ctx.static(...)` — usa o escape hatch `this.getCollection()` para tocar
  * a `Collection` nativa do driver oficial diretamente. `this` dentro do
  * static já vem bound ao model pelo mesmo Proxy trap que faz o bind dos 12
- * métodos nativos (D-12) — nenhum `.bind()` manual aqui.
+ * métodos nativos — nenhum `.bind()` manual aqui.
  *
  * O autor do plugin declara o SHAPE do static (`PaginateStatic`) só como
  * documentação/referência — a tipagem que o CONSUMIDOR efetivamente
- * enxerga no call-site vem de module augmentation (ver `augmentation.ts`,
- * D-09b), não deste tipo.
+ * enxerga no call-site vem de module augmentation (ver `augmentation.ts`),
+ * não deste tipo.
  * @see https://github.com/iamcalegari/mongoat
  */
 import type { Document, WithId } from 'mongodb';

@@ -5,14 +5,14 @@ import { defineConfig } from 'vitepress';
 import typedocSidebar from '../api/typedoc-sidebar.json';
 
 /**
- * Config VitePress do site de documentação do Mongoat (04-01/DOCS-01).
+ * Config VitePress do site de documentação do Mongoat.
  *
- * `base: '/mongoat/'` é OBRIGATÓRIO (Pitfall 2 do 04-RESEARCH.md): GitHub
+ * `base: '/mongoat/'` é OBRIGATÓRIO: GitHub
  * Pages serve project pages em `usuario.github.io/repo/`, um subpath — sem
  * isso os assets quebram só depois do deploy (funciona normalmente em
  * `docs:dev`, que ignora `base`).
  *
- * Nav/sidebar seguem os 4 quadrantes formais do Diátaxis (D-02) + Home +
+ * Nav/sidebar seguem os 4 quadrantes formais do Diátaxis + Home +
  * Migration. A Reference (`/api/`) é a única seção gerada (TypeDoc); as
  * demais são escritas à mão (preenchidas nas Waves 2 deste plano).
  */

@@ -57,14 +57,14 @@ function patchDeleteOneToFailForCollection(
 }
 
 /**
- * Proves LOCK-03: the run lock is released in every exit path of
+ * Proves the run lock is released in every exit path of
  * `runMigrations` — success, a failing migration, and a release that itself
  * fails best-effort — and a failed release never masks the run's primary
  * outcome. Every failure is forced against a real MongoDB (the shared
  * container from `test/setup/testcontainer.ts`), never a seam in production
  * code.
  */
-describe('runner — lock release fail-safe (LOCK-03)', () => {
+describe('runner — lock release fail-safe', () => {
   let db: Database;
   let nativeDb: Db;
   let dir: string;
@@ -139,7 +139,7 @@ describe('runner — lock release fail-safe (LOCK-03)', () => {
     expect(status.held).toBe(false);
   });
 
-  describe('a best-effort release failure never fails an otherwise successful run (D-28)', () => {
+  describe('a best-effort release failure never fails an otherwise successful run', () => {
     let restoreDeleteOne: (() => void) | undefined;
 
     afterEach(() => {
@@ -189,7 +189,7 @@ describe('runner — lock release fail-safe (LOCK-03)', () => {
     });
   });
 
-  describe('a release failure alongside a non-MongoatError primary is never silently dropped (WR-06)', () => {
+  describe('a release failure alongside a non-MongoatError primary is never silently dropped', () => {
     let restoreDeleteOne: (() => void) | undefined;
 
     afterEach(() => {

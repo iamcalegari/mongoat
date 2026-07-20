@@ -8,21 +8,19 @@ import { ModelValidationSchema } from '@/types';
 import { METHODS } from '@/utils/enums';
 
 /**
- * D-05/D-06 (Plano 07-03): ordem determinística COMPLETA de execução de
- * hooks no insert, com o sistema global (`Model.plugin()`, Plano 07-03) e
- * local (`plugins[]`, Plano 07-02) já integrados ao pipeline de hooks da
- * Fase 6 (D-11):
+ * Ordem determinística COMPLETA de execução de hooks no insert, com o
+ * sistema global (`Model.plugin()`) e local (`plugins[]`) integrados ao
+ * pipeline de hooks:
  *
  *   @Pre de campo → @Pre de classe → PLUGINS (global → local) →
  *   props.hooks → .pre()/.post() encadeado
  *
  * A ordem `@Pre` de campo → `@Pre` de classe já está coberta contra
- * MongoDB real por `test/schema/hooks-decorator-order.test.ts` (Plano
- * 06-04) — este arquivo, no diretório `test/model/` (fora do escopo de
- * transform de decorators do babel, restrito a `test/schema/**`), prova o
- * elo restante da cadeia com um schema PLANO: global → local →
- * props.hooks → encadeado. Nenhum código de produção é alterado aqui — o
- * comportamento já foi entregue nos Planos 01/02/03.
+ * MongoDB real por `test/schema/hooks-decorator-order.test.ts` — este
+ * arquivo, no diretório `test/model/` (fora do escopo de transform de
+ * decorators do babel, restrito a `test/schema/**`), prova o elo restante
+ * da cadeia com um schema PLANO: global → local → props.hooks →
+ * encadeado.
  */
 interface Doc extends Document {
   name: string;
@@ -34,7 +32,7 @@ const schema: ModelValidationSchema = {
   required: ['name'],
 };
 
-describe('Model — ordem determinística global→local→config→encadeado (D-05/D-06)', () => {
+describe('Model — ordem determinística global→local→config→encadeado', () => {
   let db: Database;
   let model: Model<Doc>;
   const executionOrder: string[] = [];

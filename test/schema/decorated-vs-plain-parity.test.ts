@@ -9,7 +9,7 @@ import { CreateModelProps, ModelValidationSchema } from '@/types';
 import { METHODS } from '@/utils/enums';
 
 /**
- * Paridade DECO-03/DECO-04 contra MongoDB real: um Model construído com
+ * Paridade contra MongoDB real: um Model construído com
  * classe decorada valida/rejeita documentos exatamente como o Model
  * equivalente construído com objeto plano — mesmo comportamento do
  * `$jsonSchema` do servidor para os dois caminhos.
@@ -37,7 +37,7 @@ const plainSchema: ModelValidationSchema = {
   required: ['username', 'age'],
 };
 
-describe('Model — paridade classe decorada vs objeto plano contra MongoDB real (DECO-03/DECO-04)', () => {
+describe('Model — paridade classe decorada vs objeto plano contra MongoDB real', () => {
   let db: Database;
   let decoratedModel: Model<Doc>;
   let plainModel: Model<Doc>;

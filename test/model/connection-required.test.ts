@@ -8,8 +8,6 @@ import { ModelValidationSchema } from '@/types';
 import { METHODS } from '@/utils/enums';
 
 /**
- * Regressão de D-10 (Plan 05, Task 2).
- *
  * Bug original: métodos CRUD faziam
  * `Model[kDatabase]?.getCollection(...) as Collection<ModelType>` sem
  * nenhuma checagem — se o Database não estivesse conectado (`getCollection`
@@ -18,7 +16,7 @@ import { METHODS } from '@/utils/enums';
  * `undefined`, em vez de um erro claro. Fix: helper `getCollectionOrThrow()`
  * lança `MongoatError` descritivo.
  *
- * Fase 2 (HOOK-02): `total()` (como todos os 12 métodos CRUD) agora passa
+ * `total()` (como todos os 12 métodos CRUD) passa
  * pelo pipeline pre → driver → post, que é assíncrono (o driver call só
  * roda depois de `await runPreHooks(...)`) — o `MongoatError` de
  * `getCollectionOrThrow()` deixa de ser um throw SÍNCRONO e passa a ser
@@ -35,7 +33,7 @@ const schema: ModelValidationSchema = {
   required: ['name'],
 };
 
-describe('Model — getCollectionOrThrow lança MongoatError sem conexão (D-10)', () => {
+describe('Model — getCollectionOrThrow lança MongoatError sem conexão', () => {
   it('método CRUD antes de connect() lança MongoatError descritivo, não TypeError', async () => {
     const db = new Database({
       uri: process.env.MONGODB_URI,

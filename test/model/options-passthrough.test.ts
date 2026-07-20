@@ -7,11 +7,11 @@ import { ModelValidationSchema } from '@/types';
 import { METHODS } from '@/utils/enums';
 
 /**
- * Options passthrough tipado (D-09/API-01).
+ * Options passthrough tipado.
  *
  * `ctx.options` é a MESMA referência usada na chamada ao driver — um
- * pre-hook que muta `ctx.options` afeta a chamada real (Pattern 3/Pitfall
- * 4). Cobre também o caso mais simples: options nativas passadas
+ * pre-hook que muta `ctx.options` afeta a chamada real. Cobre também o
+ * caso mais simples: options nativas passadas
  * diretamente na chamada pública têm efeito observável no driver, sem
  * nenhum hook envolvido.
  */
@@ -29,7 +29,7 @@ const schema: ModelValidationSchema = {
   required: ['name', 'tag'],
 };
 
-describe('Model — options passthrough tipado (D-09/API-01)', () => {
+describe('Model — options passthrough tipado', () => {
   let db: Database;
 
   beforeAll(async () => {
@@ -108,7 +108,7 @@ describe('Model — options passthrough tipado (D-09/API-01)', () => {
     expect(results).toHaveLength(1);
   });
 
-  it('pre-hook que muta ctx.options em insertMany chega ao driver (Pitfall 4 fechado)', async () => {
+  it('pre-hook que muta ctx.options em insertMany chega ao driver', async () => {
     const model = new Model<Doc>({
       collectionName: 'options_passthrough_insertmany_options',
       allowedMethods: [METHODS.INSERT, METHODS.INSERT_MANY, METHODS.FIND_MANY],
@@ -146,7 +146,7 @@ describe('Model — options passthrough tipado (D-09/API-01)', () => {
     expect(survivor).toHaveLength(1);
   });
 
-  // CR-01: antes do fix, `find` declarava `options?: FindOptions` (sem default
+  // Antes do fix, `find` declarava `options?: FindOptions` (sem default
   // `{}`), então com o caller omitindo options `ctx.options` era `undefined` e
   // esta mutação lançava `TypeError: Cannot set properties of undefined`. Um
   // hook de redação de campo sensível é exatamente o caso de uso de segurança
@@ -173,7 +173,7 @@ describe('Model — options passthrough tipado (D-09/API-01)', () => {
     expect(result?.tag).toBe('find-redact');
   });
 
-  // CR-01: idem para `delete` — antes do fix declarava
+  // Idem para `delete` — antes do fix declarava
   // `options?: FindOneAndDeleteOptions` sem default. A projection é aplicada ao
   // documento devolvido por `findOneAndDelete`.
   it('pre-hook que muta ctx.options.projection afeta a chamada real ao driver (delete, sem options do caller)', async () => {

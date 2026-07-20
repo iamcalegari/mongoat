@@ -14,7 +14,7 @@ import {
 import type { MigrateConfig, MigrationLockDocument } from '@/types/migrate';
 
 /**
- * CR-02 — a lock document that is partially corrupted (missing `acquiredAt`,
+ * A lock document that is partially corrupted (missing `acquiredAt`,
  * or `expiresAt` stored as a non-`Date` value — "written by hand, by a
  * future/incompatible version, or otherwise corrupted", per `lock.ts`'s own
  * docstring) must never crash `formatLockDiagnostic` with a raw `TypeError`.
@@ -23,7 +23,7 @@ import type { MigrateConfig, MigrationLockDocument } from '@/types/migrate';
  * these documents — it must keep working against the real driver, not just
  * in a unit test of the formatter alone.
  */
-describe('lock — corrupted lock document (CR-02)', () => {
+describe('lock — corrupted lock document', () => {
   let db: Database;
   let nativeDb: Db;
   const config: MigrateConfig = { dir: '.', collection: '_lock_corrupt_test' };
@@ -38,7 +38,7 @@ describe('lock — corrupted lock document (CR-02)', () => {
     nativeDb = db.getDb() as Db;
   });
 
-  // WR-05: see lock-acquisition.test.ts — without this, MongoClient sockets/
+  // See lock-acquisition.test.ts — without this, MongoClient sockets/
   // monitors stay open past this suite's last test.
   afterAll(async () => {
     await db.disconnect();

@@ -8,15 +8,13 @@ import { ModelValidationSchema } from '@/types';
 import { METHODS } from '@/utils/enums';
 
 /**
- * Regressão de CR-02 (Code Review da Fase 01).
- *
  * Bug original: com o banco desconectado, `this[kClient]?.startSession(...)`
  * retornava `undefined`, o optional chaining engolia tudo e `withTransaction`
  * resolvia com `undefined` SEM nunca executar o callback — uma transação que
  * "deu certo" mas jamais rodou (perda de escrita silenciosa).
  *
  * Fix: lançar `MongoatError` descritivo quando não conectado (mesmo padrão
- * D-10 de `getCollectionOrThrow`), aguardar `endSession()` num `finally`.
+ * de `getCollectionOrThrow`), aguardar `endSession()` num `finally`.
  */
 interface Doc extends Document {
   name: string;
@@ -30,7 +28,7 @@ const schema: ModelValidationSchema = {
   required: ['name'],
 };
 
-describe('Database — withTransaction (CR-02)', () => {
+describe('Database — withTransaction', () => {
   it('lança MongoatError quando o banco não está conectado — nunca resolve como no-op', async () => {
     const db = new Database({
       uri: process.env.MONGODB_URI,

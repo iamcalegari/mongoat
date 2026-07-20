@@ -7,10 +7,10 @@ import { ModelValidationSchema } from '@/types';
 import { METHODS } from '@/utils/enums';
 
 /**
- * HOOK-01 — múltiplos pre hooks no mesmo método, registrados tanto via
+ * Múltiplos pre hooks no mesmo método, registrados tanto via
  * `hooks` declarativo do construtor quanto via `.pre()` encadeável,
  * executam TODOS em ordem de registro (construtor primeiro, depois
- * encadeáveis — D-02), aguardados sequencialmente — inclusive em
+ * encadeáveis), aguardados sequencialmente — inclusive em
  * `insertMany` (paralelo ENTRE documentos, sequencial DENTRO de cada
  * documento).
  */
@@ -28,7 +28,7 @@ const schema: ModelValidationSchema = {
   required: ['name'],
 };
 
-describe('Model — pre hooks múltiplos, ordem de registro, sequenciais (HOOK-01)', () => {
+describe('Model — pre hooks múltiplos, ordem de registro, sequenciais', () => {
   let db: Database;
 
   beforeAll(async () => {

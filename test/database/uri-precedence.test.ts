@@ -3,8 +3,6 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { Database } from '@/database';
 
 /**
- * Regressão de CR-01 (Code Review da Fase 01).
- *
  * Bug original: a connection url só era atribuída dentro de
  * `if (config.uri && config.username && config.password)` — uma URI sem
  * credenciais (`new Database({ uri })`, auth embutida na connection string,
@@ -32,7 +30,7 @@ function getConnectionUrl(db: Database): string {
   return (db as unknown as Record<symbol, string>)[kConnectionUrl!];
 }
 
-describe('Database — precedência de URI e credenciais opcionais (CR-01)', () => {
+describe('Database — precedência de URI e credenciais opcionais', () => {
   const originalEnvUri = process.env.MONGODB_URI;
 
   afterEach(() => {
@@ -92,11 +90,11 @@ describe('Database — precedência de URI e credenciais opcionais (CR-01)', () 
     expect(getConnectionUrl(db)).toBe('mongodb://user:pass@some-host:27017/');
   });
 
-  // Regressão de WR-09 (Code Review da Fase 01): credenciais eram
+  // Regressão: credenciais eram
   // interpoladas cruas na connection string — senhas com caracteres
   // reservados de URI (`@`, `/`, `:`, `?`, `#`) quebravam o parse ou
   // permitiam injetar opções de conexão via query string.
-  it('credenciais com caracteres reservados de URI são percent-encoded (WR-09)', () => {
+  it('credenciais com caracteres reservados de URI são percent-encoded', () => {
     delete process.env.MONGODB_URI;
 
     const db = new Database({

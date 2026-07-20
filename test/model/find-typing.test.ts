@@ -7,7 +7,7 @@ import { ModelValidationSchema } from '@/types';
 import { METHODS } from '@/utils/enums';
 
 /**
- * Regressão do tipo de retorno de `find()` (QUAL-01 — Plan 05, Task 1).
+ * Regressão do tipo de retorno de `find()`.
  *
  * Bug original: `find()` declarava `Promise<WithId<ModelType> | null> |
  * null` (união síncrona externa à Promise) e fazia `return
@@ -27,7 +27,7 @@ const schema: ModelValidationSchema = {
   required: ['name'],
 };
 
-describe('Model — find() com tipo de retorno consistente (QUAL-01)', () => {
+describe('Model — find() com tipo de retorno consistente', () => {
   let db: Database;
 
   beforeAll(async () => {

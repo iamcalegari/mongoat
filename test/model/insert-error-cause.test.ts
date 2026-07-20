@@ -8,8 +8,6 @@ import { ModelValidationSchema } from '@/types';
 import { METHODS } from '@/utils/enums';
 
 /**
- * Regressão de WR-11 (Code Review da Fase 01).
- *
  * Bug original: os catches de insert/insertMany/bulkWrite faziam `throw new
  * MongoError(JSON.stringify(err, null, 2))` — para `Error`s genéricos,
  * `JSON.stringify(err)` produz `'{}'` (`message`/`stack` são não-enumeráveis),
@@ -31,7 +29,7 @@ const schema: ModelValidationSchema = {
   required: ['name'],
 };
 
-describe('Model — erros do driver preservam mensagem e cause (WR-11)', () => {
+describe('Model — erros do driver preservam mensagem e cause', () => {
   let db: Database;
   let model: Model<Doc>;
 
@@ -78,7 +76,7 @@ describe('Model — erros do driver preservam mensagem e cause (WR-11)', () => {
     expect((caughtError as Error).cause).toBeInstanceOf(Error);
   });
 
-  it('insertMany() inválido também passa pelo catch (WR-01) e preserva a causa', async () => {
+  it('insertMany() inválido também passa pelo catch e preserva a causa', async () => {
     let caughtError: unknown;
 
     try {

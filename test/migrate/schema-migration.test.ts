@@ -9,7 +9,7 @@ import { ModelValidationSchema, ValidationQueryExpressions } from '@/types';
 import { METHODS } from '@/utils/enums';
 
 /**
- * Proves MIG-01/Pitfall 1: a migration applying a validator/index set via
+ * Proves a migration applying a validator/index set via
  * `ctx.schema.*` produces the SAME `$jsonSchema`/managed indexes `Model`
  * itself applies — for all three target shapes (`Model` instance, raw
  * `ModelValidationSchema` object; the decorated-class shape is exercised by
@@ -41,7 +41,7 @@ async function getCollectionOptions(
   return info?.options;
 }
 
-describe('createMigrationSchemaHelpers — validator/index parity with Model (MIG-01, Pitfall 1)', () => {
+describe('createMigrationSchemaHelpers — validator/index parity with Model', () => {
   let db: Database;
   let nativeDb: Db;
   let model: Model<Doc>;
@@ -144,7 +144,7 @@ describe('createMigrationSchemaHelpers — validator/index parity with Model (MI
     expect(emailIndex?.unique).toBe(true);
   });
 
-  it('applyValidator(collectionName, rawSchema, { validationQueryExpressions }) has real parity with an equivalent Model (HARD-02/IN-02)', async () => {
+  it('applyValidator(collectionName, rawSchema, { validationQueryExpressions }) has real parity with an equivalent Model', async () => {
     const validationQueryExpressions: ValidationQueryExpressions = {
       $or: [{ email: { $exists: true } }, { name: { $exists: true } }],
     };
@@ -175,14 +175,14 @@ describe('createMigrationSchemaHelpers — validator/index parity with Model (MI
     );
 
     // The expression key is present at the top level, alongside $jsonSchema —
-    // proves IN-02 is closed (no longer silently dropped).
+    // proves is closed (no longer silently dropped).
     expect(rawOptions?.validator?.$or).toBeDefined();
 
     // Byte-for-byte parity with the Model-applied validator.
     expect(rawOptions?.validator).toEqual(modelOptions?.validator);
   });
 
-  it('applyValidator(collectionName, model, { validationQueryExpressions }) fails loud with MIGRATION_VALIDATOR_OPTIONS_CONFLICT (D-05)', async () => {
+  it('applyValidator(collectionName, model, { validationQueryExpressions }) fails loud with MIGRATION_VALIDATOR_OPTIONS_CONFLICT', async () => {
     const helpers = createMigrationSchemaHelpers(nativeDb);
 
     await expect(

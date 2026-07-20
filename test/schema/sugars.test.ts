@@ -16,7 +16,7 @@ import {
 import { ModelValidationSchema } from '@/types';
 
 /**
- * D-02/DECO-01: cada açúcar (`@BsonType`, `@Description`, `@Pattern`,
+ * Cada açúcar (`@BsonType`, `@Description`, `@Pattern`,
  * `@Optional`, `@Enum`, `@Min`/`@Max`, `@MinLength`/`@MaxLength`) compõe
  * `@Prop` — uma função fina que retorna `Prop({ ...fragment })`. Testes
  * puros de unidade (sem Mongo real), rodam sob vitest/babel (mesma cadeia
@@ -25,7 +25,7 @@ import { ModelValidationSchema } from '@/types';
 
 /**
  * Mesmo algoritmo do stableStringify de test/schema/compile-equivalence.test.ts
- * (WR-05) — reimplementado localmente por ser privado do módulo model.
+ * — reimplementado localmente por ser privado do módulo model.
  */
 function stableStringify(value: unknown): string {
   return JSON.stringify(value, (_key, val) =>
@@ -40,7 +40,7 @@ function stableStringify(value: unknown): string {
   );
 }
 
-describe('Açúcares compondo @Prop (D-02)', () => {
+describe('Açúcares compondo @Prop', () => {
   it('@BsonType/@Description/@Pattern produzem o fragmento correto na property do campo', () => {
     @Schema('sugars-basic')
     class BasicSugars {
@@ -148,7 +148,7 @@ describe('Açúcares compondo @Prop (D-02)', () => {
     });
   });
 
-  it('equivalência DECO-03: Schema.compile com açúcares é byte-a-byte igual ao objeto plano equivalente', () => {
+  it('equivalência: Schema.compile com açúcares é byte-a-byte igual ao objeto plano equivalente', () => {
     @Schema('sugars-equivalence')
     class EquivalenceSchema {
       @BsonType('string')

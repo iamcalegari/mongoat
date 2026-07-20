@@ -8,12 +8,12 @@ import { CreateModelProps } from '@/types';
 import { METHODS } from '@/utils/enums';
 
 /**
- * D-11 (Plano 06-04): ordem determinística de execução de hooks por método —
+ * Ordem determinística de execução de hooks por método —
  * (1) `@Pre` de campo → (2) `@Pre` de classe → (3) hooks do config do Model
  * → (4) `.pre()`/`.post()` encadeados. Integração contra MongoDB real: o
  * `@Pre` de campo TRANSFORMA o valor persistido (não retorna um novo
- * inicializador TC39 — apenas registra um hook no pipeline já existente da
- * Fase 2); o `@Pre` de classe recebe o `ctx` COMPLETO (mesmo contrato de
+ * inicializador TC39 — apenas registra um hook no pipeline já existente);
+ * o `@Pre` de classe recebe o `ctx` COMPLETO (mesmo contrato de
  * `.pre()`).
  */
 interface Doc extends Document {
@@ -46,7 +46,7 @@ class UserSchema {
   password?: string;
 }
 
-describe('Model — ordem determinística de hooks decorados no insert (D-11)', () => {
+describe('Model — ordem determinística de hooks decorados no insert', () => {
   let db: Database;
   let model: Model<Doc>;
 
@@ -84,7 +84,7 @@ describe('Model — ordem determinística de hooks decorados no insert (D-11)', 
     await db.disconnect();
   });
 
-  it('ordem de execução no insert é campo → classe → config → encadeado (D-11); @Pre de campo transforma o valor persistido; @Pre de classe vê o ctx completo', async () => {
+  it('ordem de execução no insert é campo → classe → config → encadeado; @Pre de campo transforma o valor persistido; @Pre de classe vê o ctx completo', async () => {
     const inserted = await model.insert({ name: 'alice', password: 'plain' });
 
     expect(executionOrder).toEqual(['field', 'class', 'config', 'chained']);

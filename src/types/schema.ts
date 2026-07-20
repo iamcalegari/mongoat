@@ -19,7 +19,7 @@ export type SchemaClass<T extends object = object> = new (
 /**
  * @internal
  *
- * Value accepted under the `type`/`items` fragment keys of `@Prop` (D-05):
+ * Value accepted under the `type`/`items` fragment keys of `@Prop`:
  * either another class decorated with `@Schema`/`@Prop` (compiled
  * recursively by `Schema.compile`) or a plain `ModelValidationSchema`
  * subschema object — the escape hatch, accepted verbatim without
@@ -34,7 +34,7 @@ export type NestedSchemaValue = SchemaClass | ModelValidationSchema;
  * decorator built on top of it — they all resolve to `Prop({ ...fragment })`).
  * Extends `ModelValidationSchema` with two Mongoat-only keys that are NOT
  * JSON Schema keywords themselves: `type`/`items` are widened to also
- * accept a `NestedSchemaValue` (D-05) — `Schema.compile` resolves them into
+ * accept a `NestedSchemaValue` — `Schema.compile` resolves them into
  * the actual compiled subschema and drops the `type` wrapper key, it never
  * survives into the compiled `ModelValidationSchema`.
  */
@@ -54,7 +54,7 @@ export interface FieldMeta {
   properties: Record<string, PropFragment>;
   required: string[];
   /**
-   * D-04: field names decorated with `@Optional()`. Kept SEPARATE from
+   * Field names decorated with `@Optional()`. Kept SEPARATE from
    * `required` (instead of removing the name from `required` the moment
    * `@Optional` runs) on purpose — multiple decorators on the same class
    * field can be applied in either textual order, and `@Schema` (which
@@ -66,10 +66,10 @@ export interface FieldMeta {
    */
   optionalFields: string[];
   /**
-   * D-09: hooks `@Pre` declarados no nível de CAMPO — açúcar que transforma
+   * Hooks `@Pre` declarados no nível de CAMPO — açúcar que transforma
    * só o valor do campo (`fn(value, ctx) => novoValor`), NUNCA o
    * inicializador TC39 do campo. Normalizados/embrulhados num `HookFn` do
-   * pipeline da Fase 2 por `extractDecoratorHooks` (`src/schema/compile.ts`).
+   * pipeline por `extractDecoratorHooks` (`src/schema/compile.ts`).
    */
   fieldPreHooks: {
     field: string;
@@ -77,12 +77,12 @@ export interface FieldMeta {
     fn: (...args: unknown[]) => unknown;
   }[];
   /**
-   * D-09: hooks `@Pre` declarados no nível de CLASSE — `fn` recebe o `ctx`
+   * Hooks `@Pre` declarados no nível de CLASSE — `fn` recebe o `ctx`
    * completo, mesmo contrato de `.pre()`/`props.hooks`.
    */
   classPreHooks: { method: string; fn: (...args: unknown[]) => unknown }[];
   /**
-   * D-10: hooks `@Post` — só existem no nível de CLASSE (post por campo não
+   * Hooks `@Post` — só existem no nível de CLASSE (post por campo não
    * tem semântica clara); `fn` recebe o `ctx` completo, mesmo contrato de
    * `.post()`/`props.hooks`.
    */

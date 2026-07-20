@@ -83,7 +83,7 @@ export const RESERVED_NAMES: ReadonlySet<string> = new Set([
 ]);
 
 /**
- * Normalizes a `Plugin` entry to its object form (D-01). A bare setup
+ * Normalizes a `Plugin` entry to its object form. A bare setup
  * function becomes `{ name: fn.name || '<anonymous>', setup: fn }`; an
  * object entry is returned as-is. Mirrors the boundary-normalization idiom
  * already used for post hook entries (`src/model/index.ts`).
@@ -98,9 +98,9 @@ export function normalizePlugin<ModelType extends Document = Document>(
 
 /**
  * Resolves the final, ordered, deduplicated plugin list — global plugins
- * first, then local plugins, each group in declaration order (D-05).
+ * first, then local plugins, each group in declaration order.
  *
- * Dedup (D-07) is keyed by the ORIGINAL reference passed by the caller
+ * Dedup is keyed by the ORIGINAL reference passed by the caller
  * (the function itself, or the literal `{ name, setup }` object) — never
  * by a freshly-created normalized object, which would never compare equal
  * across calls. The same reference appearing twice (global+local, or
@@ -153,12 +153,12 @@ export function resolvePluginList<ModelType extends Document = Document>(
 }
 
 /**
- * Attaches `fn` as a static under `name` on `target` (D-08). `name`
+ * Attaches `fn` as a static under `name` on `target`. `name`
  * colliding with any real `Model.prototype` member (`RESERVED_NAMES`) or
  * with a static already claimed by a DIFFERENT plugin (tracked via the
  * shared `owners` map keyed by static name → owning plugin name) throws
  * `STATIC_COLLISION` instead of silently overwriting. No `.bind()` is
- * needed here (D-12) — any function read through the Model's gating Proxy
+ * needed here — any function read through the Model's gating Proxy
  * (`Database[KModelProxyHandler]`) is already bound to the target
  * instance on access.
  */
@@ -200,7 +200,7 @@ export function registerPluginStatic(
 
 /**
  * Builds the sealed `PluginContext` a single plugin's `setup()` receives
- * (D-03). `allowedMethods` is a shallow-frozen copy (fine — an array of
+ *. `allowedMethods` is a shallow-frozen copy (fine — an array of
  * primitive strings, no nesting to protect); `schema` is a
  * `structuredClone` of the live `$jsonSchema` — `Object.freeze` alone is
  * shallow and would NOT protect nested `properties`/`items`, so the
@@ -235,7 +235,7 @@ export function buildPluginContext(
 /**
  * Resolves the global + local plugin lists and runs each unique plugin's
  * `setup()` SYNCHRONOUSLY, in order (global → local), inside a try/catch
- * (D-04/D-10). A shared `owners` map is created once per call so static
+ *. A shared `owners` map is created once per call so static
  * collisions are detected across the WHOLE resolved list, not just within
  * one group. Any thrown error aborts immediately — no further plugin in
  * the list is applied — wrapped in `MongoatValidationError` with code

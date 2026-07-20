@@ -3,7 +3,7 @@ import { Prop } from './decorators';
 /**
  * @public
  *
- * Sugar over `@Prop({ bsonType })` (D-02).
+ * Sugar over `@Prop({ bsonType })`.
  *
  * @example
  * ```typescript
@@ -20,7 +20,7 @@ export function BsonType(bsonType: string | string[]) {
 /**
  * @public
  *
- * Sugar over `@Prop({ description })` (D-02).
+ * Sugar over `@Prop({ description })`.
  */
 export function Description(description: string) {
   return Prop({ description });
@@ -29,7 +29,7 @@ export function Description(description: string) {
 /**
  * @public
  *
- * Sugar over `@Prop({ pattern })` (D-02) — a regular expression string in
+ * Sugar over `@Prop({ pattern })` — a regular expression string in
  * the format MongoDB's `$jsonSchema` validator accepts.
  */
 export function Pattern(pattern: string) {
@@ -39,7 +39,7 @@ export function Pattern(pattern: string) {
 /**
  * @public
  *
- * Sugar over `@Prop({ enum: values })` (D-02).
+ * Sugar over `@Prop({ enum: values })`.
  */
 export function Enum(values: unknown[]) {
   return Prop({ enum: values });
@@ -48,7 +48,7 @@ export function Enum(values: unknown[]) {
 /**
  * @public
  *
- * Sugar over `@Prop({ minimum })` (D-02).
+ * Sugar over `@Prop({ minimum })`.
  */
 export function Min(minimum: number) {
   return Prop({ minimum });
@@ -57,7 +57,7 @@ export function Min(minimum: number) {
 /**
  * @public
  *
- * Sugar over `@Prop({ maximum })` (D-02).
+ * Sugar over `@Prop({ maximum })`.
  */
 export function Max(maximum: number) {
   return Prop({ maximum });
@@ -66,7 +66,7 @@ export function Max(maximum: number) {
 /**
  * @public
  *
- * Sugar over `@Prop({ minLength })` (D-02).
+ * Sugar over `@Prop({ minLength })`.
  */
 export function MinLength(minLength: number) {
   return Prop({ minLength });
@@ -75,7 +75,7 @@ export function MinLength(minLength: number) {
 /**
  * @public
  *
- * Sugar over `@Prop({ maxLength })` (D-02).
+ * Sugar over `@Prop({ maxLength })`.
  */
 export function MaxLength(maxLength: number) {
   return Prop({ maxLength });

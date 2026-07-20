@@ -13,8 +13,6 @@ import { ModelValidationSchema } from '@/types';
 import { METHODS } from '@/utils/enums';
 
 /**
- * SEC-03/D-01/D-03/D-04 (03-01, Task 3).
- *
  * Cobre:
  * (a) E11000 real (via testcontainer) — `wrapDriverError` emite
  *     `MongoatDriverError` com `code: 'DUPLICATE_KEY'`, mensagem SEM o

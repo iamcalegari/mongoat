@@ -7,7 +7,7 @@ import { ModelValidationSchema } from '@/types';
 import { METHODS } from '@/utils/enums';
 
 /**
- * Regressão de idempotência complementar a `setup-indexes.test.ts` (WR-10).
+ * Regressão de idempotência complementar a `setup-indexes.test.ts`.
  *
  * O arquivo existente cobre "índice externo sobrevive" e "índice gerenciado
  * com spec divergente é substituído" — ambos rodando `setupCollection` UMA
@@ -15,7 +15,7 @@ import { METHODS } from '@/utils/enums';
  * Mongoat) antes da 2ª chamada. Este arquivo cobre o caso que falta:
  * chamar `setupCollection` DUAS vezes com a MESMA spec de índice gerenciado
  * não deve dropar nem recriar NADA — nem o índice gerenciado (idêntico),
- * nem o índice externo (não-gerenciado). Prova SEC-04: `setupIndexes` só
+ * nem o índice externo (não-gerenciado). Prova: `setupIndexes` só
  * toca o que de fato mudou.
  *
  * Usa `setup_indexes_regression` como nome de collection — não colide com
@@ -33,7 +33,7 @@ const schema: ModelValidationSchema = {
   required: ['name'],
 };
 
-describe('Database — setupIndexes idempotente com spec idêntica (SEC-04, regressão)', () => {
+describe('Database — setupIndexes idempotente com spec idêntica', () => {
   let db: Database;
   let model: Model<Doc>;
 

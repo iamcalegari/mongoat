@@ -8,14 +8,14 @@ import { ModelValidationSchema } from '@/types';
 import { METHODS } from '@/utils/enums';
 
 /**
- * HOOK-03/D-05 — semântica de erro assimétrica do pipeline pre/post.
+ * Semântica de erro assimétrica do pipeline pre/post.
  *
  * Caso 1: erro em pre-hook aborta a operação ANTES da chamada ao driver —
  * `model.insert(...)` rejeita com o erro do pre-hook, e o documento NUNCA
  * chega a ser persistido (prova indireta de que o driver não foi chamado).
  *
  * Caso 2: erro em post-hook NORMAL (não `fireAndForget`) propaga ao caller
- * por padrão — nunca é engolido em silêncio (Pitfall 3 do RESEARCH.md).
+ * por padrão — nunca é engolido em silêncio.
  *
  * Caso 3: mesmo com o post-hook lançando, o insert já ocorreu no driver — o
  * documento existe, deixando explícito que o post roda DEPOIS do driver.
@@ -30,7 +30,7 @@ const schema: ModelValidationSchema = {
   required: ['name'],
 };
 
-describe('Model — semântica de erro pre aborta / post propaga (HOOK-03, D-05)', () => {
+describe('Model — semântica de erro pre aborta / post propaga', () => {
   let db: Database;
 
   beforeAll(async () => {

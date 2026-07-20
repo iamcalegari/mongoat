@@ -14,16 +14,16 @@ import { METHODS } from '@/utils/enums';
 
 /**
  * Cobertura unitária pura (sem `Database`/`Model`/testcontainers) do módulo
- * `src/model/plugins.ts` — normalização (D-01), dedup por referência +
- * colisão de nome (D-07), guarda de colisão de statics contra o conjunto
- * COMPLETO de nomes reservados (D-08), selo read-only via `structuredClone`
- * (D-03) e o orquestrador `applyPlugins` com fail-loud `PLUGIN_SETUP_FAILED`
- * (D-04/D-10).
+ * `src/model/plugins.ts` — normalização, dedup por referência +
+ * colisão de nome, guarda de colisão de statics contra o conjunto
+ * COMPLETO de nomes reservados, selo read-only via `structuredClone`
+ * e o orquestrador `applyPlugins` com fail-loud `PLUGIN_SETUP_FAILED`
+ *.
  */
 
 /**
  * Constrói um `PluginTarget` falso em memória — o mesmo shape estrutural
- * que o construtor do `Model` (Plano 02) vai passar como `this`, sem
+ * que o construtor do `Model` vai passar como `this`, sem
  * depender da classe `Model` de verdade (nem de `Database`).
  */
 function createFakeTarget(): PluginTarget {
@@ -45,7 +45,7 @@ function createFakeTarget(): PluginTarget {
   };
 }
 
-describe('normalizePlugin (D-01)', () => {
+describe('normalizePlugin', () => {
   it('normaliza uma função nomeada para { name, setup }', () => {
     function myPlugin() {
       // no-op
@@ -72,7 +72,7 @@ describe('normalizePlugin (D-01)', () => {
   });
 });
 
-describe('resolvePluginList (D-07)', () => {
+describe('resolvePluginList', () => {
   it('mesma referência repetida (global + local) é resolvida 1x', () => {
     const shared = vi.fn();
 
@@ -125,7 +125,7 @@ describe('resolvePluginList (D-07)', () => {
   });
 });
 
-describe('registerPluginStatic (D-08)', () => {
+describe('registerPluginStatic', () => {
   it('lança STATIC_COLLISION contra um método nativo público (ex.: find)', () => {
     const target = createFakeTarget();
     const owners = new Map<string, string>();
@@ -180,7 +180,7 @@ describe('registerPluginStatic (D-08)', () => {
   });
 });
 
-describe('buildPluginContext (D-03)', () => {
+describe('buildPluginContext', () => {
   it('ctx.allowedMethods é uma cópia congelada — mutar/tentar mutar não afeta target.allowedMethods', () => {
     const target = createFakeTarget();
     const owners = new Map<string, string>();
@@ -247,7 +247,7 @@ describe('buildPluginContext (D-03)', () => {
   });
 });
 
-describe('applyPlugins (D-04/D-10)', () => {
+describe('applyPlugins', () => {
   it('roda cada setup() síncronamente, globais antes de locais, na ordem de declaração', () => {
     const target = createFakeTarget();
     const order: string[] = [];

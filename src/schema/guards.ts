@@ -13,7 +13,7 @@ import { METHODS } from '@/utils/enums';
  * the context does not look like a standard TC39 decorator context, instead
  * of silently producing an empty/broken schema.
  */
-// D-16: guard de runtime contra o modo legado — primeira linha de TODO
+// Guard de runtime contra o modo legado — primeira linha de TODO
 // decorator exportado. Mesmo shape de `assertNoWhere` (guard pura que lança
 // MongoatValidationError com `.code` estável).
 export function assertStandardDecoratorMode(context: unknown): void {
@@ -34,10 +34,10 @@ export function assertStandardDecoratorMode(context: unknown): void {
 /**
  * @internal
  *
- * D-14: valida `method` contra o enum `METHODS` na DECORAÇÃO de `@Pre`/
+ * Valida `method` contra o enum `METHODS` na DECORAÇÃO de `@Pre`/
  * `@Post` (não no compile/construção do Model) — um nome de método
  * inexistente registraria um hook que NUNCA dispara, silenciosamente
- * (T-06-04-02). Erro local: estoura já na avaliação da classe, com a stack
+ *. Erro local: estoura já na avaliação da classe, com a stack
  * apontando para a linha exata do decorator.
  *
  * Throws `MongoatValidationError` with code `INVALID_HOOK_METHOD`.

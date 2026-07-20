@@ -3,9 +3,9 @@ import path from 'node:path';
 
 /**
  * The single source of truth for what counts as a valid migration version
- * (`YYYYMMDDHHMMSS`, 14 digits, D-01) — reused verbatim by the CLI (Plan
- * 08-06) when validating a `to <version>`/`down <version>` argument BEFORE
- * it is used to build any filesystem path or MongoDB filter (T-08-01).
+ * (`YYYYMMDDHHMMSS`, 14 digits) — reused verbatim by the CLI when
+ * validating a `to <version>`/`down <version>` argument BEFORE
+ * it is used to build any filesystem path or MongoDB filter.
  */
 export const MIGRATION_VERSION_REGEX = /^\d{14}$/;
 
@@ -19,7 +19,7 @@ const MIGRATION_FILENAME_PATTERN = /^(\d+)_(.+)\.(?:ts|js)$/;
  * exactly 14 digits per {@link MIGRATION_VERSION_REGEX} — this second check
  * is what rejects a crafted filename like `../../evil.ts` (no digit prefix
  * at all) or a version of the wrong length before it is ever joined into a
- * filesystem path (T-08-01).
+ * filesystem path.
  *
  * @param filename - The bare filename (no directory component).
  * @returns The parsed `{ version, name }`, or `null` when the filename does
@@ -41,14 +41,14 @@ export function parseMigrationFilename(
 
 /**
  * Discovers migration files in `dir`, returning them ordered ascending by
- * `version` (lexicographic `String` comparison — D-01).
+ * `version` (lexicographic `String` comparison).
  *
  * Only files whose basename matches `YYYYMMDDHHMMSS_name.(ts|js)` (per
  * {@link parseMigrationFilename}) are included; anything else in the
  * directory (README, subdirectories, unrelated files) is silently skipped.
  * Every resolved `filePath` is asserted to stay within `dir` — defense in
  * depth alongside the version-regex check in {@link parseMigrationFilename}
- * (T-08-01): a filename can never resolve outside the migrations directory.
+ *: a filename can never resolve outside the migrations directory.
  *
  * @param dir - The migrations directory to scan.
  * @returns Discovered entries sorted ascending by version.
@@ -70,7 +70,7 @@ export async function discoverMigrations(
 
     const filePath = path.resolve(resolvedDir, dirEntry.name);
 
-    // Prefix-containment assertion (T-08-01): even though
+    // Prefix-containment assertion: even though
     // parseMigrationFilename already rejects a malformed version, this
     // guards against any resolved path escaping the migrations directory.
     if (filePath !== resolvedDir && !filePath.startsWith(resolvedDir + path.sep)) {

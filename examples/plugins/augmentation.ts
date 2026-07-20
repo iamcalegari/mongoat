@@ -1,6 +1,5 @@
 /**
- * D-09b: veredito do research desta fase (`07-RESEARCH.md` § D-09) —
- * inferência-plena de statics via `new Model({ plugins })` NÃO é viável.
+ * Inferência-plena de statics via `new Model({ plugins })` NÃO é viável.
  * Duas barreiras estruturais do TypeScript, ambas verificadas por
  * compilação real do `tsc` pinado no projeto:
  *
@@ -19,8 +18,8 @@
  * (`@/model`) — declaration merging `class` + `interface` do TypeScript,
  * sem nenhuma sintaxe extra do core do Mongoat.
  *
- * O "selo" do contrato de plugin não é um `apiVersion` em runtime (D-15
- * rejeitou isso explicitamente) — é a estabilidade do TIPO `.paginate()`
+ * O "selo" do contrato de plugin não é um `apiVersion` em runtime —
+ * é a estabilidade do TIPO `.paginate()`
  * sob o semver do próprio pacote: uma mudança de assinatura é, por
  * definição, uma mudança breaking (major).
  * @see https://github.com/iamcalegari/mongoat
@@ -73,7 +72,7 @@ async function main() {
 
   // Sem `as`/`any` no call-site — a tipagem de `.paginate()` vem
   // inteiramente da augmentation acima, não de inferência via
-  // `new Model(...)` (provada inviável pelo veredito D-09).
+  // `new Model(...)` (inviável, ver o docblock no topo deste arquivo).
   const firstPage = await Post.paginate(1, 10);
 
   console.log('First page: ', firstPage);

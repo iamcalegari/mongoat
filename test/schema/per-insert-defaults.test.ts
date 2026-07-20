@@ -9,11 +9,11 @@ import { CreateModelProps } from '@/types';
 import { METHODS } from '@/utils/enums';
 
 /**
- * Defaults por-insert de classe decorada (D-12/D-13) + filtragem de chaves
- * `undefined` (Pitfall 3) — contra MongoDB real.
+ * Defaults por-insert de classe decorada + filtragem de chaves
+ * `undefined` — contra MongoDB real.
  *
  * `ItemSchema.createdAt` tem inicializador (`new Date()`), colhido fresco a
- * cada insert (D-12). `requiredNoInit` é required (via @Prop) mas NÃO tem
+ * cada insert. `requiredNoInit` é required (via @Prop) mas NÃO tem
  * inicializador — se a instância da classe fosse spreadada ingenuamente, a
  * chave entraria no documento com valor `undefined` e o driver a
  * serializaria como BSON `Undefined`; filtrada corretamente, a chave nem
@@ -38,7 +38,7 @@ class ItemSchema {
   requiredNoInit?: string;
 }
 
-describe('Model — defaults por-insert de classe decorada (D-12/D-13 + Pitfall 3)', () => {
+describe('Model — defaults por-insert de classe decorada', () => {
   let db: Database;
   let model: Model<Doc>;
 
@@ -63,7 +63,7 @@ describe('Model — defaults por-insert de classe decorada (D-12/D-13 + Pitfall 
     await db.disconnect();
   });
 
-  it('dois inserts consecutivos produzem createdAt DIFERENTES (fresco por insert, D-12)', async () => {
+  it('dois inserts consecutivos produzem createdAt DIFERENTES (fresco por insert)', async () => {
     const first = await model.insert({ name: 'a', requiredNoInit: 'x' });
     await new Promise((resolve) => setTimeout(resolve, 5));
     const second = await model.insert({ name: 'b', requiredNoInit: 'y' });
@@ -73,7 +73,7 @@ describe('Model — defaults por-insert de classe decorada (D-12/D-13 + Pitfall 
     expect(first.createdAt?.getTime()).not.toBe(second.createdAt?.getTime());
   });
 
-  it('precedência D-13: doc do usuário sobrescreve o inicializador da classe', async () => {
+  it('precedência: doc do usuário sobrescreve o inicializador da classe', async () => {
     const overriddenByUser = new Date('2020-01-01T00:00:00.000Z');
 
     const insertedByUser = await model.insert({
@@ -87,7 +87,7 @@ describe('Model — defaults por-insert de classe decorada (D-12/D-13 + Pitfall 
     );
   });
 
-  it('precedência D-13: documentDefaults do config sobrescreve o inicializador da classe, mas não o doc do usuário', async () => {
+  it('precedência: documentDefaults do config sobrescreve o inicializador da classe, mas não o doc do usuário', async () => {
     const configDefault = new Date('2021-01-01T00:00:00.000Z');
 
     const modelWithConfigDefault = new Model<Doc>({
@@ -121,7 +121,7 @@ describe('Model — defaults por-insert de classe decorada (D-12/D-13 + Pitfall 
     );
   });
 
-  it('campo required sem inicializador nem valor do usuário falha por required — não por bsonType/serialização de BSON Undefined (Pitfall 3)', async () => {
+  it('campo required sem inicializador nem valor do usuário falha por required — não por bsonType/serialização de BSON Undefined', async () => {
     let caughtError: unknown;
 
     try {

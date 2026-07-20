@@ -8,14 +8,14 @@ import { acquireLock, getLockStatus, lockCollectionName } from '@/migrate/lock';
 import type { MigrateConfig } from '@/types/migrate';
 
 /**
- * Proves LOCK-02: an orphaned lock self-heals via the staleness re-evaluated
+ * Proves an orphaned lock self-heals via the staleness re-evaluated
  * inside the atomic acquisition filter (`expiresAt: { $lt: now }`), never by
- * waiting on the TTL index's ~60s monitor (10-RESEARCH.md D-32/Pitfall 2). A
+ * waiting on the TTL index's ~60s monitor. A
  * short `lockTtlMs` proves the real, filter-based recovery path
  * deterministically; the TTL index itself is only checked structurally, as
  * a backstop, never by waiting for a real expiry.
  */
-describe('lock — expiry (LOCK-02, D-32)', () => {
+describe('lock — expiry', () => {
   let db: Database;
   let nativeDb: Db;
   const config: MigrateConfig = { dir: '.', collection: '_lock_expiry_test' };
@@ -30,7 +30,7 @@ describe('lock — expiry (LOCK-02, D-32)', () => {
     nativeDb = db.getDb() as Db;
   });
 
-  // WR-05: see lock-acquisition.test.ts — without this, MongoClient sockets/
+  // See lock-acquisition.test.ts — without this, MongoClient sockets/
   // monitors stay open past this suite's last test.
   afterAll(async () => {
     await db.disconnect();

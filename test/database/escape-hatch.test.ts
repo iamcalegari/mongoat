@@ -5,14 +5,14 @@ import { Database } from '@/database';
 import { METHODS } from '@/utils/enums';
 
 /**
- * Escape hatch honesto de `Database.getClient()`/`getDb()` (D-08/API-03).
+ * Escape hatch honesto de `Database.getClient()`/`getDb()`.
  *
  * `Database` nunca é envolvida em Proxy (só `Model` é) — `getClient()`/
  * `getDb()` já são "escape total" por natureza, sem gating nenhum a
  * contornar. Reforça também que o enum `METHODS` permanece com 12 membros
  * — o escape hatch (de Model E de Database) não poluiu o enum de gating.
  */
-describe('Database — escape hatch getClient()/getDb() (D-08/API-03)', () => {
+describe('Database — escape hatch getClient()/getDb()', () => {
   let db: Database;
 
   beforeAll(async () => {
@@ -47,7 +47,7 @@ describe('Database — escape hatch getClient()/getDb() (D-08/API-03)', () => {
     );
   });
 
-  it('enum METHODS permanece com 12 membros — escape hatch fora do enum (D-08)', () => {
+  it('enum METHODS permanece com 12 membros — escape hatch fora do enum', () => {
     expect(Object.values(METHODS)).toHaveLength(12);
     expect(Object.values(METHODS)).not.toContain('getCollection');
     expect(Object.values(METHODS)).not.toContain('getClient');

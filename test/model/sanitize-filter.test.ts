@@ -3,8 +3,6 @@ import { describe, expect, it } from 'vitest';
 import { sanitizeFilter } from '@/utils';
 
 /**
- * SEC-01/D-06/D-07 (03-02, Task 2).
- *
  * Unit puro, sem driver — `sanitizeFilter` é uma função síncrona sobre
  * objetos planos. Cobre: remoção incondicional dos operadores de execução
  * de código em qualquer profundidade, preservação de operadores de query

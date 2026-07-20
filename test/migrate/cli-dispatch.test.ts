@@ -17,7 +17,7 @@ import { getLockStatus, getStatus } from '@/migrate';
 import type { MigrationLockDocument } from '@/types/migrate';
 
 /**
- * MIG-03/T-08-01 — CLI subcommand dispatch, `status` table output, and
+ * CLI subcommand dispatch, `status` table output, and
  * version-argument validation. `getStatus` (and the `Database` connection)
  * are mocked/faked — no real DB round-trip needed for these behaviors.
  */
@@ -55,7 +55,7 @@ describe('mongoat CLI dispatch', () => {
   });
 
   it.each(['__proto__', 'toString', 'constructor', 'valueOf', 'hasOwnProperty'])(
-    'a prototype-chain property name ("%s") is treated as an unknown command, not invoked (WR-01)',
+    'a prototype-chain property name ("%s") is treated as an unknown command, not invoked',
     async (subcommand) => {
       const exitCode = await dispatch([subcommand]);
 
@@ -109,7 +109,7 @@ describe('mongoat CLI dispatch', () => {
     expect(stdoutOutput).toContain('lock: free');
   });
 
-  it('status renders a corrupted lock diagnostic without throwing (CR-02)', async () => {
+  it('status renders a corrupted lock diagnostic without throwing', async () => {
     vi.mocked(getStatus).mockResolvedValue([]);
     vi.mocked(getLockStatus).mockResolvedValue({
       held: true,

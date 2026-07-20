@@ -7,9 +7,8 @@ import { ModelValidationSchema } from '@/types';
 import { METHODS } from '@/utils/enums';
 
 /**
- * Pitfall 4 (03-RESEARCH.md) / D-09 (03-04, Task 1) — fecha a classe de
- * regressão de `ctx.options` mutation para os 4 métodos historicamente
- * afetados por CR-01 (options `undefined` sem default `{}`). `find` e
+ * Fecha a classe de regressão de `ctx.options` mutation para os 4 métodos
+ * historicamente afetados (options `undefined` sem default `{}`). `find` e
  * `delete` já ganharam cobertura dedicada em `options-passthrough.test.ts`
  * (commit `b51c4c9`, mesmo fix); este arquivo cobre os 2 métodos que
  * ficavam sem teste: `findById` e `bulkWrite`.
@@ -28,7 +27,7 @@ const schema: ModelValidationSchema = {
   required: ['name', 'tag'],
 };
 
-describe('Model — options passthrough remanescente (findById/bulkWrite) (Pitfall 4)', () => {
+describe('Model — options passthrough remanescente (findById/bulkWrite)', () => {
   let db: Database;
 
   beforeAll(async () => {
@@ -66,13 +65,13 @@ describe('Model — options passthrough remanescente (findById/bulkWrite) (Pitfa
     });
 
     // Chamada pública SEM options: prova que ctx.options tem default `{}`
-    // (CR-01) e que a mutação chega ao driver via findById → find interno.
+    // e que a mutação chega ao driver via findById → find interno.
     const found = await model.findById(inserted._id);
     expect(found?.name).toBeUndefined();
     expect(found?.tag).toBe('findbyid-redact');
   });
 
-  it('pre-hook que muta ctx.options em bulkWrite chega ao driver (ordered:false, Pitfall 4 fechado)', async () => {
+  it('pre-hook que muta ctx.options em bulkWrite chega ao driver (ordered:false)', async () => {
     const model = new Model<Doc>({
       collectionName: 'options_passthrough_bulkwrite_ordered',
       allowedMethods: [METHODS.INSERT, METHODS.FIND_MANY, METHODS.BULK_WRITE],

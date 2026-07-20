@@ -18,12 +18,12 @@ import { runMigrations } from '@/migrate/runner';
 import { MigrateConfig } from '@/types/migrate';
 
 /**
- * Proves MIG-01: a data-only migration's `up()` mutation, applied via
+ * Proves a data-only migration's `up()` mutation, applied via
  * `ctx.db.collection(...).updateMany(..., { session: ctx.session })`, is
  * actually persisted by `runMigrations` (the transaction commits and the
  * write survives).
  */
-describe('runMigrations — data migration persisted via transaction (MIG-01)', () => {
+describe('runMigrations — data migration persisted via transaction', () => {
   let db: Database;
   let nativeDb: Db;
   let dir: string;

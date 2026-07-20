@@ -8,12 +8,12 @@ import { ModelValidationSchema } from '@/types';
 import { METHODS } from '@/utils/enums';
 
 /**
- * HOOK-04/D-06 — post-hook `fireAndForget` (opt-in explícito no registro) é
+ * Post-hook `fireAndForget` (opt-in explícito no registro) é
  * um dispatch VERDADEIRAMENTE não-aguardado (Open Question 1 resolvida
  * A2/RESEARCH.md): a operação retorna sem esperar o hook, e se a Promise do
  * hook rejeitar, o erro é roteado para `onHookError(err, ctx)` — com
  * fallback `console.error` quando nenhum callback é configurado. Nunca
- * engolido em silêncio total (Pitfall 3).
+ * engolido em silêncio total.
  *
  * O dispatch não-aguardado exige espera determinística (`vi.waitFor`) em vez
  * de assumir que o efeito colateral já rodou no momento em que
@@ -29,7 +29,7 @@ const schema: ModelValidationSchema = {
   required: ['name'],
 };
 
-describe('Model — post-hook fireAndForget não propaga, roteia para onHookError/console.error (HOOK-04)', () => {
+describe('Model — post-hook fireAndForget não propaga, roteia para onHookError/console.error', () => {
   let db: Database;
 
   beforeAll(async () => {

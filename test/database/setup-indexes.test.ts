@@ -7,8 +7,6 @@ import { ModelValidationSchema } from '@/types';
 import { METHODS } from '@/utils/enums';
 
 /**
- * Regressão de WR-10 (Code Review da Fase 01).
- *
  * Bug original: `setupIndexes` executava `dropIndexes()` INCONDICIONAL antes
  * de recriar os índices do model — destruindo índices criados fora do
  * Mongoat (DBAs/migrations) e abrindo uma janela sem unicidade entre o drop
@@ -29,7 +27,7 @@ const schema: ModelValidationSchema = {
   required: ['name'],
 };
 
-describe('Database — setupIndexes sem dropIndexes incondicional (WR-10)', () => {
+describe('Database — setupIndexes sem dropIndexes incondicional', () => {
   let db: Database;
   let model: Model<Doc>;
 

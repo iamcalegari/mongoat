@@ -9,14 +9,14 @@ import { CreateModelProps } from '@/types';
 import { METHODS } from '@/utils/enums';
 
 /**
- * D-14: `@Pre('metodoInexistente', fn)`/`@Post('metodoInexistente', fn)`
+ * `@Pre('metodoInexistente', fn)`/`@Post('metodoInexistente', fn)`
  * estouram `MongoatValidationError` com `code: 'INVALID_HOOK_METHOD'` já na
  * DECORAÇÃO (avaliação da classe), não no `compile`/construção do `Model`.
  *
- * D-10: `@Post` aplicado a um CAMPO (em vez de classe) lança
+ * `@Post` aplicado a um CAMPO (em vez de classe) lança
  * `MongoatValidationError` — post por campo não tem semântica clara.
  *
- * WR-04 (estendido do Plano 06-02): re-registrar uma classe decorada com
+ * Re-registrar uma classe decorada com
  * `@Pre` sobre um `collectionName` já registrado lança
  * `MODEL_CONFIG_CONFLICT` — o hook nunca é descartado em silêncio.
  */
@@ -37,7 +37,7 @@ function expectHookDecorationToThrow(declare: () => void): unknown {
   return caughtError;
 }
 
-describe('Erros de decoração de hooks (D-14/D-10)', () => {
+describe('Erros de decoração de hooks', () => {
   it('@Pre com um método inexistente lança MongoatValidationError com code INVALID_HOOK_METHOD já na decoração', () => {
     const caughtError = expectHookDecorationToThrow(() => {
       @Schema('hook_decoration_errors_pre_invalid_method')
@@ -74,7 +74,7 @@ describe('Erros de decoração de hooks (D-14/D-10)', () => {
     );
   });
 
-  it('@Post aplicado a um CAMPO lança MongoatValidationError (post por campo não tem semântica clara — D-10)', () => {
+  it('@Post aplicado a um CAMPO lança MongoatValidationError (post por campo não tem semântica clara)', () => {
     const caughtError = expectHookDecorationToThrow(() => {
       @Schema('hook_decoration_errors_post_on_field')
       class BadSchema {
@@ -89,7 +89,7 @@ describe('Erros de decoração de hooks (D-14/D-10)', () => {
     expect(caughtError).toBeInstanceOf(MongoatValidationError);
   });
 
-  describe('WR-04 estendido: hook decorado (@Pre) em re-registração do mesmo collectionName', () => {
+  describe('hook decorado (@Pre) em re-registração do mesmo collectionName', () => {
     beforeEach(() => {
       Database.resetRegistry();
 

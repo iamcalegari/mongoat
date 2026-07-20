@@ -4,7 +4,7 @@ import { BsonType, Description, Optional, Prop, Schema } from '@/schema';
 import { ModelValidationSchema } from '@/types';
 
 /**
- * D-05/DECO-03: `Schema.compile` recursa em `@Prop({ type: ClasseDecorada })`
+ * `Schema.compile` recursa em `@Prop({ type: ClasseDecorada })`
  * (subschema aninhado) e `@Prop({ items: ClasseDecorada })` (schema de itens
  * de array), e aceita um subschema JSON Schema inline verbatim como escape
  * hatch — sem recompilar.
@@ -12,7 +12,7 @@ import { ModelValidationSchema } from '@/types';
 
 /**
  * Mesmo algoritmo do stableStringify de test/schema/compile-equivalence.test.ts
- * (WR-05).
+ *.
  */
 function stableStringify(value: unknown): string {
   return JSON.stringify(value, (_key, val) =>
@@ -27,7 +27,7 @@ function stableStringify(value: unknown): string {
   );
 }
 
-describe('Compile recursivo de schemas aninhados/arrays (D-05)', () => {
+describe('Compile recursivo de schemas aninhados/arrays', () => {
   it('@Prop({ type: NestedSchemaClass }) compila recursivamente o subschema aninhado', () => {
     @Schema('nested-address')
     class AddressSchema {
@@ -84,7 +84,7 @@ describe('Compile recursivo de schemas aninhados/arrays (D-05)', () => {
     });
   });
 
-  it('subschema JSON Schema inline é aceito verbatim como escape hatch (D-05)', () => {
+  it('subschema JSON Schema inline é aceito verbatim como escape hatch', () => {
     const inlineSubschema: ModelValidationSchema = {
       bsonType: 'object',
       properties: { x: { bsonType: 'int' } },
@@ -106,7 +106,7 @@ describe('Compile recursivo de schemas aninhados/arrays (D-05)', () => {
     expect(compiled.properties?.point).not.toBe(inlineSubschema);
   });
 
-  it('equivalência DECO-03 com aninhamento: Schema.compile é byte-a-byte igual ao objeto plano equivalente', () => {
+  it('equivalência com aninhamento: Schema.compile é byte-a-byte igual ao objeto plano equivalente', () => {
     @Schema('nested-address-2')
     class Address {
       @Prop({ bsonType: 'string' })
@@ -152,7 +152,7 @@ describe('Compile recursivo de schemas aninhados/arrays (D-05)', () => {
     );
   });
 
-  it('WR-06: classe aninhada totalmente opcional via @Prop({ type }) OMITE a chave required (vazia)', () => {
+  it('classe aninhada totalmente opcional via @Prop({ type }) OMITE a chave required (vazia)', () => {
     @Schema('nested-all-optional-type')
     class AllOptionalNested {
       @Optional()
@@ -184,7 +184,7 @@ describe('Compile recursivo de schemas aninhados/arrays (D-05)', () => {
     expect(compiled.properties?.profile).not.toHaveProperty('required');
   });
 
-  it('WR-06: classe aninhada totalmente opcional via @Prop({ items }) OMITE a chave required (vazia) em items', () => {
+  it('classe aninhada totalmente opcional via @Prop({ items }) OMITE a chave required (vazia) em items', () => {
     @Schema('nested-all-optional-items')
     class AllOptionalItem {
       @Optional()

@@ -1,7 +1,6 @@
 #!/usr/bin/env node
 /**
- * SMOKE de produção dos decorators TC39 (gate crítico — Pitfall 1 do
- * 06-RESEARCH.md).
+ * SMOKE de produção dos decorators TC39 (gate crítico).
  *
  * Rolldown/Oxc (usados pelo tsdown) ainda NÃO fazem lowering de decorators
  * stage-3 — e vitest/esbuild FAZEM, mascarando a falha de build. Por isso

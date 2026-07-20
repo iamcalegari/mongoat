@@ -94,7 +94,7 @@ function buildConfig(values: {
 /**
  * @internal
  *
- * T-08-01 — the `to <version>`/`down <version>` CLI argument MUST be
+ * The `to <version>`/`down <version>` CLI argument MUST be
  * regex-validated (reusing `MIGRATION_VERSION_REGEX`, the single source of
  * truth already established by `discover.ts`) BEFORE it is ever used to
  * build a filesystem path or a MongoDB filter — rejects anything that is
@@ -118,8 +118,8 @@ function assertValidVersionArg(
 /**
  * @internal
  *
- * WR-03 — mirrors the same "validate before building any filesystem path"
- * posture `assertValidVersionArg`/T-08-01 already applies to the `to`/`down`
+ * Mirrors the same "validate before building any filesystem path"
+ * posture `assertValidVersionArg` already applies to the `to`/`down`
  * version argument, now for `mongoat create <name>`. Rejects anything
  * outside `^[A-Za-z0-9_-]+$` (no `.`, so `..` can never appear; no path
  * separators, no whitespace) BEFORE `name` is ever interpolated into a
@@ -144,7 +144,7 @@ function assertValidMigrationName(name: string | undefined): string {
 /**
  * @internal
  *
- * T-08-03 — writes a loud, non-suppressible warning to `process.stderr`
+ * Writes a loud, non-suppressible warning to `process.stderr`
  * whenever `--allow-no-transaction` is set, on EVERY invocation. Never
  * gated behind a `--quiet` flag or any other suppression mechanism.
  */
@@ -165,7 +165,7 @@ function pad(value: number): string {
 /**
  * @internal
  *
- * Builds a `YYYYMMDDHHMMSS` version string (D-01) from the given `date`
+ * Builds a `YYYYMMDDHHMMSS` version string from the given `date`
  * (defaults to now) — the same 14-digit shape `MIGRATION_VERSION_REGEX`
  * validates.
  */
@@ -244,7 +244,7 @@ async function withConnectedDatabase<T>(
 /**
  * @internal
  *
- * Pitfall 2 (RESEARCH.md) — `tsx` is a loader/binary, not a programmatic
+ * `tsx` is a loader/binary, not a programmatic
  * "transform this .ts file on demand" API. Detects whether any DISCOVERED
  * migration is a `.ts` file, and if so, verifies the process is already
  * running under a TS-capable runtime (`tsx`, or re-execs itself under it
@@ -429,7 +429,7 @@ export async function runWithSignalHandling(
 
 export async function handleCreate(argv: string[]): Promise<number> {
   return runWithErrorBoundary(async () => {
-    // WR-02: `parseArgs` moved INSIDE the error boundary — `node:util`
+    // `parseArgs` moved INSIDE the error boundary — `node:util`
     // `parseArgs` throws synchronously on an unknown/invalid flag
     // (`ERR_PARSE_ARGS_UNKNOWN_OPTION`); left outside, that throw becomes a
     // rejected promise with no `.catch()` at the top-level dispatch site,
@@ -444,7 +444,7 @@ export async function handleCreate(argv: string[]): Promise<number> {
       },
     });
 
-    // WR-03: validated BEFORE any filesystem path is built from it — same
+    // Validated BEFORE any filesystem path is built from it — same
     // "validate before path.join" posture as `assertValidVersionArg`.
     const name = assertValidMigrationName(positionals[0]);
 
@@ -454,7 +454,7 @@ export async function handleCreate(argv: string[]): Promise<number> {
     const filePath = path.join(dir, fileName);
 
     // Defense in depth — the same containment check `discoverMigrations`
-    // already performs (T-08-01): even a name that passed the regex above
+    // already performs: even a name that passed the regex above
     // must resolve to a path that stays within `dir`.
     const resolvedDir = path.resolve(dir);
     const resolvedFilePath = path.resolve(filePath);
@@ -481,7 +481,7 @@ export async function handleUp(
   argv: string[],
   deps: CliDeps = defaultDeps
 ): Promise<number> {
-  // WR-02: `parseArgs`/`buildConfig` moved INSIDE the error boundary (see
+  // `parseArgs`/`buildConfig` moved INSIDE the error boundary (see
   // `handleCreate`'s comment for the full rationale).
   return runWithErrorBoundary(async () => {
     const { values } = parseArgs({
@@ -515,7 +515,7 @@ export async function handleDown(
   argv: string[],
   deps: CliDeps = defaultDeps
 ): Promise<number> {
-  // WR-02: `parseArgs`/`buildConfig` moved INSIDE the error boundary (see
+  // `parseArgs`/`buildConfig` moved INSIDE the error boundary (see
   // `handleCreate`'s comment for the full rationale).
   return runWithErrorBoundary(async () => {
     const { values, positionals } = parseArgs({
@@ -553,7 +553,7 @@ export async function handleTo(
   argv: string[],
   deps: CliDeps = defaultDeps
 ): Promise<number> {
-  // WR-02: `parseArgs`/`buildConfig` moved INSIDE the error boundary (see
+  // `parseArgs`/`buildConfig` moved INSIDE the error boundary (see
   // `handleCreate`'s comment for the full rationale).
   return runWithErrorBoundary(async () => {
     const { values, positionals } = parseArgs({
@@ -588,18 +588,18 @@ export async function handleTo(
 /**
  * @internal
  *
- * Dry by default, `--force` deletes (D-06): with no flag, reports the
+ * Dry by default, `--force` deletes: with no flag, reports the
  * current lock diagnostic (if any) and a risk warning on stderr, without
  * deleting anything; with `--force`, deletes the lock unconditionally
  * (including a non-expired one — that is its intended use case). Idempotent
  * either way — no lock present is reported as "nothing to do", exit 0, never
- * an error (D-07).
+ * an error.
  */
 export async function handleUnlock(
   argv: string[],
   deps: CliDeps = defaultDeps
 ): Promise<number> {
-  // WR-02: `parseArgs`/`buildConfig` moved INSIDE the error boundary (see
+  // `parseArgs`/`buildConfig` moved INSIDE the error boundary (see
   // `handleCreate`'s comment for the full rationale).
   return runWithErrorBoundary(async () => {
     const { values } = parseArgs({
@@ -650,7 +650,7 @@ function formatStatusTable(rows: MigrationStatusRow[]): string {
   const lines = ['version | name | applied'];
 
   for (const row of rows) {
-    // WR-01: a `status: 'failed'` record is surfaced as its own distinct
+    // A `status: 'failed'` record is surfaced as its own distinct
     // "failed" label — never as "applied" (a migration that failed, or
     // never ran at all, must not be reported as applied).
     const appliedLabel = row.applied
@@ -675,7 +675,7 @@ export async function handleStatus(
   argv: string[],
   deps: CliDeps = defaultDeps
 ): Promise<number> {
-  // WR-02: `parseArgs`/`buildConfig` moved INSIDE the error boundary (see
+  // `parseArgs`/`buildConfig` moved INSIDE the error boundary (see
   // `handleCreate`'s comment for the full rationale).
   return runWithErrorBoundary(async () => {
     const { values } = parseArgs({
@@ -717,7 +717,7 @@ const COMMANDS: Record<
 /**
  * @internal
  *
- * Pattern 4 (RESEARCH.md) — one `parseArgs` call per subcommand, each with
+ * One `parseArgs` call per subcommand, each with
  * its own flag set; an unknown/missing subcommand prints the available
  * commands to stderr and reports a non-zero exit code. Returns the exit
  * code (never calls `process.exit()` itself) so it stays fully testable.
@@ -727,7 +727,7 @@ export async function dispatch(
   deps: CliDeps = defaultDeps
 ): Promise<number> {
   const [subcommand, ...rest] = argv;
-  // WR-01: `Object.hasOwn` — a plain `COMMANDS[subcommand]` lookup falls
+  // `Object.hasOwn` — a plain `COMMANDS[subcommand]` lookup falls
   // through to `Object.prototype` for names like `toString`/`constructor`/
   // `__proto__`, either returning a truthy non-function (`handler is not a
   // function`) or silently INVOKING an inherited function (`toString`)
@@ -748,7 +748,7 @@ export async function dispatch(
   return handler(rest, deps);
 }
 
-// CR-01: the published bin (`lib/mongoat.cjs`) is invoked via the symlink
+// The published bin (`lib/mongoat.cjs`) is invoked via the symlink
 // npm creates at `node_modules/.bin/mongoat` on Unix. A `pathToFileURL`
 // comparison between `__filename` (Node resolves the module's REAL path,
 // following the symlink, by default) and `process.argv[1]` (the symlink
@@ -760,7 +760,7 @@ export async function dispatch(
 const isMainModule = require.main === module;
 
 if (isMainModule) {
-  // WR-02: defense-in-depth `.catch()` at the true top-level boundary — on
+  // Defense-in-depth `.catch()` at the true top-level boundary — on
   // top of moving `parseArgs` inside `runWithErrorBoundary` in every
   // handler above, this ensures ANY rejection that somehow escapes a
   // handler (present or future) still exits cleanly instead of surfacing

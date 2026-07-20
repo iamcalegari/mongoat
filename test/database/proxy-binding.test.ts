@@ -8,8 +8,7 @@ import { ModelValidationSchema } from '@/types';
 import { METHODS } from '@/utils/enums';
 
 /**
- * Regressão do bug de binding do `KModelProxyHandler` (QUAL-01 — Plan 04,
- * Task 1).
+ * Regressão do bug de binding do `KModelProxyHandler`.
  *
  * Bug original: o trap `get` fazia `Reflect.get(target, prop,
  * receiver).bind(target)` e descartava o resultado do `.bind()`, retornando
@@ -32,7 +31,7 @@ const schema: ModelValidationSchema = {
   required: ['name'],
 };
 
-describe('Database — KModelProxyHandler binding (QUAL-01)', () => {
+describe('Database — KModelProxyHandler binding', () => {
   let db: Database;
 
   beforeAll(async () => {

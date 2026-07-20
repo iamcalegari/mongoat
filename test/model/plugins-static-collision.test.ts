@@ -9,22 +9,21 @@ import { ModelValidationSchema } from '@/types';
 import { METHODS } from '@/utils/enums';
 
 /**
- * D-08 (Plano 07-02): static de plugin colidindo com um método nativo do
+ * Static de plugin colidindo com um método nativo do
  * `Model` (público, escape hatch, ou privado de runtime) — ou com um
  * static já registrado por OUTRO plugin — lança `STATIC_COLLISION` na
  * construção. Sem mudança de código de produção: este arquivo só exercita,
- * via `new Model(...)`, o comportamento já habilitado pela Task 1
- * (aplicação de plugins no construtor) + Plano 01 (`registerPluginStatic`/
- * `applyPlugins`).
+ * via `new Model(...)`, apoiado na aplicação de plugins no construtor
+ * (`registerPluginStatic`/`applyPlugins`).
  *
- * `applyPlugins` (Plano 01) envolve QUALQUER erro síncrono lançado dentro
+ * `applyPlugins` envolve QUALQUER erro síncrono lançado dentro
  * de `setup()` — inclusive o `STATIC_COLLISION` que `ctx.static()` lança
- * quando chamado DENTRO do próprio `setup()` — em `PLUGIN_SETUP_FAILED`
- * (D-10/D-04), preservando o erro original em `.cause`. Por isso, visto de
+ * quando chamado DENTRO do próprio `setup()` — em `PLUGIN_SETUP_FAILED`,
+ * preservando o erro original em `.cause`. Por isso, visto de
  * fora de `new Model(...)`, o `.code` observável é `PLUGIN_SETUP_FAILED`,
  * com `.cause` sendo o `MongoatValidationError`/`STATIC_COLLISION` real —
  * os testes abaixo verificam a colisão através de `.cause.code`, não do
- * `.code` do topo (ver "Deviations" no SUMMARY do plano).
+ * `.code` do topo.
  */
 interface Doc extends Document {
   name: string;
@@ -58,7 +57,7 @@ function expectStaticCollision(construct: () => unknown): void {
   );
 }
 
-describe('Model — colisão de statics de plugin contra nativo/privado e plugin↔plugin (D-08)', () => {
+describe('Model — colisão de statics de plugin contra nativo/privado e plugin↔plugin', () => {
   let counter = 0;
 
   beforeAll(() => {
@@ -142,7 +141,7 @@ describe('Model — colisão de statics de plugin contra nativo/privado e plugin
     );
   });
 
-  it('plugin registrando static "__proto__" colide (prototype pollution, T-07-01) — protótipo intacto', () => {
+  it('plugin registrando static "__proto__" colide (prototype pollution) — protótipo intacto', () => {
     const plugin: Plugin<Doc> = {
       name: 'proto-polluter',
       setup: (ctx) => {
@@ -163,7 +162,7 @@ describe('Model — colisão de statics de plugin contra nativo/privado e plugin
     );
   });
 
-  it('plugin registrando static "constructor" colide (T-07-01)', () => {
+  it('plugin registrando static "constructor" colide', () => {
     const plugin: Plugin<Doc> = {
       name: 'constructor-polluter',
       setup: (ctx) => {
@@ -184,7 +183,7 @@ describe('Model — colisão de statics de plugin contra nativo/privado e plugin
     );
   });
 
-  it('plugin registrando static "prototype" colide (T-07-01)', () => {
+  it('plugin registrando static "prototype" colide', () => {
     const plugin: Plugin<Doc> = {
       name: 'prototype-polluter',
       setup: (ctx) => {

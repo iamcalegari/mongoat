@@ -50,10 +50,10 @@ async function waitForLockDocument(
 }
 
 /**
- * WR-04 — `releaseIfOwner`'s `deleteOne({ _id, ownerId })` matching ZERO
+ * `releaseIfOwner`'s `deleteOne({ _id, ownerId })` matching ZERO
  * documents (`released: false`) is the only observable signal that this
  * run's lease expired mid-run and another runner has since acquired the
- * lock — a real LOCK-01 mutual-exclusion violation. Before the fix, the
+ * lock — a real mutual-exclusion violation. Before the fix, the
  * runner silently discarded this signal and reported a plain success.
  *
  * Proves the full path against a real MongoDB: while a slow migration is
@@ -65,7 +65,7 @@ async function waitForLockDocument(
  * successfully, since the migration itself never failed — must emit
  * `MongoatLockLeaseExpiredWarning`.
  */
-describe('runner — lock lease expiry during a run emits a warning (WR-04)', () => {
+describe('runner — lock lease expiry during a run emits a warning', () => {
   let db: Database;
   let nativeDb: Db;
   let dir: string;

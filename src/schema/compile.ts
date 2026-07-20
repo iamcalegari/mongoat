@@ -53,7 +53,7 @@ export function compile(cls: SchemaClass): ModelValidationSchema {
   const meta = metadata?.[SCHEMA_METADATA_KEY] as FieldMeta | undefined;
 
   if (!meta) {
-    // D-14: erro estrutural — estoura no compile (classe nunca passou pelo
+    // Erro estrutural — estoura no compile (classe nunca passou pelo
     // @Schema/@Prop, então não há metadata para compilar).
     throw new MongoatValidationError(
       'Class is not decorated with @Schema — Schema.compile only accepts classes decorated with Mongoat schema decorators',
@@ -67,10 +67,10 @@ export function compile(cls: SchemaClass): ModelValidationSchema {
   // structuredClone em schemaValidatorBuilder). `compileProperty` clona por
   // campo (não `structuredClone(meta.properties)` de uma vez) — necessário
   // agora que um fragmento pode conter uma CLASSE decorada aninhada em
-  // `type`/`items` (D-05), que `structuredClone` não sabe clonar
+  // `type`/`items`, que `structuredClone` não sabe clonar
   // (`DataCloneError`).
   //
-  // D-04: `required` filtrado contra `optionalFields` AQUI (compile), não
+  // `required` filtrado contra `optionalFields` AQUI (compile), não
   // no momento em que `@Optional()` roda — ver JSDoc de
   // FieldMeta.optionalFields para o porquê (idempotência independente da
   // ordem textual dos decorators no mesmo campo).
@@ -78,11 +78,11 @@ export function compile(cls: SchemaClass): ModelValidationSchema {
     (fieldName) => !meta.optionalFields.includes(fieldName)
   );
 
-  // D-03/DECO-03: devolve o ModelValidationSchema "cru" equivalente ao
+  // Devolve o ModelValidationSchema "cru" equivalente ao
   // objeto plano escrito à mão — additionalProperties/_id/required de _id
   // são responsabilidade do schemaValidatorBuilder no Model, não daqui.
   //
-  // WR-06: `required` só é emitido quando o array filtrado é NÃO-vazio — o
+  // `required` só é emitido quando o array filtrado é NÃO-vazio — o
   // `$jsonSchema` do MongoDB REJEITA `required: []` num subschema aninhado
   // (createCollection/collMod). No nível raiz o gap é mascarado porque o
   // `schemaValidatorBuilder` do Model sempre anexa `_id` a `required`; uma
@@ -103,7 +103,7 @@ export function compile(cls: SchemaClass): ModelValidationSchema {
 }
 
 /**
- * D-05: compila um único fragmento de campo (`meta.properties[nome]`) em um
+ * Compila um único fragmento de campo (`meta.properties[nome]`) em um
  * `ModelValidationSchema` de property. `type`/`items` são chaves
  * Mongoat-only (nunca chegam ao `$jsonSchema` final como tal) — quando
  * presentes, são resolvidas recursivamente (`resolveNestedSchema`) e o
@@ -136,7 +136,7 @@ function compileProperty(fragment: PropFragment): ModelValidationSchema {
 }
 
 /**
- * D-05: resolve um valor de `type`/`items` — ou uma classe decorada
+ * Resolve um valor de `type`/`items` — ou uma classe decorada
  * (compilada recursivamente via `compile`) ou um subschema JSON Schema
  * inline (objeto plano, aceito VERBATIM como escape hatch, sem
  * recompilação, só clonado para preservar a disciplina de "nunca devolver
@@ -153,8 +153,8 @@ function resolveNestedSchema(
 /**
  * @internal
  *
- * Um hook decorado já normalizado para o formato de `HookFn` do pipeline da
- * Fase 2 (`(ctx) => ...`) — `method` carrega em qual `this.hooks[method]`
+ * Um hook decorado já normalizado para o formato de `HookFn` do pipeline
+ * de hooks (`(ctx) => ...`) — `method` carrega em qual `this.hooks[method]`
  * o `Model` deve registrá-lo.
  */
 export interface ExtractedHookEntry {
@@ -165,8 +165,8 @@ export interface ExtractedHookEntry {
 /**
  * @internal
  *
- * Resultado de `extractDecoratorHooks` — `pre` já vem na ORDEM final D-11
- * (campo antes de classe); `post` só contém hooks de classe (D-10).
+ * Resultado de `extractDecoratorHooks` — `pre` já vem na ORDEM final
+ * (campo antes de classe); `post` só contém hooks de classe.
  */
 export interface ExtractedDecoratorHooks {
   pre: ExtractedHookEntry[];
@@ -176,18 +176,17 @@ export interface ExtractedDecoratorHooks {
 /**
  * @internal
  *
- * D-11/DECO-02: extrai os hooks decorados (`@Pre`/`@Post`) de uma classe
- * decorada, normalizados para o formato de hook do pipeline da Fase 2 —
+ * Extrai os hooks decorados (`@Pre`/`@Post`) de uma classe
+ * decorada, normalizados para o formato de hook do pipeline —
  * consumido pelo constructor do `Model` (`src/model/index.ts`) para
  * registrar em `this.hooks[method].pre`/`.post` ANTES de `props.hooks`.
  *
  * `@Pre` de campo NUNCA transforma o inicializador TC39 do campo — é
  * embrulhado aqui num `HookFn` de pipeline ASSÍNCRONO que faz
- * `document[field] = await fn(document[field], ctx)` (CR-01: `fn` do dev
- * pode ser `async`), só quando `Object.hasOwn(document, field)` (WR-05: um
- * campo ausente nunca é materializado), reaproveitando o MESMO dispatch de
- * `runPreHooks` já usado por `props.hooks`/`.pre()` (D-11, ver Anti-Patterns
- * do 06-RESEARCH.md).
+ * `document[field] = await fn(document[field], ctx)` (o `fn` do dev
+ * pode ser `async`), só quando `Object.hasOwn(document, field)` — um
+ * campo ausente nunca é materializado —, reaproveitando o MESMO dispatch
+ * de `runPreHooks` já usado por `props.hooks`/`.pre()`.
  *
  * Devolve `{ pre: [], post: [] }` (nunca lança) quando `cls` não carrega
  * metadata Mongoat — chamado incondicionalmente pelo `Model` para qualquer
@@ -212,20 +211,20 @@ export function extractDecoratorHooks(
     return { pre: [], post: [] };
   }
 
-  // D-11: campo ANTES de classe — a ordem deste array É a ordem de push em
+  // Campo ANTES de classe — a ordem deste array É a ordem de push em
   // `this.hooks[method].pre` no constructor do `Model` (que preserva ordem
   // de registro, nunca reordena).
   const fieldPre: ExtractedHookEntry[] = meta.fieldPreHooks.map(
     ({ field, method, fn }) => ({
       method,
-      // CR-01: o wrapper precisa ser `async` e `await` o retorno de `fn` —
+      // O wrapper precisa ser `async` e `await` o retorno de `fn` —
       // `fn` do dev pode ser uma função `async` (exemplo-bandeira do JSDoc
       // de `@Pre`: `hashPassword`). `runPreHooks` (src/model/hooks.ts) já
       // aguarda CADA hook em sequência (`for...of` + `await hook(ctx)`),
-      // então um wrapper async aqui é aguardado corretamente e a ordem D-11
+      // então um wrapper async aqui é aguardado corretamente e a ordem
       // (campo → classe → config → encadeado) é preservada — sem o `await`
       // aqui, uma `fn` async deixaria uma Promise pendente gravada no
-      // documento, que o BSON serializa como um objeto vazio (CR-01).
+      // documento, que o BSON serializa como um objeto vazio.
       fn: async (ctx: unknown) => {
         const document = (ctx as { document?: Record<string, unknown> })
           .document;
@@ -235,7 +234,7 @@ export function extractDecoratorHooks(
         // um erro (o dev pode legitimamente reaproveitar o mesmo `method`
         // string em contextos sem documento).
         //
-        // WR-05: `Object.hasOwn` (não apenas `document` truthy) — um campo
+        // `Object.hasOwn` (não apenas `document` truthy) — um campo
         // AUSENTE do documento (chave nunca escrita, não apenas `undefined`)
         // não pode ser materializado por `fn(undefined, ctx)`, sob pena de
         // mascarar a validação `required` do `$jsonSchema` do MongoDB para
