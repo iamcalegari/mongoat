@@ -1,9 +1,15 @@
 import { Db, MongoServerError } from 'mongodb';
 
+import type { Database } from '@/database';
 import { MongoatError } from '@/errors';
 import { runBestEffort } from '@/errors/suppress';
 import { MIGRATION_ERROR_CODES } from '@/migrate/errors';
-import type { MigrateConfig, MigrationLockDocument } from '@/types/migrate';
+import { getNativeDbOrThrow } from '@/migrate/runner';
+import type {
+  LockStatus,
+  MigrateConfig,
+  MigrationLockDocument,
+} from '@/types/migrate';
 
 /**
  * @internal
@@ -199,4 +205,61 @@ export async function releaseIfOwner(
       .collection<MigrationLockDocument>(lockCollectionName(config))
       .deleteOne({ _id: LOCK_DOCUMENT_ID, ownerId });
   });
+}
+
+/**
+ * @public
+ *
+ * Read-only lock status report — never throws in the absence of a lock, and
+ * never mutates anything (unlike {@link acquireLock}/{@link forceUnlock}).
+ * A lock is "actively held" when the document exists AND its `expiresAt` is
+ * a valid `Date` in the future. An unrecognizable document (missing or
+ * invalid `expiresAt`) is conservatively reported as held too, mirroring
+ * {@link acquireLock}'s own refusal to treat what it cannot parse as free.
+ */
+export async function getLockStatus(
+  database: Database,
+  config: MigrateConfig
+): Promise<LockStatus> {
+  const nativeDb = getNativeDbOrThrow(database);
+  const lock = await nativeDb
+    .collection<MigrationLockDocument>(lockCollectionName(config))
+    .findOne({ _id: LOCK_DOCUMENT_ID });
+
+  if (lock === null) return { held: false };
+
+  if (!hasValidExpiresAt(lock) || lock.expiresAt > new Date()) {
+    return { held: true, lock };
+  }
+
+  return { held: false };
+}
+
+/**
+ * @public
+ *
+ * Unconditionally deletes the lock document, regardless of owner or
+ * expiration — this is the manual break-glass path: deleting an
+ * already-expired lock is harmless (it would self-heal anyway), and
+ * deleting a non-expired one is exactly its intended use case. Idempotent:
+ * calling it with no lock present is a no-op, not an error. The caller
+ * (e.g. a CLI command) owns any dry-run/confirmation friction before
+ * invoking this — once called, it always deletes.
+ */
+export async function forceUnlock(
+  database: Database,
+  config: MigrateConfig
+): Promise<{ removed: boolean; lock?: MigrationLockDocument }> {
+  const nativeDb = getNativeDbOrThrow(database);
+  const lockCollection = nativeDb.collection<MigrationLockDocument>(
+    lockCollectionName(config)
+  );
+
+  const existing = await lockCollection.findOne({ _id: LOCK_DOCUMENT_ID });
+
+  if (existing === null) return { removed: false };
+
+  await lockCollection.deleteOne({ _id: LOCK_DOCUMENT_ID });
+
+  return { removed: true, lock: existing };
 }

@@ -33,8 +33,11 @@ type DiscoveredMigration = {
  * Same "fail loud before touching the driver" precondition guard already
  * established by `Database#withTransaction` — a migration operation
  * attempted against a disconnected `Database` must never silently no-op.
+ *
+ * Exported for reuse by `@/migrate/lock` (no import cycle: this module never
+ * imports from `lock.ts`).
  */
-function getNativeDbOrThrow(database: Database): Db {
+export function getNativeDbOrThrow(database: Database): Db {
   const nativeDb = database.getDb();
 
   if (!nativeDb) {
