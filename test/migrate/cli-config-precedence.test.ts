@@ -1,6 +1,17 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { mergeMigrateConfig, parseBooleanEnv } from '@/bin/mongoat';
+vi.mock('@/migrate', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/migrate')>();
+
+  return {
+    ...actual,
+    runMigrations: vi.fn().mockResolvedValue(undefined),
+  };
+});
+
+import type { CliDeps } from '@/bin/mongoat';
+import { handleUp, mergeMigrateConfig, parseBooleanEnv } from '@/bin/mongoat';
+import type { Database } from '@/database';
 import type { MongoatMigrationsConfig } from '@/types/migrate';
 
 /**
@@ -85,8 +96,7 @@ describe('mergeMigrateConfig — per-field precedence matrix', () => {
       expected: '_migrations',
     },
   ])('collection: $case', ({ flag, env, config, expected }) => {
-    if (env !== undefined)
-      vi.stubEnv('MONGOAT_MIGRATIONS_COLLECTION', env);
+    if (env !== undefined) vi.stubEnv('MONGOAT_MIGRATIONS_COLLECTION', env);
 
     const fileConfig: MongoatMigrationsConfig | undefined =
       config === undefined ? undefined : { collection: config };
@@ -126,8 +136,7 @@ describe('mergeMigrateConfig — per-field precedence matrix', () => {
       expected: 30 * 60 * 1000,
     },
   ])('lockTtlMs: $case', ({ flag, env, config, expected }) => {
-    if (env !== undefined)
-      vi.stubEnv('MONGOAT_MIGRATIONS_LOCK_TTL', env);
+    if (env !== undefined) vi.stubEnv('MONGOAT_MIGRATIONS_LOCK_TTL', env);
 
     const fileConfig: MongoatMigrationsConfig | undefined =
       config === undefined ? undefined : { lockTtlMs: config };
@@ -139,13 +148,8 @@ describe('mergeMigrateConfig — per-field precedence matrix', () => {
 
   it('an invalid "--lock-ttl" flag still fails loud with the existing code, even when a config file is present', () => {
     expect(() =>
-      mergeMigrateConfig(
-        { 'lock-ttl': 'not-a-number' },
-        { lockTtlMs: 5000 }
-      )
-    ).toThrowError(
-      expect.objectContaining({ code: 'INVALID_LOCK_TTL' })
-    );
+      mergeMigrateConfig({ 'lock-ttl': 'not-a-number' }, { lockTtlMs: 5000 })
+    ).toThrowError(expect.objectContaining({ code: 'INVALID_LOCK_TTL' }));
   });
 
   it.each([
@@ -311,5 +315,53 @@ describe('parseBooleanEnv', () => {
     expect(message).not.toMatch(/\b[A-Z]{2,5}-\d{2}\b/);
     expect(message).not.toMatch(/\bD-\d{1,2}\b/);
     expect(message).not.toMatch(/\b(Fase|Phase|Plano|Plan|Task|Wave)\s+\d/i);
+  });
+});
+
+/**
+ * The pure-function tests above call `mergeMigrateConfig` directly with an
+ * already-built `values` object, so they can never observe whether the real
+ * `parseArgs` option declaration still carries a default value — a passing
+ * flag-value of `false` (not `undefined`) short-circuits the `??` chain
+ * before the env var is ever consulted, silently reproducing the same bug
+ * from a different half of the fix. Only a call through the actual CLI
+ * handler proves that half is closed too.
+ */
+describe('allowNoTransaction — the env var reaches the real handler with no flag passed', () => {
+  let stdoutSpy: ReturnType<typeof vi.spyOn>;
+  let stderrSpy: ReturnType<typeof vi.spyOn>;
+
+  beforeEach(() => {
+    stdoutSpy = vi
+      .spyOn(process.stdout, 'write')
+      .mockImplementation(() => true);
+    stderrSpy = vi
+      .spyOn(process.stderr, 'write')
+      .mockImplementation(() => true);
+  });
+
+  afterEach(() => {
+    stdoutSpy.mockRestore();
+    stderrSpy.mockRestore();
+    vi.unstubAllEnvs();
+  });
+
+  it('handleUp prints the loud warning from an env value alone, with no --allow-no-transaction flag', async () => {
+    vi.stubEnv('MONGOAT_MIGRATIONS_ALLOW_NO_TRANSACTION', 'true');
+
+    const fakeDatabase = {
+      connect: vi.fn().mockResolvedValue(undefined),
+      disconnect: vi.fn().mockResolvedValue(undefined),
+    } as unknown as Database;
+    const deps: CliDeps = { createDatabase: () => fakeDatabase };
+
+    const exitCode = await handleUp([], deps);
+
+    expect(exitCode).toBe(0);
+
+    const stderrOutput = stderrSpy.mock.calls
+      .map((call: unknown[]) => call[0])
+      .join('');
+    expect(stderrOutput).toContain('--allow-no-transaction is set');
   });
 });

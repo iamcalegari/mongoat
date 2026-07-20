@@ -21,7 +21,11 @@ import {
 } from '@/migrate/discover';
 import { MIGRATION_ERROR_CODES } from '@/migrate/errors';
 import { DEFAULT_LOCK_TTL_MS, formatLockDiagnostic } from '@/migrate/lock';
-import type { MigrateConfig, MigrationStatusRow } from '@/types/migrate';
+import type {
+  MigrateConfig,
+  MigrationStatusRow,
+  MongoatMigrationsConfig,
+} from '@/types/migrate';
 
 const DEFAULT_MIGRATIONS_DIR = 'migrations';
 const DEFAULT_MIGRATIONS_COLLECTION = '_migrations';
@@ -29,21 +33,32 @@ const DEFAULT_MIGRATIONS_COLLECTION = '_migrations';
 /**
  * @internal
  *
- * Resolution precedence for the migrations dir/control-collection (Open
- * Question 1, RESEARCH.md): CLI flag → env var → default. Follows the
- * project's established "no config file" convention (`DatabaseConfig`
- * only ever reads env vars/constructor args).
+ * Resolution precedence for the four migrations knobs (dir,
+ * control-collection, lock TTL, whether transactions are required): CLI
+ * flag, then env var, then config file, then a built-in fallback — applied
+ * independently per field. `mergeMigrateConfig` is the single place this
+ * four-tier chain is assembled into a `MigrateConfig`.
  */
-function resolveMigrationsDir(flagValue?: string): string {
+function resolveMigrationsDir(
+  flagValue: string | undefined,
+  configValue: string | undefined
+): string {
   return (
-    flagValue ?? process.env.MONGOAT_MIGRATIONS_DIR ?? DEFAULT_MIGRATIONS_DIR
+    flagValue ??
+    process.env.MONGOAT_MIGRATIONS_DIR ??
+    configValue ??
+    DEFAULT_MIGRATIONS_DIR
   );
 }
 
-function resolveMigrationsCollection(flagValue?: string): string {
+function resolveMigrationsCollection(
+  flagValue: string | undefined,
+  configValue: string | undefined
+): string {
   return (
     flagValue ??
     process.env.MONGOAT_MIGRATIONS_COLLECTION ??
+    configValue ??
     DEFAULT_MIGRATIONS_COLLECTION
   );
 }
@@ -51,18 +66,23 @@ function resolveMigrationsCollection(flagValue?: string): string {
 /**
  * @internal
  *
- * Same flag → env var → default precedence as `resolveMigrationsDir`, but
- * unlike that helper, a value supplied here (flag or env) is parsed and
- * validated BEFORE it is ever returned — same "validate before use" posture
- * as `assertValidVersionArg`. Must be a positive integer number of
- * milliseconds; anything else (non-numeric, fractional, zero, negative)
- * fails loud here, before it can ever become an invalid `expiresAt` in the
- * driver.
+ * Same flag → env var → config file → default precedence as
+ * `resolveMigrationsDir`, but unlike that helper, a value supplied via flag
+ * or env here is parsed and validated BEFORE it is ever returned — same
+ * "validate before use" posture as `assertValidVersionArg`. Must be a
+ * positive integer number of milliseconds; anything else (non-numeric,
+ * fractional, zero, negative) fails loud here, before it can ever become an
+ * invalid `expiresAt` in the driver. A value coming from the config file has
+ * already been validated by the loader, so it is trusted as-is at this
+ * final step.
  */
-function resolveLockTtlMs(flagValue?: string): number {
+function resolveLockTtlMs(
+  flagValue: string | undefined,
+  configValue: number | undefined
+): number {
   const raw = flagValue ?? process.env.MONGOAT_MIGRATIONS_LOCK_TTL;
 
-  if (raw === undefined) return DEFAULT_LOCK_TTL_MS;
+  if (raw === undefined) return configValue ?? DEFAULT_LOCK_TTL_MS;
 
   const parsed = Number(raw);
 
@@ -77,17 +97,104 @@ function resolveLockTtlMs(flagValue?: string): number {
   return parsed;
 }
 
-function buildConfig(values: {
-  'allow-no-transaction'?: boolean;
-  'collection'?: string;
-  'dir'?: string;
-  'lock-ttl'?: string;
-}): MigrateConfig {
+const BOOLEAN_ENV_TRUE_LITERALS = new Set(['true', '1', 'yes', 'on']);
+const BOOLEAN_ENV_FALSE_LITERALS = new Set(['false', '0', 'no', 'off']);
+
+/**
+ * @internal
+ *
+ * Name of the env var that lets `allowNoTransaction` be set outside a CLI
+ * flag or config file — the sole place this literal is spelled out in this
+ * module; every other reference below goes through this constant.
+ */
+const ALLOW_NO_TRANSACTION_ENV_VAR = 'MONGOAT_MIGRATIONS_ALLOW_NO_TRANSACTION';
+
+/**
+ * @internal
+ *
+ * Explicit, fail-loud parser for boolean-shaped env vars — deliberately
+ * NOT a generic `Boolean(str)` coercion, which would make any non-empty
+ * string (including the literal `"false"`) truthy and could silently flip
+ * on a mode the operator was trying to turn off. `undefined`/an empty
+ * string means "not set" and is returned as `undefined`, kept distinct from
+ * an explicit `false` so the caller can still fall through to a lower tier
+ * of the precedence chain. A small, closed set of recognized true/false
+ * literals (case-insensitive, surrounding whitespace trimmed) is accepted;
+ * anything else throws rather than guessing.
+ */
+export function parseBooleanEnv(
+  value: string | undefined
+): boolean | undefined {
+  if (value === undefined) return undefined;
+
+  const normalized = value.trim().toLowerCase();
+
+  if (normalized === '') return undefined;
+  if (BOOLEAN_ENV_TRUE_LITERALS.has(normalized)) return true;
+  if (BOOLEAN_ENV_FALSE_LITERALS.has(normalized)) return false;
+
+  throw new MongoatValidationError(
+    `"${ALLOW_NO_TRANSACTION_ENV_VAR}" must be one of ` +
+      `${[...BOOLEAN_ENV_TRUE_LITERALS, ...BOOLEAN_ENV_FALSE_LITERALS].join(', ')} ` +
+      `(case-insensitive) — received "${value}"`,
+    { code: 'INVALID_ALLOW_NO_TRANSACTION' }
+  );
+}
+
+/**
+ * @internal
+ *
+ * Same four-tier precedence as the other resolvers, but for a boolean
+ * field: flag → env var (see `ALLOW_NO_TRANSACTION_ENV_VAR` above, parsed
+ * by `parseBooleanEnv`) → config file → default (`false`). `undefined` must
+ * flow through every tier untouched — only the final `?? false` may
+ * materialize a concrete boolean — because `undefined` ("flag/env/config
+ * not set") and `false` ("explicitly set to false") are not the same thing,
+ * and collapsing them anywhere earlier in the chain would make a lower tier
+ * unreachable.
+ */
+function resolveAllowNoTransaction(
+  flagValue: boolean | undefined,
+  configValue: boolean | undefined
+): boolean {
+  return (
+    flagValue ??
+    parseBooleanEnv(process.env[ALLOW_NO_TRANSACTION_ENV_VAR]) ??
+    configValue ??
+    false
+  );
+}
+
+/**
+ * @internal
+ *
+ * Single point where the four-tier flag → env → config file → default
+ * chain is assembled into a resolved `MigrateConfig`. Each field is
+ * constructed by explicit assignment from its own resolver — never a
+ * generic spread/merge of the raw `fileConfig` object — so a config file
+ * can never introduce a key outside the four known fields, even if the
+ * loader's own validation were ever bypassed upstream.
+ */
+export function mergeMigrateConfig(
+  values: {
+    'allow-no-transaction'?: boolean;
+    'collection'?: string;
+    'dir'?: string;
+    'lock-ttl'?: string;
+  },
+  fileConfig?: MongoatMigrationsConfig
+): MigrateConfig {
   return {
-    dir: resolveMigrationsDir(values.dir),
-    collection: resolveMigrationsCollection(values.collection),
-    allowNoTransaction: Boolean(values['allow-no-transaction']),
-    lockTtlMs: resolveLockTtlMs(values['lock-ttl']),
+    dir: resolveMigrationsDir(values.dir, fileConfig?.dir),
+    collection: resolveMigrationsCollection(
+      values.collection,
+      fileConfig?.collection
+    ),
+    allowNoTransaction: resolveAllowNoTransaction(
+      values['allow-no-transaction'],
+      fileConfig?.allowNoTransaction
+    ),
+    lockTtlMs: resolveLockTtlMs(values['lock-ttl'], fileConfig?.lockTtlMs),
   };
 }
 
@@ -448,7 +555,7 @@ export async function handleCreate(argv: string[]): Promise<number> {
     // "validate before path.join" posture as `assertValidVersionArg`.
     const name = assertValidMigrationName(positionals[0]);
 
-    const dir = resolveMigrationsDir(values.dir);
+    const dir = resolveMigrationsDir(values.dir, undefined);
     const extension: 'js' | 'ts' = values.js ? 'js' : 'ts';
     const fileName = `${buildTimestampVersion()}_${name}.${extension}`;
     const filePath = path.join(dir, fileName);
@@ -481,7 +588,7 @@ export async function handleUp(
   argv: string[],
   deps: CliDeps = defaultDeps
 ): Promise<number> {
-  // `parseArgs`/`buildConfig` moved INSIDE the error boundary (see
+  // `parseArgs`/`mergeMigrateConfig` moved INSIDE the error boundary (see
   // `handleCreate`'s comment for the full rationale).
   return runWithErrorBoundary(async () => {
     const { values } = parseArgs({
@@ -489,12 +596,12 @@ export async function handleUp(
       options: {
         'dir': { type: 'string' },
         'collection': { type: 'string' },
-        'allow-no-transaction': { type: 'boolean', default: false },
+        'allow-no-transaction': { type: 'boolean' },
         'lock-ttl': { type: 'string' },
       },
     });
 
-    const config = buildConfig(values);
+    const config = mergeMigrateConfig(values);
 
     warnAllowNoTransaction(config.allowNoTransaction);
     await ensureTsCapableRuntime(config);
@@ -515,7 +622,7 @@ export async function handleDown(
   argv: string[],
   deps: CliDeps = defaultDeps
 ): Promise<number> {
-  // `parseArgs`/`buildConfig` moved INSIDE the error boundary (see
+  // `parseArgs`/`mergeMigrateConfig` moved INSIDE the error boundary (see
   // `handleCreate`'s comment for the full rationale).
   return runWithErrorBoundary(async () => {
     const { values, positionals } = parseArgs({
@@ -524,12 +631,12 @@ export async function handleDown(
       options: {
         'dir': { type: 'string' },
         'collection': { type: 'string' },
-        'allow-no-transaction': { type: 'boolean', default: false },
+        'allow-no-transaction': { type: 'boolean' },
         'lock-ttl': { type: 'string' },
       },
     });
 
-    const config = buildConfig(values);
+    const config = mergeMigrateConfig(values);
     const version = assertValidVersionArg(positionals[0], 'down');
 
     warnAllowNoTransaction(config.allowNoTransaction);
@@ -553,7 +660,7 @@ export async function handleTo(
   argv: string[],
   deps: CliDeps = defaultDeps
 ): Promise<number> {
-  // `parseArgs`/`buildConfig` moved INSIDE the error boundary (see
+  // `parseArgs`/`mergeMigrateConfig` moved INSIDE the error boundary (see
   // `handleCreate`'s comment for the full rationale).
   return runWithErrorBoundary(async () => {
     const { values, positionals } = parseArgs({
@@ -562,12 +669,12 @@ export async function handleTo(
       options: {
         'dir': { type: 'string' },
         'collection': { type: 'string' },
-        'allow-no-transaction': { type: 'boolean', default: false },
+        'allow-no-transaction': { type: 'boolean' },
         'lock-ttl': { type: 'string' },
       },
     });
 
-    const config = buildConfig(values);
+    const config = mergeMigrateConfig(values);
     const version = assertValidVersionArg(positionals[0], 'to');
 
     warnAllowNoTransaction(config.allowNoTransaction);
@@ -599,19 +706,19 @@ export async function handleUnlock(
   argv: string[],
   deps: CliDeps = defaultDeps
 ): Promise<number> {
-  // `parseArgs`/`buildConfig` moved INSIDE the error boundary (see
+  // `parseArgs`/`mergeMigrateConfig` moved INSIDE the error boundary (see
   // `handleCreate`'s comment for the full rationale).
   return runWithErrorBoundary(async () => {
     const { values } = parseArgs({
       args: argv,
       options: {
-        'dir': { type: 'string' },
-        'collection': { type: 'string' },
-        'force': { type: 'boolean', default: false },
+        dir: { type: 'string' },
+        collection: { type: 'string' },
+        force: { type: 'boolean', default: false },
       },
     });
 
-    const config = buildConfig(values);
+    const config = mergeMigrateConfig(values);
 
     await withConnectedDatabase(deps, async (database) => {
       if (values.force) {
@@ -675,7 +782,7 @@ export async function handleStatus(
   argv: string[],
   deps: CliDeps = defaultDeps
 ): Promise<number> {
-  // `parseArgs`/`buildConfig` moved INSIDE the error boundary (see
+  // `parseArgs`/`mergeMigrateConfig` moved INSIDE the error boundary (see
   // `handleCreate`'s comment for the full rationale).
   return runWithErrorBoundary(async () => {
     const { values } = parseArgs({
@@ -686,7 +793,7 @@ export async function handleStatus(
       },
     });
 
-    const config = buildConfig(values);
+    const config = mergeMigrateConfig(values);
     const { rows, lockStatus } = await withConnectedDatabase(
       deps,
       async (database) => ({
