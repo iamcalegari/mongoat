@@ -123,4 +123,39 @@ export interface MigrateConfig {
   allowNoTransaction?: boolean;
   collection: string;
   dir: string;
+  /** TTL of the run lock, in milliseconds. When absent, the runner applies
+   * its own default. */
+  lockTtlMs?: number;
+  /** Native graceful-stop channel — the runner checks `signal.aborted`
+   * between migrations. The library never installs process signal handlers
+   * itself. */
+  signal?: AbortSignal;
 }
+
+/**
+ * @internal
+ *
+ * Persisted shape of the singleton run-lock document held in the lock
+ * collection while a migration run is in progress.
+ */
+export interface MigrationLockDocument {
+  _id: string;
+  acquiredAt: Date;
+  expiresAt: Date;
+  hostname: string;
+  /** `'up'`/`'down'`/`'to'`, plus the target version when applicable. */
+  operation: string;
+  pid: number;
+  /** Unique per run — proof of ownership over the lock document. */
+  ownerId: string;
+}
+
+/**
+ * @internal
+ *
+ * Return shape of the lock-status read: `lock` is present only when `held`
+ * is `true`.
+ */
+export type LockStatus =
+  | { held: false }
+  | { held: true; lock: MigrationLockDocument };
