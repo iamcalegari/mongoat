@@ -1,6 +1,6 @@
 // Deprecação das 34 versões `1.0.x-alpha` do npm por VERSÃO EXATA.
 //
-// Pitfall crítico: `npm deprecate` por
+// Armadilha crítica: `npm deprecate` por
 // RANGE (`<1.1.0`, `1.0.x-alpha`, `1.x`) NÃO casa com nenhuma pre-release publicada
 // — o comando não retorna erro, simplesmente marca zero versões silenciosamente.
 // Por isso este script NUNCA usa range: ele obtém a lista real de versões via

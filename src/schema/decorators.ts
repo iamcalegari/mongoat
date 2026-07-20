@@ -91,7 +91,7 @@ export function Prop(fragment: PropFragment) {
     if (!meta.required.includes(fieldName)) {
       meta.required.push(fieldName);
     }
-    // Retorna void de propósito: nenhum decorator desta fase devolve um novo
+    // Retorna void de propósito: nenhum destes decorators devolve um novo
     // inicializador de campo TC39 — tudo é só metadata.
   };
 }
@@ -186,7 +186,7 @@ export function Pre(method: string, fn: (...args: unknown[]) => unknown) {
 
     meta.classPreHooks.push({ method, fn });
     // Retorna void de propósito — mesma disciplina de `Prop`/`Optional`:
-    // decorators desta fase só acumulam metadata, nunca alteram o
+    // estes decorators só acumulam metadata, nunca alteram o
     // valor/inicializador do campo ou substituem a classe.
   };
 }
