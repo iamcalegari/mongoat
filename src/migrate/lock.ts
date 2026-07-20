@@ -3,8 +3,12 @@ import { Db, MongoServerError } from 'mongodb';
 import type { Database } from '@/database';
 import { MongoatError } from '@/errors';
 import { runBestEffort } from '@/errors/suppress';
+// WR-02: `getNativeDbOrThrow` lives in its own leaf module — never
+// `@/migrate/runner`, which itself imports `acquireLock`/`releaseIfOwner`
+// from THIS module below. Importing from `runner.ts` here would create a
+// real `runner.ts ↔ lock.ts` cycle.
+import { getNativeDbOrThrow } from '@/migrate/db';
 import { MIGRATION_ERROR_CODES } from '@/migrate/errors';
-import { getNativeDbOrThrow } from '@/migrate/runner';
 import type {
   LockStatus,
   MigrateConfig,

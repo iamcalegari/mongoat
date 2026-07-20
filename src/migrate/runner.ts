@@ -11,6 +11,12 @@ import {
 } from '@/errors';
 import { attachSuppressed, runBestEffort } from '@/errors/suppress';
 import { computeChecksum } from '@/migrate/checksum';
+// WR-02: moved to its own leaf module — `getNativeDbOrThrow` used to live
+// here and be imported by `@/migrate/lock`, which THIS module also imports
+// from (`acquireLock`/`releaseIfOwner` below): a real `runner.ts ↔ lock.ts`
+// import cycle, despite a since-removed comment here claiming otherwise.
+// Re-exported for backward-compatible internal call sites.
+import { getNativeDbOrThrow } from '@/migrate/db';
 import { discoverMigrations } from '@/migrate/discover';
 import { MIGRATION_ERROR_CODES } from '@/migrate/errors';
 import { acquireLock, releaseIfOwner } from '@/migrate/lock';
@@ -24,33 +30,13 @@ import type {
   MigrationStatusRow,
 } from '@/types/migrate';
 
+export { getNativeDbOrThrow } from '@/migrate/db';
+
 type DiscoveredMigration = {
   filePath: string;
   name: string;
   version: string;
 };
-
-/**
- * @internal
- *
- * Same "fail loud before touching the driver" precondition guard already
- * established by `Database#withTransaction` — a migration operation
- * attempted against a disconnected `Database` must never silently no-op.
- *
- * Exported for reuse by `@/migrate/lock` (no import cycle: this module never
- * imports from `lock.ts`).
- */
-export function getNativeDbOrThrow(database: Database): Db {
-  const nativeDb = database.getDb();
-
-  if (!nativeDb) {
-    throw new MongoatConnectionError(
-      'Database not connected — call db.connect() first'
-    );
-  }
-
-  return nativeDb;
-}
 
 /**
  * @internal
