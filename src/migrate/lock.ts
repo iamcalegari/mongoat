@@ -46,15 +46,40 @@ export function lockCollectionName(config: MigrateConfig): string {
 /**
  * @internal
  *
+ * Best-effort ISO formatting for a lock document field that is only ever
+ * TRUSTED to be a `Date` by convention, never by a runtime guarantee — a
+ * document written by hand, by a future/incompatible version, or otherwise
+ * corrupted could carry a string, a missing field, or an invalid `Date`.
+ * Never throws.
+ */
+function safeIso(value: unknown): string {
+  return value instanceof Date && !Number.isNaN(value.getTime())
+    ? value.toISOString()
+    : '<invalid date>';
+}
+
+/**
+ * @internal
+ *
  * Formats the same "who holds the lock, since when, until when" diagnostic
  * line reused verbatim in three places: the `MIGRATION_LOCK_HELD` error
  * message, the dry-run output of the manual unlock command, and the lock row
  * of the status report.
+ *
+ * CR-02: never throws, even against a partially corrupted lock document —
+ * every field is read defensively (`?? '<unknown>'`/`safeIso`), in the same
+ * spirit as `describeSuppressed` in `@/errors/suppress`. This is exactly the
+ * break-glass path (`mongoat unlock`/`mongoat status`) the
+ * `MIGRATION_LOCK_HELD` message itself instructs an operator to use when a
+ * lock document looks wrong — it must never crash instead of reporting the
+ * diagnostic it can.
  */
-export function formatLockDiagnostic(lock: MigrationLockDocument): string {
+export function formatLockDiagnostic(
+  lock: Partial<MigrationLockDocument>
+): string {
   return (
-    `held by ${lock.hostname} (pid ${lock.pid}, ${lock.operation}) ` +
-    `since ${lock.acquiredAt.toISOString()}, expires ${lock.expiresAt.toISOString()}`
+    `held by ${lock.hostname ?? '<unknown>'} (pid ${lock.pid ?? '?'}, ${lock.operation ?? '?'}) ` +
+    `since ${safeIso(lock.acquiredAt)}, expires ${safeIso(lock.expiresAt)}`
   );
 }
 

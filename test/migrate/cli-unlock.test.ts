@@ -126,4 +126,49 @@ describe('handleUnlock (mongoat unlock)', () => {
     expect(exitCode).toBe(0);
     expect(forceUnlock).toHaveBeenCalledTimes(1);
   });
+
+  // CR-02: a corrupted lock document (e.g. missing acquiredAt, or expiresAt
+  // stored as a non-Date value) must never crash the dry-run/--force
+  // diagnostic output — exactly the break-glass path the MIGRATION_LOCK_HELD
+  // message itself tells an operator to use for a document it cannot fully
+  // parse.
+  describe('against a corrupted lock document (CR-02)', () => {
+    const corruptedLock = {
+      _id: 'lock',
+      hostname: 'legacy-host',
+      pid: 999,
+      operation: 'up',
+      ownerId: 'owner-legacy',
+      // acquiredAt intentionally omitted; expiresAt is not a Date.
+      expiresAt: 'not-a-date',
+    } as unknown as MigrationLockDocument;
+
+    it('dry by default: reports the diagnostic without throwing', async () => {
+      vi.mocked(getLockStatus).mockResolvedValue({
+        held: true,
+        lock: corruptedLock,
+      });
+
+      const exitCode = await handleUnlock([], deps);
+
+      expect(exitCode).toBe(0);
+      expect(stdout()).toContain('held by legacy-host');
+      expect(stdout()).toContain('<invalid date>');
+      expect(stderr()).toContain('--force');
+    });
+
+    it('--force: removes the corrupted lock and reports the diagnostic without throwing', async () => {
+      vi.mocked(forceUnlock).mockResolvedValue({
+        removed: true,
+        lock: corruptedLock,
+      });
+
+      const exitCode = await handleUnlock(['--force'], deps);
+
+      expect(exitCode).toBe(0);
+      expect(stdout()).toContain('Removed migration lock');
+      expect(stdout()).toContain('held by legacy-host');
+      expect(stdout()).toContain('<invalid date>');
+    });
+  });
 });

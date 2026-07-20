@@ -14,6 +14,7 @@ import type { CliDeps } from '@/bin/mongoat';
 import { dispatch, handleStatus, handleTo } from '@/bin/mongoat';
 import type { Database } from '@/database';
 import { getLockStatus, getStatus } from '@/migrate';
+import type { MigrationLockDocument } from '@/types/migrate';
 
 /**
  * MIG-03/T-08-01 — CLI subcommand dispatch, `status` table output, and
@@ -92,6 +93,38 @@ describe('mongoat CLI dispatch', () => {
     expect(stdoutOutput).toContain('20260101090000 | first | applied');
     expect(stdoutOutput).toContain('20260101100000 | second | pending');
     expect(stdoutOutput).toContain('lock: free');
+  });
+
+  it('status renders a corrupted lock diagnostic without throwing (CR-02)', async () => {
+    vi.mocked(getStatus).mockResolvedValue([]);
+    vi.mocked(getLockStatus).mockResolvedValue({
+      held: true,
+      lock: {
+        _id: 'lock',
+        hostname: 'legacy-host',
+        pid: 999,
+        operation: 'up',
+        ownerId: 'owner-legacy',
+        // acquiredAt intentionally omitted; expiresAt is not a Date.
+        expiresAt: 'not-a-date',
+      } as unknown as MigrationLockDocument,
+    });
+
+    const fakeDatabase = {
+      connect: vi.fn().mockResolvedValue(undefined),
+      disconnect: vi.fn().mockResolvedValue(undefined),
+    } as unknown as Database;
+    const deps: CliDeps = { createDatabase: () => fakeDatabase };
+
+    const exitCode = await handleStatus([], deps);
+
+    expect(exitCode).toBe(0);
+
+    const stdoutOutput = stdoutSpy.mock.calls
+      .map((call: unknown[]) => call[0])
+      .join('');
+    expect(stdoutOutput).toContain('lock: held by legacy-host');
+    expect(stdoutOutput).toContain('<invalid date>');
   });
 
   it('a malformed "to <version>" argument is rejected before touching the DB', async () => {
