@@ -1,5 +1,6 @@
 import type { MigrationModule } from '@/types/migrate';
 
+export { forceUnlock, getLockStatus } from './lock';
 export { getStatus, revertMigration, runMigrations, runTo } from './runner';
 export type { MigrationContext, MigrationModule } from '@/types/migrate';
 
