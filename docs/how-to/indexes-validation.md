@@ -38,11 +38,36 @@ indexes created outside Mongoat (by DBAs or migrations, for example).
 
 ## Schema validation
 
-Pass a `ModelValidationSchema` — a `$jsonSchema`-shaped object using
-`bsonType`, `properties`, `required` and `pattern` — as `schema`, and set
-`validity: true` to enable it:
+Pass a schema as `schema` and set `validity: true` to enable it. The schema
+can be a plain `ModelValidationSchema` — a `$jsonSchema`-shaped object using
+`bsonType`, `properties`, `required` and `pattern` — or a class decorated
+with `@Schema`/`@Prop`; both compile to the same validator:
 
-```ts
+::: code-group
+
+```ts [Decorators]
+import { Model, Prop, Schema } from '@iamcalegari/mongoat';
+
+@Schema('users')
+class UserSchema {
+  @Prop({ bsonType: 'string', description: 'Username of the user' })
+  username!: string;
+
+  @Prop({
+    bsonType: 'string',
+    description: 'Mail of the user',
+    pattern: '^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\\.[a-zA-Z0-9-.]+$',
+  })
+  mail!: string;
+}
+
+export const User = new Model<UserSchema>({
+  schema: UserSchema,
+  validity: true,
+});
+```
+
+```ts [Object]
 import { ModelValidationSchema, SchemaWithDefaults } from '@iamcalegari/mongoat';
 
 const schema: ModelValidationSchema<SchemaWithDefaults<UserSchema>> = {
@@ -65,6 +90,14 @@ export const User = new Model<UserSchema>({
 });
 ```
 
+:::
+
+The two tabs are equivalent: every `@Prop` field is required unless marked
+`@Optional()`, so the class above produces `required: ['username', 'mail']`,
+and `@Schema('users')` supplies the default collection name the object form
+passes explicitly — see
+[Define a schema with decorators](/how-to/decorators) for the full mapping.
+
 Validation is applied **server-side**: `setupCollections()` runs a `collMod`
 command with the built `$jsonSchema` validator — MongoDB itself rejects
 documents that don't conform, not a client-side check performed by Mongoat
@@ -77,6 +110,8 @@ CRUD methods (`insert`, `find`, `findById`, `findMany`, `update`,
 
 - [Getting started](/tutorials/getting-started) — schema + indexes in the
   full connect → CRUD walkthrough.
+- [Define a schema with decorators](/how-to/decorators) — the decorator form
+  in depth, and how it maps to the object form.
 - [Server-side validation](/explanation/server-side-validation) — why
   validation happens on the MongoDB server, not in the ODM.
 - [Reference](/api/) — `CreateIndexProps` and `ModelValidationSchema`.

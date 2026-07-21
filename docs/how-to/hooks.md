@@ -10,15 +10,40 @@ Hooks receive a single `ctx` object — they are **not** bound to the document
 via `this`. `ctx` exposes different fields depending on the method being
 hooked (`ctx.document` for `insert`, `ctx.filter`/`ctx.update` for `update`,
 `ctx.result` for post-hooks, plus `ctx.options`, `ctx.model` and `ctx.method`
-on every call):
+on every call).
 
-```ts
+There are two equivalent ways to register a hook: call `.pre()`/`.post()` on
+the model, or — when the schema is a decorated class — declare it next to
+the field with `@Pre`. Both feed the exact same hook pipeline:
+
+::: code-group
+
+```ts [Model method]
 import { METHODS } from '@iamcalegari/mongoat';
 
 User.pre(METHODS.INSERT, (ctx) => {
   ctx.document.mail = ctx.document.mail.toLowerCase();
 });
 ```
+
+```ts [Decorators]
+import { METHODS, Pre, Prop, Schema } from '@iamcalegari/mongoat';
+
+@Schema('users')
+class UserSchema {
+  @Pre(METHODS.INSERT, (value) => String(value).toLowerCase())
+  @Prop({ bsonType: 'string' })
+  mail!: string;
+}
+```
+
+:::
+
+A field-level `@Pre` is sugar that transforms just that field's value —
+`(value, ctx) => newValue` — while `@Pre`/`@Post` at class level receive the
+same full `ctx` as `.pre()`/`.post()`. See
+[Hooks on the class](/how-to/decorators#hooks-on-the-class) for where each
+level fits.
 
 Mutating `ctx.document`/`ctx.filter`/`ctx.update`/`ctx.options` in a pre-hook
 changes what actually reaches the driver — the pipeline reads its arguments
@@ -76,4 +101,6 @@ hooks never loop back on themselves.
 
 - [Getting started](/tutorials/getting-started) — where `User.pre(...)` is
   first introduced.
+- [Define a schema with decorators](/how-to/decorators) — `@Pre`/`@Post`
+  declared on the schema class, at field and class level.
 - [Reference](/api/) — `HookFn`, `HookConfig` and the full `Model` API.
