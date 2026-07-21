@@ -983,9 +983,14 @@ export async function handleUp(
     // May re-exec — never returns if it does (see `resolveMigrateConfig`).
     const config = await resolveMigrateConfig(values);
 
-    // May ALSO re-exec — never returns if it does. A dry-run imports
-    // migration files too (it still has to plan against them), so it
-    // participates in this checkpoint exactly like a real run.
+    // May ALSO re-exec — never returns if it does. A dry-run never imports
+    // a migration module (planning only lists directory entries and hashes
+    // their bytes; `importMigrationModule` is reached exclusively from the
+    // apply/revert paths), so this checkpoint is not a technical requirement
+    // here. It is kept deliberately, for failure-mode parity with a real
+    // run: without it, a dry run against a TypeScript migration set would
+    // report a viable plan on a runtime where the real run it is previewing
+    // would immediately fail with `TSX_NOT_AVAILABLE`.
     await ensureTsCapableRuntimeForMigrations(config);
 
     // Reached exactly once: both re-exec checkpoints above exit the
@@ -1100,9 +1105,14 @@ export async function handleTo(
     const config = await resolveMigrateConfig(values);
     const version = assertValidVersionArg(positionals[0], 'to');
 
-    // May ALSO re-exec — never returns if it does. A dry-run imports
-    // migration files too (it still has to plan against them), so it
-    // participates in this checkpoint exactly like a real run.
+    // May ALSO re-exec — never returns if it does. A dry-run never imports
+    // a migration module (planning only lists directory entries and hashes
+    // their bytes; `importMigrationModule` is reached exclusively from the
+    // apply/revert paths), so this checkpoint is not a technical requirement
+    // here. It is kept deliberately, for failure-mode parity with a real
+    // run: without it, a dry run against a TypeScript migration set would
+    // report a viable plan on a runtime where the real run it is previewing
+    // would immediately fail with `TSX_NOT_AVAILABLE`.
     await ensureTsCapableRuntimeForMigrations(config);
 
     // Reached exactly once: both re-exec checkpoints above exit the
