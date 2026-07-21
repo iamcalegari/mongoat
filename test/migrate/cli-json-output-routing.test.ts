@@ -69,10 +69,9 @@ afterEach(() => {
 
 /**
  * A real-process proof that `mongoat status --json` puts JSON on stdout and
- * everything human (config provenance, warnings, errors) on stderr — the
- * D-11/D-12 stream-separation contract a same-process `process.stdout.write`
- * spy cannot prove, since it never touches two genuinely separate OS
- * streams.
+ * everything human (config provenance, warnings, errors) on stderr — a
+ * same-process `process.stdout.write` spy cannot prove this, since it never
+ * touches two genuinely separate OS streams.
  */
 describe('mongoat status --json — real-process stdout/stderr stream separation', () => {
   beforeAll(() => {
