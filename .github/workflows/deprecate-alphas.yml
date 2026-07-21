@@ -27,9 +27,9 @@ jobs:
     runs-on: ubuntu-latest
     environment: npm-publish # gate humano (required reviewer) — write irreversível
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 22.x
           registry-url: https://registry.npmjs.org
@@ -45,12 +45,14 @@ jobs:
       - name: Confirmar por amostragem
         # O registry é eventualmente consistente: logo após o PUT, a réplica de
         # leitura pode ainda não refletir a deprecação (aconteceu no primeiro
-        # run com a última versão do loop) — daí o retry com backoff.
+        # run com a última versão do loop) — daí o retry com backoff, e o shell
+        # de um step multi-linha aborta no primeiro comando que falha, então o
+        # `|| true` evita que uma leitura falha mate o step antes do loop decidir.
         run: |
           for v in 1.0.0-alpha 1.0.17-alpha 1.0.34-alpha; do
             ok=""
             for attempt in 1 2 3 4; do
-              msg=$(npm view "@iamcalegari/mongoat@${v}" deprecated)
+              msg=$(npm view "@iamcalegari/mongoat@${v}" deprecated || true)
               if [ -n "$msg" ]; then
                 echo "OK ${v}: ${msg}"
                 ok=1
