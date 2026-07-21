@@ -38,8 +38,11 @@ function getPublishedVersions() {
 }
 
 function getAlphaVersions(versions) {
+  // Com exatamente uma versão publicada, o registry devolve uma string nua
+  // em vez de uma lista de um elemento — normaliza antes de filtrar.
+  const versionList = Array.isArray(versions) ? versions : [versions];
   // Filtra somente as versões 1.0.x-alpha — nunca 1.1.0-rc.0 nem 1.1.0.
-  return versions.filter((v) => v.endsWith('-alpha'));
+  return versionList.filter((v) => v.endsWith('-alpha'));
 }
 
 function isOtpError(err) {
