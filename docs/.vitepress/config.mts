@@ -85,6 +85,10 @@ export default withMermaid(
           {
             text: 'How-to guides',
             items: [
+              {
+                text: 'Define a schema with decorators',
+                link: '/how-to/decorators',
+              },
               { text: 'Register pre/post hooks', link: '/how-to/hooks' },
               {
                 text: 'Document defaults & timestamps',
