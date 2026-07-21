@@ -145,6 +145,35 @@ describe('toStatusJsonRow', () => {
     expect(Object.hasOwn(jsonRow, 'appliedAt')).toBe(true);
     expect(jsonRow.appliedAt).toBeNull();
   });
+
+  it('an applied row with a non-Date appliedAt projects appliedAt to null without throwing', () => {
+    // A control record is only ever trusted to hold a `Date` by convention:
+    // a hand-written / legacy / future-version document can carry a string.
+    const row = {
+      version: '4',
+      name: 'd',
+      applied: true,
+      appliedAt: 'not-a-date',
+    } as unknown as MigrationStatusRow;
+
+    expect(() => toStatusJsonRow(row)).not.toThrow();
+    expect(toStatusJsonRow(row).appliedAt).toBeNull();
+  });
+
+  it('an applied row whose appliedAt is out of the JS Date range projects appliedAt to null without throwing', () => {
+    // BSON stores an int64 millisecond value; JS `Date` caps at ±8.64e15, so
+    // anything beyond that deserializes to an Invalid Date whose
+    // `toISOString()` would throw `RangeError: Invalid time value`.
+    const row: MigrationStatusRow = {
+      version: '5',
+      name: 'e',
+      applied: true,
+      appliedAt: new Date(8.64e15 + 1),
+    };
+
+    expect(() => toStatusJsonRow(row)).not.toThrow();
+    expect(toStatusJsonRow(row).appliedAt).toBeNull();
+  });
 });
 
 describe('toLockJson', () => {

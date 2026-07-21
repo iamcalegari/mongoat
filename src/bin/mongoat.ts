@@ -1211,6 +1211,14 @@ export function computeStatusExitCode(summary: MigrationStatusSummary): number {
  * silently vanish from the serialized object instead of surfacing as an
  * explicit `null`/`false`. `state` mirrors `formatStatusTable`'s own
  * failed > applied > pending label precedence.
+ *
+ * `appliedAt` goes through `safeIsoOrNull` for the same reason the sibling
+ * lock projection does: it is copied straight out of the control collection
+ * and is only TRUSTED to be a `Date` by convention. A record written by hand,
+ * by a future/incompatible version, or carrying a BSON date outside the JS
+ * `Date` range would otherwise take the whole command down with a raw
+ * `RangeError`/`TypeError` that has no `.code` and is indistinguishable from
+ * a connection failure.
  */
 export function toStatusJsonRow(
   row: MigrationStatusRow
@@ -1220,7 +1228,7 @@ export function toStatusJsonRow(
     name: row.name,
     state: row.failed ? 'failed' : row.applied ? 'applied' : 'pending',
     drifted: row.drifted ?? false,
-    appliedAt: row.appliedAt ? row.appliedAt.toISOString() : null,
+    appliedAt: safeIsoOrNull(row.appliedAt),
   };
 }
 
