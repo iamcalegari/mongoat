@@ -21,10 +21,19 @@ import {
   MIGRATION_VERSION_REGEX,
 } from '@/migrate/discover';
 import { MIGRATION_ERROR_CODES } from '@/migrate/errors';
-import { DEFAULT_LOCK_TTL_MS, formatLockDiagnostic } from '@/migrate/lock';
+import {
+  DEFAULT_LOCK_TTL_MS,
+  formatLockDiagnostic,
+  safeIsoOrNull,
+} from '@/migrate/lock';
 import type {
+  LockStatus,
   MigrateConfig,
+  MigrationLockJson,
+  MigrationStatusJson,
+  MigrationStatusJsonRow,
   MigrationStatusRow,
+  MigrationStatusSummary,
   MongoatMigrationsConfig,
 } from '@/types/migrate';
 
@@ -1009,6 +1018,102 @@ export async function handleUnlock(
       }
     });
   });
+}
+
+/**
+ * @internal
+ *
+ * Single pass over the discovered rows building the JSON envelope's
+ * aggregate counts. `applied`/`failed`/`pending` are a tri-state partition
+ * over `total` (mirroring the same failed > applied > pending precedence
+ * `formatStatusTable` uses to label a row) — a row is counted into exactly
+ * one of the three. `drifted` is tallied INDEPENDENTLY of that partition: a
+ * row that is both applied and drifted increments both counts, since drift
+ * only ever applies to an already-applied migration.
+ */
+export function summarizeStatusRows(
+  rows: MigrationStatusRow[]
+): MigrationStatusSummary {
+  const summary: MigrationStatusSummary = {
+    applied: 0,
+    drifted: 0,
+    failed: 0,
+    pending: 0,
+    total: rows.length,
+  };
+
+  for (const row of rows) {
+    if (row.failed) {
+      summary.failed += 1;
+    } else if (row.applied) {
+      summary.applied += 1;
+    } else {
+      summary.pending += 1;
+    }
+
+    if (row.drifted) summary.drifted += 1;
+  }
+
+  return summary;
+}
+
+/**
+ * @internal
+ *
+ * Derives the `status` exit code from the summary alone — never re-reading
+ * the raw rows — so the exit code and the JSON payload (also built from this
+ * same summary) can never disagree. Most-severe-wins: any failed or drifted
+ * migration outranks any number of merely pending ones, and a pending
+ * migration outranks a fully clean state.
+ */
+export function computeStatusExitCode(summary: MigrationStatusSummary): number {
+  if (summary.failed > 0 || summary.drifted > 0) return 3;
+  if (summary.pending > 0) return 2;
+
+  return 0;
+}
+
+/**
+ * @internal
+ *
+ * Projects one `MigrationStatusRow` into its always-present JSON shape.
+ * Never spreads `row` itself — an optional/undefined source field would
+ * silently vanish from the serialized object instead of surfacing as an
+ * explicit `null`/`false`. `state` mirrors `formatStatusTable`'s own
+ * failed > applied > pending label precedence.
+ */
+export function toStatusJsonRow(
+  row: MigrationStatusRow
+): MigrationStatusJsonRow {
+  return {
+    version: row.version,
+    name: row.name,
+    state: row.failed ? 'failed' : row.applied ? 'applied' : 'pending',
+    drifted: row.drifted ?? false,
+    appliedAt: row.appliedAt ? row.appliedAt.toISOString() : null,
+  };
+}
+
+/**
+ * @internal
+ *
+ * Projects a `LockStatus` into its JSON shape. A free lock carries no other
+ * field. A held lock's date fields go through `safeIsoOrNull` so a
+ * corrupted `acquiredAt`/`expiresAt` degrades to `null` instead of leaking a
+ * raw non-ISO value into a field a downstream script would parse as a date.
+ */
+export function toLockJson(status: LockStatus): MigrationLockJson {
+  if (!status.held) return { held: false };
+
+  return {
+    held: true,
+    hostname: status.lock.hostname,
+    pid: status.lock.pid,
+    operation: status.lock.operation,
+    ownerId: status.lock.ownerId,
+    acquiredAt: safeIsoOrNull(status.lock.acquiredAt),
+    expiresAt: safeIsoOrNull(status.lock.expiresAt),
+  };
 }
 
 function formatStatusTable(rows: MigrationStatusRow[]): string {
