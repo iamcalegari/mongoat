@@ -119,7 +119,14 @@ async function collectPending(
 }
 
 /**
- * @public
+ * @internal
+ *
+ * Deliberately NOT part of the package surface: the single `"."` export maps
+ * to the barrel, which re-exports `getStatus`/`revertMigration`/
+ * `runMigrations`/`runTo` but not this — `--dry-run` is a CLI affordance,
+ * not a programmatic one. Tagged to match that reachability, so TypeDoc does
+ * not publish a symbol no consumer can import and the semver contract stays
+ * unambiguous.
  *
  * Read-only preview of what `runMigrations`/`runTo` would apply: runs the
  * exact same read-only preconditions those functions run before ever
