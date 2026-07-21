@@ -61,6 +61,7 @@ export default withMermaid(
         { text: 'Tutorials', link: '/tutorials/getting-started' },
         { text: 'How-to', link: '/how-to/hooks' },
         { text: 'Reference', link: '/api/' },
+        { text: 'CLI', link: '/cli/' },
         { text: 'Explanation', link: '/explanation/thin-odm-philosophy' },
         { text: 'Benchmarks', link: '/explanation/benchmarks' },
         { text: 'Versioning', link: '/explanation/versioning' },
@@ -143,6 +144,12 @@ export default withMermaid(
           {
             text: 'Reference',
             items: typedocSidebar,
+          },
+        ],
+        '/cli/': [
+          {
+            text: 'CLI',
+            items: [{ text: 'CLI reference', link: '/cli/' }],
           },
         ],
       },
