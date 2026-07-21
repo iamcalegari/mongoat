@@ -20,11 +20,11 @@ Each entry follows the same shape: **what changed**, **before**, **after**, and
 
 ## Table of contents
 
-1. [Hooks](#1-hooks)
-2. [Errors](#2-errors)
-3. [Input validation](#3-input-validation)
-4. [Environment & build](#4-environment-build)
-5. [API surface](#5-api-surface)
+1. [Hooks](#_1-hooks)
+2. [Errors](#_2-errors)
+3. [Input validation](#_3-input-validation)
+4. [Environment & build](#_4-environment-build)
+5. [API surface](#_5-api-surface)
 
 ---
 

@@ -7,13 +7,13 @@ flags it accepts, and what it deliberately never does.
 
 ## Table of contents
 
-1. [Commands](#1-commands)
-2. [Environment variables](#2-environment-variables)
-3. [Config file](#3-config-file)
-4. [Configuration precedence](#4-configuration-precedence)
-5. [Dry-run](#5-dry-run)
-6. [Exit codes](#6-exit-codes)
-7. [CI examples](#7-ci-examples)
+1. [Commands](#_1-commands)
+2. [Environment variables](#_2-environment-variables)
+3. [Config file](#_3-config-file)
+4. [Configuration precedence](#_4-configuration-precedence)
+5. [Dry-run](#_5-dry-run)
+6. [Exit codes](#_6-exit-codes)
+7. [CI examples](#_7-ci-examples)
 
 ---
 
@@ -198,7 +198,7 @@ stderr.
 
 The CLI reads six environment variables in total: two for the MongoDB
 connection, and four that resolve the migrations config fields covered in
-[Configuration precedence](#4-configuration-precedence) below — each of
+[Configuration precedence](#_4-configuration-precedence) below — each of
 those four also has a corresponding flag and a config-file key.
 
 | Env var | Affects | Empty-string handling |
@@ -436,7 +436,7 @@ lock is still held by a crashed runner still exits `0` here, and the very
 next `mongoat up` still fails with `Error [MIGRATION_LOCK_HELD]`. A
 pipeline that needs to know whether the next command can actually run has
 to read the lock separately, from the `lock.held` field of the `--json`
-envelope shown in [Dry-run](#5-dry-run) — `$?` alone never answers that
+envelope shown in [Dry-run](#_5-dry-run) — `$?` alone never answers that
 question.
 
 ## 7. CI examples
@@ -468,7 +468,7 @@ That logical flow has five steps, in this order:
    is not safe to continue.
 4. Check the run lock **separately**, by filtering the `lock.held` field
    out of the saved payload — the exit code never reflects the lock (see
-   [Exit codes](#6-exit-codes)).
+   [Exit codes](#_6-exit-codes)).
 5. Apply the pending migrations when the exit code indicates there are
    any.
 
