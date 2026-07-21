@@ -1272,6 +1272,13 @@ export function summarizeStatusRows(
  * same summary) can never disagree. Most-severe-wins: any failed or drifted
  * migration outranks any number of merely pending ones, and a pending
  * migration outranks a fully clean state.
+ *
+ * SCOPE, deliberately: the code reports MIGRATION STATE only. The run lock
+ * is not folded into the tiering — a repository that is clean but whose lock
+ * is still held by a crashed runner exits 0, and the very next `up` fails
+ * with `MIGRATION_LOCK_HELD`. A pipeline that must not hit that has to read
+ * `lock.held` from the `--json` envelope; `$?` alone is not enough to
+ * conclude the next command can run.
  */
 export function computeStatusExitCode(summary: MigrationStatusSummary): number {
   if (summary.failed > 0 || summary.drifted > 0) return 3;
@@ -1355,6 +1362,19 @@ function formatStatusTable(rows: MigrationStatusRow[]): string {
   return `${lines.join('\n')}\n`;
 }
 
+/**
+ * @internal
+ *
+ * `mongoat status [--json]`. Exits 0 when everything is applied, 2 when
+ * anything is pending, 3 when anything is failed or drifted (see
+ * `computeStatusExitCode`).
+ *
+ * The exit code covers MIGRATION STATE ONLY — never the run lock. A clean
+ * repository whose lock is still held by a crashed runner exits 0 even
+ * though the next `up` would fail with `MIGRATION_LOCK_HELD`; a consumer
+ * that needs that guarantee must inspect `lock.held` in the `--json`
+ * envelope separately.
+ */
 export async function handleStatus(
   argv: string[],
   deps: CliDeps = defaultDeps

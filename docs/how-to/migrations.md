@@ -158,6 +158,19 @@ Each row shows one of four labels:
 - **`failed`** — the most recent attempt to apply it failed; it is never
   reported as applied.
 
+`mongoat status` exits `0` when everything is applied, `2` when something is
+pending, and `3` when anything is failed or drifted.
+
+That exit code reflects **migration state only** — it says nothing about the
+run lock. A repository that is fully applied but whose lock is still held by
+a crashed runner exits `0`, and the very next `mongoat up` fails with
+`MIGRATION_LOCK_HELD`. If your pipeline needs to know that the next command
+can actually run, read the lock as well:
+
+```bash
+mongoat status --json | jq -e '.lock.held == false'
+```
+
 ## Revert a migration
 
 ```bash

@@ -169,6 +169,12 @@ export interface MigrationLockJson {
  * renamed, or whose meaning changed) — never on an additive field, so a
  * consumer pinned to a given `schemaVersion` can safely ignore fields it
  * does not recognize.
+ *
+ * `lock` is reported here but is NOT reflected in the command's exit code,
+ * which covers migration state only: a clean repository whose lock is still
+ * held by a crashed runner exits 0 while the next `up` would fail with
+ * `MIGRATION_LOCK_HELD`. A pipeline gating on `$?` alone must additionally
+ * inspect `lock.held`.
  */
 export interface MigrationStatusJson {
   lock: MigrationLockJson;
