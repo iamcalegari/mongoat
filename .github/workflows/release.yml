@@ -30,11 +30,11 @@ jobs:
     runs-on: ubuntu-latest
     environment: npm-publish # gate humano (required reviewer)
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
         with:
           fetch-depth: 0
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 22.x
           cache: npm
@@ -42,11 +42,21 @@ jobs:
 
       - run: npm ci
 
+      - run: npm run lint
+
+      - run: npm run typecheck
+
       - run: npm run build
+
+      - run: npm test
 
       - run: npm run check:package
 
-      - uses: changesets/action@v1
+      # A referencia abaixo aponta para um commit fixo, nao para a tag `v1` —
+      # essa tag e um branch mantido pelos autores, entao seu topo pode ser
+      # reescrito sem nenhum aviso de versao. E a unica action deste arquivo
+      # que roda dentro do job que segura a credencial de publicacao no npm.
+      - uses: changesets/action@a45c4d594aa4e2c509dc14a9f2b3b67ba3780d0d # v1.9.0
         with:
           publish: npm run release
         env:
