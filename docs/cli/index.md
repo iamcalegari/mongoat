@@ -196,7 +196,7 @@ stderr.
 The CLI reads eight environment variables in total: two for the MongoDB
 connection, and four that resolve the migrations config fields covered in
 [Configuration precedence](#4-configuration-precedence) below — each of
-those four also has a `--flag` and a config-file key.
+those four also has a corresponding flag and a config-file key.
 
 | Env var | Affects | Empty-string handling |
 |---|---|---|
@@ -295,7 +295,7 @@ whoever wrote the flag or the config, and falling back silently would only
 delay the surprise.
 
 The two connection variables from the previous section — `MONGODB_URI` and
-`MONGODB_DB_NAME` — are not part of this chain: they have no `--flag` or
+`MONGODB_DB_NAME` — are not part of this chain: they have no flag or
 config-file equivalent.
 
 ## 5. Dry-run
