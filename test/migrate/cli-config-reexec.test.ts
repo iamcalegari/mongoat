@@ -1,4 +1,4 @@
-import { execFileSync, spawnSync } from 'node:child_process';
+import { spawnSync } from 'node:child_process';
 import {
   existsSync,
   mkdirSync,
@@ -113,25 +113,13 @@ function writeStubMigration(dir: string, extension: 'js' | 'ts'): void {
 }
 
 describe('CLI config resolution — re-exec ordering and warning-once contract', () => {
+  // O bundle é construído uma única vez pelo globalSetup do vitest, antes de
+  // qualquer arquivo de teste começar. Construir aqui apagaria `lib/` (via
+  // `prebuild`/`rimraf`) no meio dos spawns de outros arquivos rodando em
+  // paralelo. Só resta afirmar que o artefato está no lugar.
   beforeAll(() => {
-    // Capture the build output (`stdio: 'pipe'`) and re-emit it on failure:
-    // with `stdio: 'ignore'`, a broken build would fail here with a bare
-    // "Command failed" and none of the `tsc` diagnostics that actually say
-    // what broke.
-    try {
-      execFileSync('npm', ['run', 'build'], {
-        cwd: PROJECT_ROOT,
-        stdio: 'pipe',
-        encoding: 'utf-8',
-      });
-    } catch (err) {
-      const e = err as { stdout?: string; stderr?: string };
-
-      throw new Error(`build failed:\n${e.stdout ?? ''}${e.stderr ?? ''}`);
-    }
-
     expect(existsSync(BUILT_BIN)).toBe(true);
-  }, 60_000);
+  });
 
   // The count asserted below is exactly one — a warning printed twice would
   // still satisfy a mere presence check, so counting is what proves the

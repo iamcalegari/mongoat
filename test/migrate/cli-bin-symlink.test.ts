@@ -1,4 +1,4 @@
-import { execFileSync, spawnSync } from 'node:child_process';
+import { spawnSync } from 'node:child_process';
 import { existsSync, mkdtempSync, rmSync, symlinkSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -28,11 +28,9 @@ const BUILT_BIN = path.join(PROJECT_ROOT, 'lib', 'mongoat.cjs');
  */
 describe('CLI bin — npm symlink install shape', () => {
   it('runs dispatch() when invoked via a symlink to the built CJS bin', () => {
-    execFileSync('npm', ['run', 'build'], {
-      cwd: PROJECT_ROOT,
-      stdio: 'ignore',
-    });
-
+    // Construído uma única vez pelo globalSetup do vitest: um build aqui
+    // apagaria `lib/` (via `prebuild`/`rimraf`) enquanto outros arquivos de
+    // teste ainda estão dando spawn no binário.
     expect(existsSync(BUILT_BIN)).toBe(true);
 
     const binDir = mkdtempSync(path.join(tmpdir(), 'mongoat-bin-symlink-'));

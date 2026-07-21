@@ -36,7 +36,11 @@ export default defineConfig({
     tsconfigPaths: true,
   },
   test: {
-    globalSetup: ['./test/setup/testcontainer.ts'],
+    // `build-cli` primeiro: os testes que dão `spawnSync` na CLI construída
+    // dependem de `lib/mongoat.cjs` existir, e construir uma única vez aqui
+    // evita que o `prebuild` (`rimraf ./lib`) de um arquivo apague o bundle
+    // no meio da execução de outro rodando em paralelo.
+    globalSetup: ['./test/setup/build-cli.ts', './test/setup/testcontainer.ts'],
     // Subir o container Mongo na primeira execução pode demorar; timeout
     // generoso evita falso-negativo em máquinas mais lentas/CI.
     testTimeout: 60000,

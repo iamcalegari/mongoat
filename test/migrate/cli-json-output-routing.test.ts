@@ -1,6 +1,12 @@
-import { execFileSync, spawnSync } from 'node:child_process';
+import { spawnSync } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
@@ -74,23 +80,12 @@ afterEach(() => {
  * touches two genuinely separate OS streams.
  */
 describe('mongoat status --json — real-process stdout/stderr stream separation', () => {
+  // O bundle é construído uma única vez pelo globalSetup do vitest, antes de
+  // qualquer arquivo de teste começar — construir aqui apagaria `lib/` (via
+  // `prebuild`/`rimraf`) no meio dos spawns de outros arquivos em paralelo.
   beforeAll(() => {
-    // Capture the build output (`stdio: 'pipe'`) and re-emit it on failure:
-    // with `stdio: 'ignore'`, a broken build would fail here with a bare
-    // "Command failed" and none of the `tsc` diagnostics that actually say
-    // what broke.
-    try {
-      execFileSync('npm', ['run', 'build'], {
-        cwd: PROJECT_ROOT,
-        stdio: 'pipe',
-        encoding: 'utf-8',
-      });
-    } catch (err) {
-      const e = err as { stdout?: string; stderr?: string };
-
-      throw new Error(`build failed:\n${e.stdout ?? ''}${e.stderr ?? ''}`);
-    }
-  }, 60_000);
+    expect(existsSync(BUILT_BIN)).toBe(true);
+  });
 
   it(
     'a clean status --json envelope lands only on stdout, with config provenance only on stderr',
