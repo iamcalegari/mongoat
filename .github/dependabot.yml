@@ -1,0 +1,9 @@
+# Mantém as referências de action pinadas por commit atualizadas: um pin que
+# ninguém atualiza é um pin que envelhece silenciosamente para uma versão com
+# vulnerabilidade conhecida já corrigida upstream.
+version: 2
+updates:
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
