@@ -1153,10 +1153,34 @@ export async function handleUnlock(
 /**
  * @internal
  *
+ * The single source of truth for a row's tri-state label, shared by the
+ * summary tally, the JSON projection and the human-readable table — three
+ * renderings that previously each re-derived it inline and had already
+ * drifted apart (the table answered `applied` for a row the envelope
+ * reported as `failed`).
+ *
+ * Precedence is failed > applied > pending: a record whose most recent
+ * attempt is `failed` must never be reported as clean, whatever other flag
+ * it also carries. Today `getStatus` keeps `applied`/`failed` mutually
+ * exclusive, so the ordering only matters for a record that violates that
+ * invariant — which is exactly the case where the safest answer is the
+ * loudest one.
+ */
+export function stateFor(
+  row: MigrationStatusRow
+): 'applied' | 'failed' | 'pending' {
+  if (row.failed) return 'failed';
+  if (row.applied) return 'applied';
+
+  return 'pending';
+}
+
+/**
+ * @internal
+ *
  * Single pass over the discovered rows building the JSON envelope's
  * aggregate counts. `applied`/`failed`/`pending` are a tri-state partition
- * over `total` (mirroring the same failed > applied > pending precedence
- * `formatStatusTable` uses to label a row) — a row is counted into exactly
+ * over `total` (`stateFor`'s own precedence) — a row is counted into exactly
  * one of the three. `drifted` is tallied INDEPENDENTLY of that partition: a
  * row that is both applied and drifted increments both counts, since drift
  * only ever applies to an already-applied migration.
@@ -1173,13 +1197,7 @@ export function summarizeStatusRows(
   };
 
   for (const row of rows) {
-    if (row.failed) {
-      summary.failed += 1;
-    } else if (row.applied) {
-      summary.applied += 1;
-    } else {
-      summary.pending += 1;
-    }
+    summary[stateFor(row)] += 1;
 
     if (row.drifted) summary.drifted += 1;
   }
@@ -1209,8 +1227,8 @@ export function computeStatusExitCode(summary: MigrationStatusSummary): number {
  * Projects one `MigrationStatusRow` into its always-present JSON shape.
  * Never spreads `row` itself — an optional/undefined source field would
  * silently vanish from the serialized object instead of surfacing as an
- * explicit `null`/`false`. `state` mirrors `formatStatusTable`'s own
- * failed > applied > pending label precedence.
+ * explicit `null`/`false`. `state` comes from the shared `stateFor` helper,
+ * the same one `formatStatusTable` and `summarizeStatusRows` label from.
  *
  * `appliedAt` goes through `safeIsoOrNull` for the same reason the sibling
  * lock projection does: it is copied straight out of the control collection
@@ -1226,7 +1244,7 @@ export function toStatusJsonRow(
   return {
     version: row.version,
     name: row.name,
-    state: row.failed ? 'failed' : row.applied ? 'applied' : 'pending',
+    state: stateFor(row),
     drifted: row.drifted ?? false,
     appliedAt: safeIsoOrNull(row.appliedAt),
   };
@@ -1258,16 +1276,15 @@ function formatStatusTable(rows: MigrationStatusRow[]): string {
   const lines = ['version | name | applied'];
 
   for (const row of rows) {
-    // A `status: 'failed'` record is surfaced as its own distinct
-    // "failed" label — never as "applied" (a migration that failed, or
-    // never ran at all, must not be reported as applied).
-    const appliedLabel = row.applied
-      ? row.drifted
-        ? 'applied (DRIFTED)'
-        : 'applied'
-      : row.failed
-        ? 'failed'
-        : 'pending';
+    // Same `stateFor` the JSON projection and the summary read from, so the
+    // table and `--json` can never label the same row differently. A
+    // `status: 'failed'` record is surfaced as its own distinct "failed"
+    // label — never as "applied" (a migration that failed, or never ran at
+    // all, must not be reported as applied). Drift is an annotation on top of
+    // the state, not a state of its own.
+    const state = stateFor(row);
+    const appliedLabel =
+      state === 'applied' && row.drifted ? 'applied (DRIFTED)' : state;
 
     lines.push(`${row.version} | ${row.name} | ${appliedLabel}`);
   }

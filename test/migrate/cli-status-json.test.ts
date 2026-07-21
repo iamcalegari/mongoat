@@ -178,6 +178,33 @@ describe('mongoat status --json', () => {
     expect(exitCode).toBe(3);
   });
 
+  it('a row carrying both the applied and failed flags is labelled "failed" by the text table and by --json alike', async () => {
+    // `getStatus` keeps the two flags mutually exclusive today, so this row
+    // is only reachable from a control record that violates that invariant —
+    // the exact case where the table used to answer "applied" while the
+    // envelope answered "failed" for the very same row.
+    const rows: MigrationStatusRow[] = [
+      { version: '1', name: 'a', applied: true, failed: true },
+    ];
+
+    vi.mocked(getStatus).mockResolvedValue(rows);
+    vi.mocked(getLockStatus).mockResolvedValue({ held: false });
+
+    await handleStatus([], deps);
+
+    expect(stdout()).toContain('1 | a | failed');
+
+    stdoutSpy.mockClear();
+
+    await handleStatus(['--json'], deps);
+
+    const envelope = JSON.parse(stdout()) as MigrationStatusJson;
+
+    expect(envelope.migrations[0]?.state).toBe('failed');
+    expect(envelope.summary.failed).toBe(1);
+    expect(envelope.summary.applied).toBe(0);
+  });
+
   it('an error under --json writes nothing to stdout and the error text lands on stderr, exiting 1', async () => {
     vi.mocked(getStatus).mockRejectedValue(
       new MongoatValidationError('boom', { code: 'INVALID_CONFIG_SHAPE' })
