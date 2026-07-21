@@ -179,7 +179,9 @@ structural, permanent limit of the lock model in a **mixed rolling deploy**:
 any `mongoat` binary older than `1.2.0` has no idea the lock collection
 exists at all — the lock only protects a run once every writer talking to
 the database is `1.2.0` or newer. Only pass `--force` when you are certain
-nothing is currently running.
+nothing is currently running. See
+[Why the migration lock exists](/explanation/migration-lock) for the full
+concurrency model behind this warning.
 :::
 
 Every error any of these commands reports prints as `Error [CODE]: message`
@@ -566,3 +568,15 @@ fi
 The same four steps, with no CI-specific wrapping at all — run it from any
 shell, in any pipeline system that can execute a script and read its exit
 code.
+
+## See also
+
+- [Why the migration lock exists](/explanation/migration-lock) — the
+  concurrency model behind `MIGRATION_LOCK_HELD`, the lock's state machine,
+  and the mixed-deployment limit.
+- [Write and run migrations](/how-to/migrations) — the day-to-day guide to
+  authoring and running migrations.
+- [Your first migration](/tutorials/first-migration) — a guided walkthrough
+  from scaffold to applied and reverted.
+- [Reference](/api/) — `runMigrations`, `runTo`, `revertMigration`,
+  `getStatus`, `getLockStatus`, `forceUnlock`.

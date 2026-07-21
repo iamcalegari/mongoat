@@ -132,6 +132,10 @@ export default withMermaid(
                 text: 'Server-side validation',
                 link: '/explanation/server-side-validation',
               },
+              {
+                text: 'Why the migration lock exists',
+                link: '/explanation/migration-lock',
+              },
               { text: 'Benchmarks', link: '/explanation/benchmarks' },
               {
                 text: 'Stability & versioning',
