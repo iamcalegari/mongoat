@@ -119,6 +119,54 @@ async function collectPending(
 }
 
 /**
+ * @public
+ *
+ * Read-only preview of what `runMigrations`/`runTo` would apply: runs the
+ * exact same read-only preconditions those functions run before ever
+ * touching the lock — the topology probe (`assertReplicaSetOrThrow`), then
+ * the checksum-drift guard nested inside `collectPending` — and returns the
+ * resulting ordered pending plan. Never calls `acquireLock`, `applyOne`, or
+ * opens a session/transaction; a dry-run is only honest if it stops exactly
+ * where a real run would still be side-effect-free.
+ *
+ * Both preconditions propagate UNWRAPPED (their own `.code`, no local
+ * try/catch here) — a dry-run must refuse on a drifted checksum or a
+ * standalone topology exactly like a real run would, never report a plan as
+ * viable when a real run would immediately fail on the same gate.
+ *
+ * @param database - A connected `Database` instance.
+ * @param config - Migration directory, control collection name, and the
+ * `allowNoTransaction` opt-in — the same subset a real run reads before
+ * acquiring its lock.
+ * @param toVersion - When set, bounds the plan the same way `runTo` bounds
+ * its apply — only pending migrations `<= toVersion`.
+ * @throws {MongoatConnectionError} With `code: 'REPLICA_SET_REQUIRED'`,
+ * propagated unwrapped from `assertReplicaSetOrThrow`.
+ * @throws {MongoatValidationError} With `code:
+ * 'MIGRATION_CHECKSUM_MISMATCH'`, propagated unwrapped from
+ * `collectPending`.
+ */
+export async function planMigrations(
+  database: Database,
+  config: MigrateConfig,
+  toVersion?: string
+): Promise<{
+  migrations: { version: string; name: string }[];
+  hasReplicaSet: boolean;
+}> {
+  const nativeDb = getNativeDbOrThrow(database);
+  const { hasReplicaSet } = await assertReplicaSetOrThrow(nativeDb, {
+    allowNoTransaction: config.allowNoTransaction,
+  });
+  const pending = await collectPending(nativeDb, config, toVersion);
+
+  return {
+    migrations: pending.map(({ version, name }) => ({ version, name })),
+    hasReplicaSet,
+  };
+}
+
+/**
  * @internal
  *
  * Runs `fn` with a bound `ClientSession` — inside `Database#withTransaction`

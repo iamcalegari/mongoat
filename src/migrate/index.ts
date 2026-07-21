@@ -4,7 +4,13 @@ import type {
 } from '@/types/migrate';
 
 export { forceUnlock, getLockStatus } from './lock';
-export { getStatus, revertMigration, runMigrations, runTo } from './runner';
+export {
+  getStatus,
+  planMigrations,
+  revertMigration,
+  runMigrations,
+  runTo,
+} from './runner';
 export type {
   MigrationContext,
   MigrationModule,
