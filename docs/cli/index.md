@@ -88,10 +88,13 @@ Applies every pending migration, in order, inside a MongoDB transaction
 - **`--allow-no-transaction`:** whenever set, prints a warning to stderr on
   *every* invocation — worded for a preview during `--dry-run`, worded for a
   real run otherwise. The warning cannot be suppressed.
-- **Re-exec under `tsx`:** can happen up to twice — once if the resolved
-  config file itself is `.ts`, and again if any discovered migration file is
-  `.ts`. The second check still runs during `--dry-run`, so a dry run fails
-  the same way a real run would if `tsx` isn't available.
+- **Re-exec under `tsx`:** two independent checkpoints can trigger it — one
+  if the resolved config file itself is `.ts`, another if any discovered
+  migration file is `.ts` — but there is only ever a single re-exec per
+  invocation. Whichever checkpoint sees a `.ts` candidate first re-execs,
+  and the replacement process finds both checkpoints already satisfied. The
+  second checkpoint still runs during `--dry-run`, so a dry run fails the
+  same way a real run would if `tsx` isn't available.
 
 ### `mongoat down <version>`
 
@@ -193,7 +196,7 @@ stderr.
 
 ## 2. Environment variables
 
-The CLI reads eight environment variables in total: two for the MongoDB
+The CLI reads six environment variables in total: two for the MongoDB
 connection, and four that resolve the migrations config fields covered in
 [Configuration precedence](#4-configuration-precedence) below — each of
 those four also has a corresponding flag and a config-file key.
@@ -207,9 +210,11 @@ those four also has a corresponding flag and a config-file key.
 | `MONGOAT_MIGRATIONS_LOCK_TTL` | `lockTtlMs` — how long an acquired run lock stays valid before it's treated as stale | Empty counts as unset; a non-empty value that isn't a positive integer fails loud with `Error [INVALID_LOCK_TTL]` |
 | `MONGOAT_MIGRATIONS_ALLOW_NO_TRANSACTION` | `allowNoTransaction` — whether migrations may run outside a transaction | Empty counts as unset; accepts `true`, `1`, `yes`, `on` and `false`, `0`, `no`, `off` (case-insensitive, surrounding whitespace trimmed) — anything else fails loud with `Error [INVALID_ALLOW_NO_TRANSACTION]` |
 
-`MONGOAT_MIGRATIONS_LOCK_TTL` must be decimal digits only — no surrounding
-whitespace, no hex, no scientific notation — and the parsed number must be a
-positive integer. A value that fails either check is rejected with the same
+`MONGOAT_MIGRATIONS_LOCK_TTL` must be decimal digits only — no hex, no
+scientific notation — and the parsed number must be a positive integer.
+Surrounding whitespace is trimmed before the check, so `" 60000 "` is
+accepted and resolves to `60000`. A value that fails either check is
+rejected with the same
 `INVALID_LOCK_TTL` code whether it came from `--lock-ttl` or from the env
 var; the error message names whichever of the two actually supplied it.
 
@@ -293,6 +298,11 @@ surfacing rather than silently ignored, and fails loud with
 `Error [INVALID_CONFIG_SHAPE]` — an explicit `""` was a deliberate act by
 whoever wrote the flag or the config, and falling back silently would only
 delay the surprise.
+
+`lockTtlMs` is the one exception to that second half: an explicitly empty
+`--lock-ttl ""` falls through to the next tier instead of failing, the same
+way an empty env var does. Pass a value you mean, or omit the flag — do not
+rely on an empty one to signal anything.
 
 The two connection variables from the previous section — `MONGODB_URI` and
 `MONGODB_DB_NAME` — are not part of this chain: they have no flag or
@@ -437,7 +447,7 @@ logical flow**. The only difference between them is CI syntax: whoever
 edits the logic in one of them must edit the other two the same way, or
 they silently drift apart.
 
-That logical flow has four steps, in this order:
+That logical flow has five steps, in this order:
 
 1. Run `status --json`, redirecting its output to a file and capturing
    `status`'s own exit code directly — never by reading the exit code at
@@ -446,12 +456,20 @@ That logical flow has four steps, in this order:
    here), not to `mongoat`. This is the easiest mistake to make in this
    section, and the reason the payload goes to a file instead of straight
    into a filter.
-2. Abort when that exit code indicates a failed or drifted migration — it
+2. Abort on any exit code outside the three `status` actually reports.
+   `status` answers with `0`, `2` or `3`; anything else means it never
+   reached the point of computing an answer — a connection failure, a bad
+   config, an interrupted process. That case needs its own branch, because
+   the redirect still creates the output file and `jq` reads an empty file
+   without complaint: with no explicit guard, a run that never reached the
+   database falls through every later condition and the script exits `0`,
+   reporting success for a check that did not happen.
+3. Abort when the exit code indicates a failed or drifted migration — it
    is not safe to continue.
-3. Check the run lock **separately**, by filtering the `lock.held` field
+4. Check the run lock **separately**, by filtering the `lock.held` field
    out of the saved payload — the exit code never reflects the lock (see
    [Exit codes](#6-exit-codes)).
-4. Apply the pending migrations when the exit code indicates there are
+5. Apply the pending migrations when the exit code indicates there are
    any.
 
 Each example wraps the identical shell block in one job with one step —
@@ -477,6 +495,11 @@ jobs:
           mongoat status --json > mongoat-status.json
           status_code=$?
           set -e
+
+          if [ "$status_code" -ne 0 ] && [ "$status_code" -ne 2 ] && [ "$status_code" -ne 3 ]; then
+            echo "mongoat status did not run (exit $status_code) — aborting" >&2
+            exit 1
+          fi
 
           if [ "$status_code" -eq 3 ]; then
             echo "Migrations failed or drifted — aborting" >&2
@@ -516,6 +539,11 @@ migration-gate:
       status_code=$?
       set -e
 
+      if [ "$status_code" -ne 0 ] && [ "$status_code" -ne 2 ] && [ "$status_code" -ne 3 ]; then
+        echo "mongoat status did not run (exit $status_code) — aborting" >&2
+        exit 1
+      fi
+
       if [ "$status_code" -eq 3 ]; then
         echo "Migrations failed or drifted — aborting" >&2
         exit 1
@@ -549,6 +577,11 @@ mongoat status --json > mongoat-status.json
 status_code=$?
 set -e
 
+if [ "$status_code" -ne 0 ] && [ "$status_code" -ne 2 ] && [ "$status_code" -ne 3 ]; then
+  echo "mongoat status did not run (exit $status_code) — aborting" >&2
+  exit 1
+fi
+
 if [ "$status_code" -eq 3 ]; then
   echo "Migrations failed or drifted — aborting" >&2
   exit 1
@@ -565,7 +598,7 @@ if [ "$status_code" -eq 2 ]; then
 fi
 ```
 
-The same four steps, with no CI-specific wrapping at all — run it from any
+The same five steps, with no CI-specific wrapping at all — run it from any
 shell, in any pipeline system that can execute a script and read its exit
 code.
 
@@ -579,4 +612,4 @@ code.
 - [Your first migration](/tutorials/first-migration) — a guided walkthrough
   from scaffold to applied and reverted.
 - [Reference](/api/) — `runMigrations`, `runTo`, `revertMigration`,
-  `getStatus`, `getLockStatus`, `forceUnlock`.
+  `getStatus`, `defineMigration`, `defineConfig`.

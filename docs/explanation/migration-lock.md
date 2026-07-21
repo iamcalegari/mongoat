@@ -69,9 +69,9 @@ looks unfamiliar.
 
 ## Releasing the lock
 
-Every code path that acquires the lock releases it in a `finally` block,
-whether the run succeeded or failed — a migration failure never leaves the
-lock behind by accident. Critically, a **release** failure never masks the
+Every code path that acquires the lock releases it on the way out — on the
+success path and from the error handler alike, so a migration failure never
+leaves the lock behind by accident. Critically, a **release** failure never masks the
 **migration's** own error: if releasing the lock itself fails after a
 migration already failed, that failure is attached as a suppressed secondary
 error (or emitted as its own process warning when there's no primary error to
@@ -109,9 +109,11 @@ the command finishes. The lease-expiration case never throws — it surfaces
 as a `MongoatLockLeaseExpiredWarning` process warning, worth investigating
 even though the run that emitted it still completed. Staleness resolving on
 the next attempt is what makes a genuinely stuck lock recover on its own,
-with no operator action at all. The last two transitions are exactly what
-`mongoat unlock` and `mongoat unlock --force` do — see the
-[CLI reference](/cli/) for their flags and exit codes.
+with no operator action at all. The last two transitions are both what
+`mongoat unlock --force` does, one from each starting state; plain
+`mongoat unlock` reports the lock's state and never changes it, which is why
+no transition is labelled with it — see the [CLI reference](/cli/) for their
+flags and exit codes.
 
 ## The mixed-deployment limit
 
@@ -166,5 +168,9 @@ A couple of alternative designs were considered and set aside:
   authoring and running migrations.
 - [Handle errors](/how-to/handle-errors) — the `MongoatError` hierarchy,
   including `MIGRATION_LOCK_HELD`.
-- [Reference](/api/) — `getLockStatus`, `forceUnlock`, `runMigrations`,
-  `runTo`, `revertMigration`.
+- [Reference](/api/) — `runMigrations`, `runTo`, `revertMigration`,
+  `getStatus`.
+
+Inspecting or clearing the lock is a CLI operation, not a programmatic one:
+use `mongoat unlock`. The functions backing it are internal and are not part
+of the published package surface.
