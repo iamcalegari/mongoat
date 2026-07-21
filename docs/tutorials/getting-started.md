@@ -39,12 +39,81 @@ real connection string is configured before you touch a shared environment.
 
 ## 3. Define a model
 
-A `Model` is a typed wrapper around a MongoDB collection. It takes a
-TypeScript interface for the document shape, a `ModelValidationSchema`
-describing the same shape as a `$jsonSchema` (used for server-side
-validation when `validity: true`), and an optional list of indexes:
+A `Model` is a typed wrapper around a MongoDB collection. It takes the
+document shape, a schema describing that shape as a `$jsonSchema` (used for
+server-side validation when `validity: true`), and an optional list of
+indexes. The schema comes in two equivalent forms — a class annotated with
+`@Schema`/`@Prop`, or a plain `ModelValidationSchema` object — and both
+compile to the same server-side validator, so pick whichever tab reads
+better to you:
 
-```ts
+::: code-group
+
+```ts [Decorators]
+import {
+  CreateIndexProps,
+  METHODS,
+  Model,
+  Optional,
+  Prop,
+  Schema,
+} from '@iamcalegari/mongoat';
+
+@Schema('users')
+class UserSchema {
+  @Prop({ bsonType: 'string', description: 'Username of the user' })
+  username!: string;
+
+  @Prop({ bsonType: 'string', description: 'Password of the user' })
+  password!: string;
+
+  @Prop({
+    bsonType: 'string',
+    description: 'Mail of the user',
+    pattern: '^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\\.[a-zA-Z0-9-.]+$',
+  })
+  mail!: string;
+
+  @Prop({ bsonType: 'string', description: 'First name of the user' })
+  firstName!: string;
+
+  @Prop({ bsonType: 'string', description: 'Last name of the user' })
+  lastName!: string;
+
+  @Optional()
+  @Prop({ bsonType: 'date', description: 'Date of the user creation' })
+  insertedAt?: Date;
+
+  @Optional()
+  @Prop({ bsonType: 'date', description: 'Date of last update of the user' })
+  updatedAt?: Date;
+}
+
+const indexes: CreateIndexProps[] = [
+  {
+    key: { username: 1, mail: 1 },
+    name: 'unique_username_mail',
+    unique: true,
+  },
+];
+
+export const User = new Model<UserSchema>({
+  schema: UserSchema,
+  indexes,
+  validity: true,
+});
+
+// A pre-hook runs before every insert — see the "Register pre/post hooks"
+// how-to for the full ctx signature.
+User.pre(METHODS.INSERT, (ctx) => {
+  ctx.document.password = 'hashedPassword';
+  // A fresh timestamp per insert. The class declares `insertedAt` as a
+  // field, so no cast is needed — see "Document defaults & timestamps".
+  ctx.document.insertedAt = new Date();
+});
+```
+
+```ts [Object]
 import {
   CreateIndexProps,
   METHODS,
@@ -106,6 +175,16 @@ User.pre(METHODS.INSERT, (ctx) => {
   (ctx.document as SchemaWithDefaults<UserSchema>).insertedAt = new Date();
 });
 ```
+
+:::
+
+The two tabs produce the same validator. Note how `required` is inverted
+between them: the object form lists required fields explicitly, while in the
+decorator form every `@Prop` field is required unless marked `@Optional()` —
+which is why the class opts the two timestamp fields out. The decorator form
+also omits `collectionName`, because `@Schema('users')` supplies it as the
+default. See [Define a schema with decorators](/how-to/decorators) for the
+full mapping between the two forms.
 
 `new Model(...)` must run **after** the owning `Database` instance has been
 constructed — the constructor throws if no `Database` has been created yet.
@@ -170,6 +249,8 @@ validation, hooks and method gating on top, never a different API surface.
 
 ## Next steps
 
+- [Define a schema with decorators](/how-to/decorators) — the decorator form
+  in depth: field decorators, nesting, and hooks on the class.
 - [Register pre/post hooks](/how-to/hooks) — the `ctx`-based hook signature in
   depth, including `fireAndForget` post-hooks.
 - [Document defaults & timestamps](/how-to/document-defaults) — why the
