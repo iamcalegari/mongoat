@@ -11,6 +11,7 @@ import {
   forceUnlock,
   getLockStatus,
   getStatus,
+  planMigrations,
   revertMigration,
   runMigrations,
   runTo,
@@ -30,6 +31,7 @@ import type {
   LockStatus,
   MigrateConfig,
   MigrationLockJson,
+  MigrationPlanJson,
   MigrationStatusJson,
   MigrationStatusJsonRow,
   MigrationStatusRow,
@@ -145,9 +147,7 @@ function resolveLockTtlMs(
   const raw = rawValue.trim();
   // Name the source so an operator who set the env var isn't sent hunting
   // for a `--lock-ttl` flag they never passed.
-  const source = fromFlag
-    ? '"--lock-ttl"'
-    : '"MONGOAT_MIGRATIONS_LOCK_TTL"';
+  const source = fromFlag ? '"--lock-ttl"' : '"MONGOAT_MIGRATIONS_LOCK_TTL"';
 
   // Decimal digits only — bare `Number()` would also accept hex (`0x1F`),
   // scientific notation (`1e3`) and surrounding whitespace, silently
@@ -825,6 +825,90 @@ export async function handleCreate(argv: string[]): Promise<number> {
   });
 }
 
+/**
+ * @internal
+ *
+ * `--json` only stands alone next to `--dry-run` — a real run's outcome is
+ * an exit code plus a one-line human confirmation, never a parseable
+ * envelope. Checked immediately after `parseArgs`, before any config
+ * resolution or re-exec, so a CI author who mistypes the combination gets a
+ * fast, fail-loud rejection instead of the flag being silently ignored on a
+ * mutating run.
+ */
+function assertJsonRequiresDryRun(values: {
+  'dry-run'?: boolean;
+  'json'?: boolean;
+}): void {
+  if (values.json && !values['dry-run']) {
+    throw new MongoatValidationError(
+      '"--json" is only supported together with "--dry-run" on this command — ' +
+        'a real run stays text-only.',
+      { code: 'JSON_REQUIRES_DRY_RUN' }
+    );
+  }
+}
+
+/**
+ * @internal
+ *
+ * Human-readable rendering of a dry-run plan — the ordered `version | name`
+ * list `planMigrations` returned, or an explicit "nothing pending" line when
+ * empty, followed by a summary line that AFFIRMS the gates already passed
+ * (pending migrations are the expected dry-run result, never an error).
+ */
+function formatDryRunPlanText(
+  command: 'to' | 'up',
+  migrations: { name: string; version: string }[]
+): string {
+  const lines = [`Dry run: migrations "mongoat ${command}" would apply`];
+
+  if (migrations.length === 0) {
+    lines.push('(no pending migrations)');
+  } else {
+    for (const { version, name } of migrations) {
+      lines.push(`${version} | ${name}`);
+    }
+  }
+
+  lines.push(
+    `checksum OK, topology OK — ${migrations.length} migration(s) would be applied`
+  );
+
+  return `${lines.join('\n')}\n`;
+}
+
+/**
+ * @internal
+ *
+ * Shared by the `up`/`to` dry-run branches: writes exactly one plan output —
+ * either the single-write minified `MigrationPlanJson` envelope (`--json`)
+ * or the human-readable ordered list — never both, and never more than one
+ * `process.stdout.write` call either way (mirrors `handleStatus`'s own
+ * single-write JSON discipline).
+ */
+function writeDryRunPlan(
+  command: 'to' | 'up',
+  migrations: { name: string; version: string }[],
+  targetVersion: string | undefined,
+  asJson: boolean
+): void {
+  if (asJson) {
+    const envelope: MigrationPlanJson = {
+      schemaVersion: 1,
+      command,
+      targetVersion,
+      migrations,
+      summary: { count: migrations.length },
+    };
+
+    process.stdout.write(`${JSON.stringify(envelope)}\n`);
+
+    return;
+  }
+
+  process.stdout.write(formatDryRunPlanText(command, migrations));
+}
+
 export async function handleUp(
   argv: string[],
   deps: CliDeps = defaultDeps
@@ -840,19 +924,42 @@ export async function handleUp(
         'allow-no-transaction': { type: 'boolean' },
         'lock-ttl': { type: 'string' },
         'config': { type: 'string' },
+        'dry-run': { type: 'boolean' },
+        'json': { type: 'boolean' },
       },
     });
+
+    assertJsonRequiresDryRun(values);
 
     // May re-exec — never returns if it does (see `resolveMigrateConfig`).
     const config = await resolveMigrateConfig(values);
 
-    // May ALSO re-exec — never returns if it does.
+    // May ALSO re-exec — never returns if it does. A dry-run imports
+    // migration files too (it still has to plan against them), so it
+    // participates in this checkpoint exactly like a real run.
     await ensureTsCapableRuntimeForMigrations(config);
 
     // Reached exactly once: both re-exec checkpoints above exit the
     // process whenever they trigger, so only the process that actually
-    // proceeds past both of them ever reaches this line.
-    warnAllowNoTransaction(config.allowNoTransaction);
+    // proceeds past both of them ever reaches this line. Skipped entirely
+    // during a dry-run — its literal "will run WITHOUT a transaction" text
+    // would be false when nothing is about to run; the topology gate
+    // inside `planMigrations` still honors `config.allowNoTransaction`.
+    if (!values['dry-run']) warnAllowNoTransaction(config.allowNoTransaction);
+
+    if (values['dry-run']) {
+      // Shaped like `handleStatus`, NOT the mutating path below: a single
+      // connected read, no lock, no signal handling, nothing to interrupt.
+      const plan = await withConnectedDatabase(deps, (database) =>
+        planMigrations(database, config)
+      );
+
+      writeDryRunPlan('up', plan.migrations, undefined, Boolean(values.json));
+
+      // Pending migrations are the expected dry-run result, never an
+      // error — contrast with `status`, which exits non-zero on pending.
+      return 0;
+    }
 
     const exitCode = await runWithSignalHandling((signal) =>
       withConnectedDatabase(deps, (database) =>
@@ -927,20 +1034,43 @@ export async function handleTo(
         'allow-no-transaction': { type: 'boolean' },
         'lock-ttl': { type: 'string' },
         'config': { type: 'string' },
+        'dry-run': { type: 'boolean' },
+        'json': { type: 'boolean' },
       },
     });
+
+    assertJsonRequiresDryRun(values);
 
     // May re-exec — never returns if it does (see `resolveMigrateConfig`).
     const config = await resolveMigrateConfig(values);
     const version = assertValidVersionArg(positionals[0], 'to');
 
-    // May ALSO re-exec — never returns if it does.
+    // May ALSO re-exec — never returns if it does. A dry-run imports
+    // migration files too (it still has to plan against them), so it
+    // participates in this checkpoint exactly like a real run.
     await ensureTsCapableRuntimeForMigrations(config);
 
     // Reached exactly once: both re-exec checkpoints above exit the
     // process whenever they trigger, so only the process that actually
-    // proceeds past both of them ever reaches this line.
-    warnAllowNoTransaction(config.allowNoTransaction);
+    // proceeds past both of them ever reaches this line. Skipped entirely
+    // during a dry-run — its literal "will run WITHOUT a transaction" text
+    // would be false when nothing is about to run; the topology gate
+    // inside `planMigrations` still honors `config.allowNoTransaction`.
+    if (!values['dry-run']) warnAllowNoTransaction(config.allowNoTransaction);
+
+    if (values['dry-run']) {
+      // Shaped like `handleStatus`, NOT the mutating path below: a single
+      // connected read, no lock, no signal handling, nothing to interrupt.
+      const plan = await withConnectedDatabase(deps, (database) =>
+        planMigrations(database, config, version)
+      );
+
+      writeDryRunPlan('to', plan.migrations, version, Boolean(values.json));
+
+      // Pending migrations are the expected dry-run result, never an
+      // error — contrast with `status`, which exits non-zero on pending.
+      return 0;
+    }
 
     const exitCode = await runWithSignalHandling((signal) =>
       withConnectedDatabase(deps, (database) =>
