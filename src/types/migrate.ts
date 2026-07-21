@@ -114,6 +114,89 @@ export interface MigrationStatusRow {
 /**
  * @internal
  *
+ * A single row of the machine-readable status envelope — the same fields
+ * `MigrationStatusRow` carries, but every optional/undefined source field is
+ * normalized to an always-present key so a downstream consumer (CI, `jq`)
+ * never has to special-case a missing property.
+ */
+export interface MigrationStatusJsonRow {
+  appliedAt: string | null;
+  drifted: boolean;
+  name: string;
+  state: 'applied' | 'failed' | 'pending';
+  version: string;
+}
+
+/**
+ * @internal
+ *
+ * Aggregate counts over a `MigrationStatusJsonRow[]` — `total` is the
+ * discovered-file count; `applied`/`pending`/`failed` are mutually exclusive
+ * partitions of it (mirroring `state`), while `drifted` is an orthogonal
+ * count (a drifted migration is still `applied`).
+ */
+export interface MigrationStatusSummary {
+  applied: number;
+  drifted: number;
+  failed: number;
+  pending: number;
+  total: number;
+}
+
+/**
+ * @internal
+ *
+ * Machine-readable projection of `LockStatus` — `held: false` carries no
+ * other field; the rest are only ever present when a lock is actually held,
+ * and are individually optional because a corrupted lock document (see
+ * `formatLockDiagnostic`) may be missing any of them.
+ */
+export interface MigrationLockJson {
+  acquiredAt?: string | null;
+  expiresAt?: string | null;
+  held: boolean;
+  hostname?: string;
+  operation?: string;
+  ownerId?: string;
+  pid?: number;
+}
+
+/**
+ * @internal
+ *
+ * The `mongoat status --json` machine-readable envelope. `schemaVersion` is
+ * an integer bumped only on a breaking shape change (a field removed,
+ * renamed, or whose meaning changed) — never on an additive field, so a
+ * consumer pinned to a given `schemaVersion` can safely ignore fields it
+ * does not recognize.
+ */
+export interface MigrationStatusJson {
+  lock: MigrationLockJson;
+  migrations: MigrationStatusJsonRow[];
+  schemaVersion: 1;
+  summary: MigrationStatusSummary;
+}
+
+/**
+ * @internal
+ *
+ * The `--dry-run --json` machine-readable envelope produced from
+ * `planMigrations`'s result. Its `schemaVersion` is an independent counter
+ * from `MigrationStatusJson`'s own — the two payloads are structurally
+ * different and evolve on separate timelines — bumped under the same
+ * breaking-change-only rule.
+ */
+export interface MigrationPlanJson {
+  command: 'to' | 'up';
+  migrations: { name: string; version: string }[];
+  schemaVersion: 1;
+  summary: { count: number };
+  targetVersion?: string;
+}
+
+/**
+ * @internal
+ *
  * Resolved configuration for a migration run: where migration files live,
  * which collection tracks applied state, and whether data-operation
  * migrations are allowed to proceed without a replica set (no

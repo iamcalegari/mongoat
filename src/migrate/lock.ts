@@ -50,16 +50,32 @@ export function lockCollectionName(config: MigrateConfig): string {
 /**
  * @internal
  *
+ * JSON-safe counterpart to `safeIso` below, for a lock document field that
+ * is only ever TRUSTED to be a `Date` by convention, never by a runtime
+ * guarantee — a document written by hand, by a future/incompatible version,
+ * or otherwise corrupted could carry a string, a missing field, or an
+ * invalid `Date`. Degrades a corrupted/missing value to `null` (never a raw
+ * non-ISO string a downstream `new Date(field)`/`jq` would choke on). Never
+ * throws.
+ */
+export function safeIsoOrNull(value: unknown): string | null {
+  return value instanceof Date && !Number.isNaN(value.getTime())
+    ? value.toISOString()
+    : null;
+}
+
+/**
+ * @internal
+ *
  * Best-effort ISO formatting for a lock document field that is only ever
  * TRUSTED to be a `Date` by convention, never by a runtime guarantee — a
  * document written by hand, by a future/incompatible version, or otherwise
  * corrupted could carry a string, a missing field, or an invalid `Date`.
- * Never throws.
+ * Delegates to `safeIsoOrNull`'s validity guard, degrading to a human
+ * placeholder instead of `null` here. Never throws.
  */
 function safeIso(value: unknown): string {
-  return value instanceof Date && !Number.isNaN(value.getTime())
-    ? value.toISOString()
-    : '<invalid date>';
+  return safeIsoOrNull(value) ?? '<invalid date>';
 }
 
 /**
