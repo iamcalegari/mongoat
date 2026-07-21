@@ -94,7 +94,10 @@ describe('mongoat CLI dispatch', () => {
 
     const exitCode = await handleStatus([], deps);
 
-    expect(exitCode).toBe(0);
+    // The mocked set includes one still-pending row, so the tiered exit
+    // code is 2 — this is the fixed behavior, not the historical always-0
+    // bug the JSON contract work closed.
+    expect(exitCode).toBe(2);
     expect(getStatus).toHaveBeenCalledTimes(1);
     expect(getLockStatus).toHaveBeenCalledTimes(1);
     expect(fakeDatabase.connect).toHaveBeenCalledTimes(1);

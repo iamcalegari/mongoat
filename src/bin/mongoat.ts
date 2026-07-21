@@ -1154,6 +1154,7 @@ export async function handleStatus(
         dir: { type: 'string' },
         collection: { type: 'string' },
         config: { type: 'string' },
+        json: { type: 'boolean' },
       },
     });
 
@@ -1169,10 +1170,35 @@ export async function handleStatus(
       })
     );
 
-    process.stdout.write(formatStatusTable(rows));
-    process.stdout.write(
-      `lock: ${lockStatus.held ? formatLockDiagnostic(lockStatus.lock) : 'free'}\n`
-    );
+    // Computed exactly once — the single source of truth both the JSON
+    // envelope's `summary` field and the returned exit code read from below,
+    // so `jq '.summary.failed'` and `$?` can never disagree.
+    const summary = summarizeStatusRows(rows);
+
+    if (values.json) {
+      const envelope: MigrationStatusJson = {
+        schemaVersion: 1,
+        migrations: rows.map(toStatusJsonRow),
+        summary,
+        lock: toLockJson(lockStatus),
+      };
+
+      // Exactly one write of a fully-constructed, minified object — never
+      // multiple `process.stdout.write` calls, and nothing else touches
+      // stdout in this branch: a CI pipeline reading this stream must see
+      // valid JSON or nothing, never interleaved human text.
+      process.stdout.write(`${JSON.stringify(envelope)}\n`);
+    } else {
+      process.stdout.write(formatStatusTable(rows));
+      process.stdout.write(
+        `lock: ${lockStatus.held ? formatLockDiagnostic(lockStatus.lock) : 'free'}\n`
+      );
+    }
+
+    // Replaces the previous implicit `undefined` return, which made
+    // `runWithErrorBoundary`'s `result ?? 0` always resolve to 0 regardless
+    // of the real migration state.
+    return computeStatusExitCode(summary);
   });
 }
 
