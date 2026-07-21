@@ -12,6 +12,7 @@ flags it accepts, and what it deliberately never does.
 3. [Config file](#3-config-file)
 4. [Configuration precedence](#4-configuration-precedence)
 5. [Dry-run](#5-dry-run)
+6. [Exit codes](#6-exit-codes)
 
 ---
 
@@ -381,3 +382,46 @@ Both envelopes are documented here **by shape, from concrete examples** —
 neither is an importable TypeScript type today: the types behind them, and
 the read-only entry point that produces the plan envelope, are internal
 and are not part of the published package surface.
+
+## 6. Exit codes
+
+Every exit code below comes directly from `computeStatusExitCode`,
+`runWithSignalHandling`'s interrupt mapping, and each handler's own return
+path in `src/bin/mongoat.ts` — none of it is a number chosen by convention.
+
+| Command | Exit code | Condition |
+|---|---|---|
+| `create` | `0` | The migration file was written successfully. |
+| `create` | `1` | Any error — an invalid name, a missing/ambiguous/malformed config file, `tsx` unavailable or failing to re-exec, or the defensive path-escape guard. |
+| `up`, `to` | `0` | A real run applied every targeted migration; or `--dry-run` completed — with or without pending migrations. Pending migrations are the expected, successful result of a dry run, never an error. |
+| `up`, `to` | `130` | The process received `SIGINT` during a real (non-`--dry-run`) run; the in-flight migration finished before the process stopped. |
+| `up`, `to` | `143` | The process received `SIGTERM` during a real run — same graceful-stop behavior as `SIGINT`, a different signal. |
+| `up`, `to` | `1` | Any other error, on a real run or a `--dry-run` alike: no replica set without `--allow-no-transaction`, a checksum-drift failure, a held run lock, a migration failure, or `--json` passed without `--dry-run` (`JSON_REQUIRES_DRY_RUN`). |
+| `down` | `0` | The migration was reverted successfully. |
+| `down` | `130` | `SIGINT` during the revert. |
+| `down` | `143` | `SIGTERM` during the revert. |
+| `down` | `1` | Any other error — an unknown version, an irreversible migration, a held lock, or a revert failure. There is no `--dry-run` for `down`. |
+| `status` | `0` | Every migration is applied — nothing pending, failed, or drifted. |
+| `status` | `2` | At least one migration is pending, and nothing is failed or drifted. |
+| `status` | `3` | At least one migration is failed or drifted — this outranks any number of pending migrations. |
+| `status` | `1` | An error before a status could even be computed, for example a connection failure. |
+| `unlock` | `0` | The operation completed, with or without `--force`, whether a lock was found, removed, or merely reported. Idempotent: no lock present is still `0`, never an error. |
+| `unlock` | `1` | Any error. |
+| *(unrecognized or missing subcommand)* | `1` | — |
+
+`130` and `143` follow the Unix `128 + signal number` convention (`SIGINT`
+is signal 2, `SIGTERM` is signal 15) and only ever apply to `up`, `down`,
+and `to` — and only to their real, mutating run. Signal handlers are
+installed for the duration of that run alone: they are never installed
+around `create`, `status`, or `unlock`, and a `--dry-run` invocation of
+`up`/`to` returns before they would ever be installed at all, so a dry run
+itself can never produce `130`/`143`.
+
+**The exit code of `status` reflects migration state only — it says
+nothing about the run lock.** A repository that is fully applied but whose
+lock is still held by a crashed runner still exits `0` here, and the very
+next `mongoat up` still fails with `Error [MIGRATION_LOCK_HELD]`. A
+pipeline that needs to know whether the next command can actually run has
+to read the lock separately, from the `lock.held` field of the `--json`
+envelope shown in [Dry-run](#5-dry-run) — `$?` alone never answers that
+question.
