@@ -8,6 +8,9 @@ flags it accepts, and what it deliberately never does.
 ## Table of contents
 
 1. [Commands](#1-commands)
+2. [Environment variables](#2-environment-variables)
+3. [Config file](#3-config-file)
+4. [Configuration precedence](#4-configuration-precedence)
 
 ---
 
@@ -182,3 +185,110 @@ underlying failure). An unrecognized or missing subcommand skips that
 format entirely and prints its own line instead — `Unknown command:
 "<name>". Available: create, up, down, to, status, unlock` — also to
 stderr.
+
+## 2. Environment variables
+
+The CLI reads eight environment variables in total: two for the MongoDB
+connection, and four that resolve the migrations config fields covered in
+[Configuration precedence](#4-configuration-precedence) below — each of
+those four also has a `--flag` and a config-file key.
+
+| Env var | Affects | Empty-string handling |
+|---|---|---|
+| `MONGODB_URI` | Connection string used to build the MongoDB client | Passed through as-is to the driver; not specially handled here |
+| `MONGODB_DB_NAME` | Database name the client connects to | idem |
+| `MONGOAT_MIGRATIONS_DIR` | `dir` — where migration files are discovered | Empty counts as unset, falls through to the next precedence tier |
+| `MONGOAT_MIGRATIONS_COLLECTION` | `collection` — the collection tracking applied migration state | idem |
+| `MONGOAT_MIGRATIONS_LOCK_TTL` | `lockTtlMs` — how long an acquired run lock stays valid before it's treated as stale | Empty counts as unset; a non-empty value that isn't a positive integer fails loud with `Error [INVALID_LOCK_TTL]` |
+| `MONGOAT_MIGRATIONS_ALLOW_NO_TRANSACTION` | `allowNoTransaction` — whether migrations may run outside a transaction | Empty counts as unset; accepts `true`, `1`, `yes`, `on` and `false`, `0`, `no`, `off` (case-insensitive, surrounding whitespace trimmed) — anything else fails loud with `Error [INVALID_ALLOW_NO_TRANSACTION]` |
+
+`MONGOAT_MIGRATIONS_LOCK_TTL` must be decimal digits only — no surrounding
+whitespace, no hex, no scientific notation — and the parsed number must be a
+positive integer. A value that fails either check is rejected with the same
+`INVALID_LOCK_TTL` code whether it came from `--lock-ttl` or from the env
+var; the error message names whichever of the two actually supplied it.
+
+`MONGOAT_MIGRATIONS_ALLOW_NO_TRANSACTION` recognizes exactly the eight
+literals listed above — a generic `Boolean(str)` coercion is deliberately
+not used, since it would make any non-empty string (including the literal
+`"false"`) truthy.
+
+## 3. Config file
+
+`mongoat` optionally loads settings from a config file, either discovered
+automatically or passed explicitly with `--config <path>`.
+
+**Discovery (no `--config` flag):** the current working directory is probed
+for three basenames, always all three, never short-circuiting on the first
+match — short-circuiting would make detecting ambiguity impossible:
+
+- `mongoat.config.json`
+- `mongoat.config.js`
+- `mongoat.config.ts`
+
+Zero matches resolves silently to "no config file" — the file is optional.
+Two or more matches in the same directory fails loud, listing every file
+found, and points you to keep only one or pass `--config` to pick one
+explicitly.
+
+**Explicit `--config <path>`:** the extension is validated against the same
+three, before anything touches the filesystem. A relative path is confined
+to the working directory — a `../` escape fails loud with
+`Error [INVALID_CONFIG_PATH]` — while an absolute path is a deliberate
+escape hatch.
+
+**Accepted keys:** exactly `dir`, `collection`, `allowNoTransaction` and
+`lockTtlMs`. Any other key — misspelled or not — fails loud with
+`Error [INVALID_CONFIG_SHAPE]`, naming the offending key(s) and the allowed
+list.
+
+::: warning
+A `mongoat.config.js`/`.ts` file is **code**, executed with the same
+privileges as whoever invokes the CLI — including during the automatic
+working-directory probe above, with no flag involved at all. Cloning a
+repository and running `mongoat status` inside it is enough to execute
+third-party code — the same trust model already accepted for `vite`,
+`jest`, or `eslint` config files. Only `mongoat.config.json` is read and
+parsed as data; it is never executed.
+:::
+
+**Known limitation:** when a config file redirects `dir` to a folder of
+TypeScript migrations, the config module can be evaluated **twice** in the
+same invocation — once in the parent process, and again in the child
+process re-executed under the `tsx` runtime. A config file with side
+effects (reading a `.env` file, resolving a secret, opening a socket) needs
+to be idempotent for that reason.
+
+## 4. Configuration precedence
+
+Four fields — `dir`, `collection`, `lockTtlMs` and `allowNoTransaction` —
+are each resolved through the same four-tier chain, **independently per
+field**. This is not "the flag wins for everything, or the config file wins
+for everything": a single invocation can set `dir` and `collection` from a
+config file while overriding just `lockTtlMs` with a flag.
+
+| Flag | Env var | Config key | Default |
+|---|---|---|---|
+| `--dir` | `MONGOAT_MIGRATIONS_DIR` | `dir` | `"migrations"` |
+| `--collection` | `MONGOAT_MIGRATIONS_COLLECTION` | `collection` | `"_migrations"` |
+| `--lock-ttl` | `MONGOAT_MIGRATIONS_LOCK_TTL` | `lockTtlMs` | `1800000` (30 minutes) |
+| `--allow-no-transaction` | `MONGOAT_MIGRATIONS_ALLOW_NO_TRANSACTION` | `allowNoTransaction` | `false` |
+
+For each field, the first tier that supplies a value wins, in this order:
+CLI flag, then environment variable, then config file, then the built-in
+default.
+
+**The empty-string handling is deliberately asymmetric between tiers.** An
+empty environment variable (`MONGOAT_MIGRATIONS_DIR=` in a Docker Compose
+`environment:` entry, or an unset `.env` key) is treated as **not set** and
+falls through to the next tier — ambient, global env vars can arrive empty
+without anyone intending it. A value supplied explicitly through a flag or a
+config-file key that is empty, by contrast, is treated as a mistake worth
+surfacing rather than silently ignored, and fails loud with
+`Error [INVALID_CONFIG_SHAPE]` — an explicit `""` was a deliberate act by
+whoever wrote the flag or the config, and falling back silently would only
+delay the surprise.
+
+The two connection variables from the previous section — `MONGODB_URI` and
+`MONGODB_DB_NAME` — are not part of this chain: they have no `--flag` or
+config-file equivalent.
