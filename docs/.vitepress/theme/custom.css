@@ -130,3 +130,141 @@
 .bench-sec .meh {
   color: var(--vp-c-text-3);
 }
+
+/* ── Home ─────────────────────────────────────────────────────────────────
+   Duas bandas de cards no lugar do grid uniforme de `features` do tema:
+   4 diferenciais em destaque (2×2) e o restante em cards compactos. Os
+   cards são <a> dentro de .vp-doc, então os resets de cor/sublinhado/margem
+   abaixo neutralizam os estilos de link e de heading do tema. */
+
+.home-diffs {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+  margin: 2rem 0 1rem;
+}
+@media (min-width: 640px) {
+  .home-diffs {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.home-minis {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.75rem;
+  margin: 1rem 0 0.5rem;
+}
+@media (min-width: 560px) {
+  .home-minis {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+@media (min-width: 860px) {
+  .home-minis {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+/* `.vp-doc a` (verde + sublinhado) tem especificidade (0,1,1); os seletores
+   qualificados abaixo (0,2,1) garantem que o card-âncora herde cor de texto
+   normal e não desenhe sublinhado através dos filhos. */
+.vp-doc a.home-diff,
+.vp-doc a.home-mini {
+  color: var(--vp-c-text-1);
+  font-weight: inherit;
+  text-decoration: none;
+}
+
+.home-diff,
+.home-mini {
+  display: block;
+  border: 1px solid var(--vp-c-divider);
+  border-radius: 12px;
+  background: var(--vp-c-bg-soft);
+  transition:
+    border-color 0.25s,
+    background-color 0.25s;
+}
+.home-diff:hover,
+.home-mini:hover {
+  border-color: var(--vp-c-brand-1);
+}
+
+.home-diff {
+  padding: 1.5rem 1.5rem 1.35rem;
+}
+.home-mini {
+  padding: 1rem 1.1rem 0.9rem;
+}
+
+/* Par light/dark dos ícones (mesma mecânica do VPImage do tema). */
+.home-diff img.dark,
+.home-mini img.dark {
+  display: none;
+}
+.dark .home-diff img.light,
+.dark .home-mini img.light {
+  display: none;
+}
+.dark .home-diff img.dark,
+.dark .home-mini img.dark {
+  display: inline-block;
+}
+
+.home-diff .icbox {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 10px;
+  background: var(--vp-c-brand-soft);
+  margin-bottom: 1rem;
+}
+.home-diff .icbox img {
+  width: 26px;
+  height: 26px;
+}
+.home-mini img {
+  width: 22px;
+  height: 22px;
+  margin-bottom: 0.55rem;
+}
+
+.home-diff h3,
+.home-mini h3 {
+  margin: 0 0 0.4rem;
+  border: none;
+  padding: 0;
+  letter-spacing: -0.01em;
+}
+.home-diff h3 {
+  font-size: 1.15rem;
+  line-height: 1.35;
+}
+.home-mini h3 {
+  font-size: 0.95rem;
+  line-height: 1.4;
+}
+
+.home-diff p,
+.home-mini p {
+  margin: 0;
+  color: var(--vp-c-text-2);
+  line-height: 1.55;
+}
+.home-diff p {
+  font-size: 0.9rem;
+}
+.home-mini p {
+  font-size: 0.84rem;
+}
+
+.home-diff .more {
+  display: inline-block;
+  margin-top: 0.85rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--vp-c-brand-1);
+}
