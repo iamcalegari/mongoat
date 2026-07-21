@@ -55,6 +55,7 @@ import {
   METHODS,
   Model,
   Optional,
+  Pre,
   Prop,
   Schema,
 } from '@iamcalegari/mongoat';
@@ -64,6 +65,9 @@ class UserSchema {
   @Prop({ bsonType: 'string', description: 'Username of the user' })
   username!: string;
 
+  // A field-level pre-hook transforms this field's value before every
+  // insert — see the "Register pre/post hooks" how-to.
+  @Pre(METHODS.INSERT, () => 'hashedPassword')
   @Prop({ bsonType: 'string', description: 'Password of the user' })
   password!: string;
 
@@ -103,12 +107,12 @@ export const User = new Model<UserSchema>({
   validity: true,
 });
 
-// A pre-hook runs before every insert — see the "Register pre/post hooks"
-// how-to for the full ctx signature.
+// A fresh timestamp per insert. A field-level @Pre only transforms a field
+// that is present on the document — it never materializes an absent one —
+// so a value generated on insert lives in a model-level hook instead. The
+// class declares `insertedAt` as a field, so no cast is needed — see
+// "Document defaults & timestamps".
 User.pre(METHODS.INSERT, (ctx) => {
-  ctx.document.password = 'hashedPassword';
-  // A fresh timestamp per insert. The class declares `insertedAt` as a
-  // field, so no cast is needed — see "Document defaults & timestamps".
   ctx.document.insertedAt = new Date();
 });
 ```

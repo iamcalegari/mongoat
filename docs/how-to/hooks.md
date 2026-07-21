@@ -40,7 +40,9 @@ class UserSchema {
 :::
 
 A field-level `@Pre` is sugar that transforms just that field's value —
-`(value, ctx) => newValue` — while `@Pre`/`@Post` at class level receive the
+`(value, ctx) => newValue` — and only runs when the document carries that
+field: an absent field is never materialized, so it can't mask the schema's
+`required` validation. `@Pre`/`@Post` at class level receive the
 same full `ctx` as `.pre()`/`.post()`. See
 [Hooks on the class](/how-to/decorators#hooks-on-the-class) for where each
 level fits.
