@@ -13,6 +13,7 @@ flags it accepts, and what it deliberately never does.
 4. [Configuration precedence](#4-configuration-precedence)
 5. [Dry-run](#5-dry-run)
 6. [Exit codes](#6-exit-codes)
+7. [CI examples](#7-ci-examples)
 
 ---
 
@@ -425,3 +426,143 @@ pipeline that needs to know whether the next command can actually run has
 to read the lock separately, from the `lock.held` field of the `--json`
 envelope shown in [Dry-run](#5-dry-run) — `$?` alone never answers that
 question.
+
+## 7. CI examples
+
+The three examples below — one for GitHub Actions, one for GitLab CI, and
+one plain shell script for anything else — exercise the exact **same
+logical flow**. The only difference between them is CI syntax: whoever
+edits the logic in one of them must edit the other two the same way, or
+they silently drift apart.
+
+That logical flow has four steps, in this order:
+
+1. Run `status --json`, redirecting its output to a file and capturing
+   `status`'s own exit code directly — never by reading the exit code at
+   the end of a pipe. In a shell without pipe-failure propagation enabled,
+   the code read after a pipe belongs to the last command in it (`jq`,
+   here), not to `mongoat`. This is the easiest mistake to make in this
+   section, and the reason the payload goes to a file instead of straight
+   into a filter.
+2. Abort when that exit code indicates a failed or drifted migration — it
+   is not safe to continue.
+3. Check the run lock **separately**, by filtering the `lock.held` field
+   out of the saved payload — the exit code never reflects the lock (see
+   [Exit codes](#6-exit-codes)).
+4. Apply the pending migrations when the exit code indicates there are
+   any.
+
+Each example wraps the identical shell block in one job with one step —
+no matrix, no cache, no extra conditionals — so the three stay easy to
+read side by side and easy to copy.
+
+### GitHub Actions
+
+```yaml
+name: Migration gate
+on: [pull_request]
+jobs:
+  migration-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.x'
+      - run: npm ci
+      - run: |
+          set +e
+          mongoat status --json > mongoat-status.json
+          status_code=$?
+          set -e
+
+          if [ "$status_code" -eq 3 ]; then
+            echo "Migrations failed or drifted — aborting" >&2
+            exit 1
+          fi
+
+          lock_held=$(jq -r '.lock.held' mongoat-status.json)
+          if [ "$lock_held" = "true" ]; then
+            echo "Migration lock is held — aborting" >&2
+            exit 1
+          fi
+
+          if [ "$status_code" -eq 2 ]; then
+            mongoat up
+          fi
+        env:
+          MONGODB_URI: ${{ secrets.MONGODB_URI }}
+          MONGODB_DB_NAME: ${{ secrets.MONGODB_DB_NAME }}
+```
+
+GitHub Actions runs a `run:` step's default shell with `-e` already
+enabled — the `set +e` / `set -e` pair around the first command is not
+optional here: without it, a `status` exit code of `2` or `3` (both
+non-zero) would end the step before `status_code=$?` ever ran.
+
+### GitLab CI
+
+```yaml
+migration-gate:
+  stage: deploy
+  image: node:22
+  script:
+    - npm ci
+    - |
+      set +e
+      mongoat status --json > mongoat-status.json
+      status_code=$?
+      set -e
+
+      if [ "$status_code" -eq 3 ]; then
+        echo "Migrations failed or drifted — aborting" >&2
+        exit 1
+      fi
+
+      lock_held=$(jq -r '.lock.held' mongoat-status.json)
+      if [ "$lock_held" = "true" ]; then
+        echo "Migration lock is held — aborting" >&2
+        exit 1
+      fi
+
+      if [ "$status_code" -eq 2 ]; then
+        mongoat up
+      fi
+  variables:
+    MONGODB_URI: $MONGODB_URI
+    MONGODB_DB_NAME: $MONGODB_DB_NAME
+```
+
+Same block as the GitHub Actions step, unwrapped from a job's `run:` key
+into a job's `script:` list instead — the same `set +e` / `set -e` guard
+is kept even though GitLab's default runner shell does not enable `-e` on
+its own, so the block stays byte-identical to the other two.
+
+### Agnostic shell script
+
+```bash
+#!/usr/bin/env bash
+set +e
+mongoat status --json > mongoat-status.json
+status_code=$?
+set -e
+
+if [ "$status_code" -eq 3 ]; then
+  echo "Migrations failed or drifted — aborting" >&2
+  exit 1
+fi
+
+lock_held=$(jq -r '.lock.held' mongoat-status.json)
+if [ "$lock_held" = "true" ]; then
+  echo "Migration lock is held — aborting" >&2
+  exit 1
+fi
+
+if [ "$status_code" -eq 2 ]; then
+  mongoat up
+fi
+```
+
+The same four steps, with no CI-specific wrapping at all — run it from any
+shell, in any pipeline system that can execute a script and read its exit
+code.
