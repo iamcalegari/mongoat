@@ -24,10 +24,12 @@ version.
 The public API is exactly what's exported from the package's root
 entrypoint — the `src/index.ts` barrel (re-exported as `@iamcalegari/mongoat`
 in the published package: `Database`, `Model`, the `Mongoat*Error` hierarchy,
-`METHODS`, `CUSTOM_VALIDATION`, `sanitizeFilter`, `toObjectId`, and the
-exported types). If a symbol is exported from that barrel, it's part of the
-semver contract: renaming it, changing its signature, or altering its runtime
-behavior in an incompatible way is a breaking change.
+`METHODS`, `CUSTOM_VALIDATION`, `sanitizeFilter`, `toObjectId`, the
+migrations API (`runMigrations`, `runTo`, `revertMigration`, `getStatus`,
+`defineMigration`, `defineConfig`), and the exported types). If a symbol is
+exported from that barrel, it's part of the semver contract: renaming it,
+changing its signature, or altering its runtime behavior in an incompatible
+way is a breaking change.
 
 Anything **not** re-exported from the root barrel — internal modules,
 helpers marked `@internal` or `@private` in their JSDoc, and implementation

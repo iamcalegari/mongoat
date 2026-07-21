@@ -109,6 +109,7 @@ mongoat status
 ```
 version | name | applied
 20260719120000 | backfill-user-status | applied
+lock: free
 ```
 
 ## 6. Undo it, then re-apply
@@ -130,6 +131,7 @@ mongoat status
 ```
 version | name | applied
 20260719120000 | backfill-user-status | pending
+lock: free
 ```
 
 Re-apply it to finish where you started:
