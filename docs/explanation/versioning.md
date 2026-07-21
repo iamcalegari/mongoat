@@ -91,12 +91,12 @@ become the stable release under its final version number.
 When a released line is discontinued — most notably the `1.0.x-alpha` line,
 superseded by the `1.1.0` stable release — it's marked with [`npm
 deprecate`](https://docs.npmjs.com/cli/v10/commands/npm-deprecate) against
-the exact affected version range. The deprecation message points to the
+each exact affected version. The deprecation message points to the
 current stable release and to the [migration guide](/migration) so anyone
 who installs a deprecated version (or sees the npm install warning) knows
 exactly where to go next. Deprecation never unpublishes or breaks an
-existing install — it only marks the range as unsupported and signals
-forward.
+existing install — it only marks the exact versions as unsupported and
+signals forward.
 
 ## See also
 

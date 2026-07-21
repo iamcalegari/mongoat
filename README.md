@@ -207,4 +207,4 @@ Issues and pull requests are welcome — see [open issues](https://github.com/ia
 
 ## License
 
-[MIT](https://github.com/iamcalegari/mongoat/blob/main/package.json)
+[MIT](https://github.com/iamcalegari/mongoat/blob/main/LICENSE)
