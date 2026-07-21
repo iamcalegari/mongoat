@@ -6,7 +6,7 @@ hero:
   text: ODM productivity, without giving up the driver.
   tagline: Type-safe models, server-side validation, typed hooks, and production-ready migrations — layered on the official MongoDB driver at zero measured overhead.
   image:
-    src: /mongoat-hero.png
+    src: /mongoat-icon.png
     alt: Mongoat
   actions:
     - theme: brand
