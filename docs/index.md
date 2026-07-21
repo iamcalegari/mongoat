@@ -3,7 +3,11 @@ layout: home
 
 hero:
   name: Mongoat
-  tagline: A lightweight, fast, type-safe MongoDB ODM for Node.js/TypeScript
+  text: ODM productivity, without giving up the driver.
+  tagline: Type-safe models, server-side validation, typed hooks, and production-ready migrations — layered on the official MongoDB driver at zero measured overhead.
+  image:
+    src: /mongoat-hero.png
+    alt: Mongoat
   actions:
     - theme: brand
       text: Get started
