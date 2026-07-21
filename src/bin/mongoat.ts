@@ -348,6 +348,29 @@ function warnAllowNoTransaction(allowNoTransaction: boolean | undefined): void {
   );
 }
 
+/**
+ * @internal
+ *
+ * Dry-run counterpart of `warnAllowNoTransaction`, under the same
+ * "loud, non-suppressible, on EVERY invocation" rule. A dry run applies
+ * nothing, so the sibling's literal "will run WITHOUT a transaction" would
+ * be false here — but that is a wording problem, not a reason to leave the
+ * one invocation whose whole purpose is to preview a run as the only one
+ * that says nothing about atomicity.
+ */
+function warnDryRunAllowNoTransaction(
+  allowNoTransaction: boolean | undefined
+): void {
+  if (!allowNoTransaction) return;
+
+  process.stderr.write(
+    '\n[mongoat] WARNING: --allow-no-transaction is set — a real run of this plan would ' +
+      'execute WITHOUT a MongoDB transaction (no atomicity). Only use this against a ' +
+      'standalone MongoDB in local development; a failed migration can leave data ' +
+      'partially applied.\n\n'
+  );
+}
+
 function pad(value: number): string {
   return String(value).padStart(2, '0');
 }
@@ -853,29 +876,49 @@ function assertJsonRequiresDryRun(values: {
  *
  * Human-readable rendering of a dry-run plan — the ordered `version | name`
  * list `planMigrations` returned, or an explicit "nothing pending" line when
- * empty, followed by a summary line that AFFIRMS the gates already passed
+ * empty, followed by a summary line reporting the gates it actually cleared
  * (pending migrations are the expected dry-run result, never an error).
+ *
+ * The topology verdict is the REAL answer threaded out of `planMigrations`,
+ * never an unconditional "OK": with `--allow-no-transaction` against a
+ * standalone, `assertReplicaSetOrThrow` returns `hasReplicaSet: false`
+ * instead of throwing — the gate was BYPASSED, not satisfied, and saying
+ * "OK" there would be a false statement about the very property a CI
+ * operator runs a dry run to confirm.
  */
-function formatDryRunPlanText(
-  command: 'to' | 'up',
-  migrations: { name: string; version: string }[]
-): string {
+function formatDryRunPlanText(command: 'to' | 'up', plan: DryRunPlan): string {
   const lines = [`Dry run: migrations "mongoat ${command}" would apply`];
 
-  if (migrations.length === 0) {
+  if (plan.migrations.length === 0) {
     lines.push('(no pending migrations)');
   } else {
-    for (const { version, name } of migrations) {
+    for (const { version, name } of plan.migrations) {
       lines.push(`${version} | ${name}`);
     }
   }
 
+  const topology = plan.hasReplicaSet
+    ? 'topology OK'
+    : 'topology BYPASSED (--allow-no-transaction)';
+
   lines.push(
-    `checksum OK, topology OK — ${migrations.length} migration(s) would be applied`
+    `checksum OK, ${topology} — ${plan.migrations.length} migration(s) would be applied`
   );
 
   return `${lines.join('\n')}\n`;
 }
+
+/**
+ * @internal
+ *
+ * Exactly what `planMigrations` returns — passed around whole rather than
+ * destructured at the call site, so the topology verdict cannot be dropped
+ * on its way to the serializers again.
+ */
+type DryRunPlan = {
+  hasReplicaSet: boolean;
+  migrations: { name: string; version: string }[];
+};
 
 /**
  * @internal
@@ -885,11 +928,16 @@ function formatDryRunPlanText(
  * or the human-readable ordered list — never both, and never more than one
  * `process.stdout.write` call either way (mirrors `handleStatus`'s own
  * single-write JSON discipline).
+ *
+ * `targetVersion` is `null` (never `undefined`) for `up`: `JSON.stringify`
+ * OMITS an `undefined` value, which would leave the key missing from the
+ * `up` payload while the `to` payload carried it — the exact special-casing
+ * the always-present-key rule exists to spare a `jq` consumer.
  */
 function writeDryRunPlan(
   command: 'to' | 'up',
-  migrations: { name: string; version: string }[],
-  targetVersion: string | undefined,
+  plan: DryRunPlan,
+  targetVersion: string | null,
   asJson: boolean
 ): void {
   if (asJson) {
@@ -897,8 +945,9 @@ function writeDryRunPlan(
       schemaVersion: 1,
       command,
       targetVersion,
-      migrations,
-      summary: { count: migrations.length },
+      migrations: plan.migrations,
+      transactional: plan.hasReplicaSet,
+      summary: { count: plan.migrations.length },
     };
 
     process.stdout.write(`${JSON.stringify(envelope)}\n`);
@@ -906,7 +955,7 @@ function writeDryRunPlan(
     return;
   }
 
-  process.stdout.write(formatDryRunPlanText(command, migrations));
+  process.stdout.write(formatDryRunPlanText(command, plan));
 }
 
 export async function handleUp(
@@ -941,11 +990,15 @@ export async function handleUp(
 
     // Reached exactly once: both re-exec checkpoints above exit the
     // process whenever they trigger, so only the process that actually
-    // proceeds past both of them ever reaches this line. Skipped entirely
-    // during a dry-run — its literal "will run WITHOUT a transaction" text
-    // would be false when nothing is about to run; the topology gate
-    // inside `planMigrations` still honors `config.allowNoTransaction`.
-    if (!values['dry-run']) warnAllowNoTransaction(config.allowNoTransaction);
+    // proceeds past both of them ever reaches this line. A dry-run gets the
+    // preview-worded variant rather than no warning at all — the topology
+    // gate inside `planMigrations` honors `config.allowNoTransaction` either
+    // way, and the operator must hear about it either way.
+    if (values['dry-run']) {
+      warnDryRunAllowNoTransaction(config.allowNoTransaction);
+    } else {
+      warnAllowNoTransaction(config.allowNoTransaction);
+    }
 
     if (values['dry-run']) {
       // Shaped like `handleStatus`, NOT the mutating path below: a single
@@ -954,7 +1007,9 @@ export async function handleUp(
         planMigrations(database, config)
       );
 
-      writeDryRunPlan('up', plan.migrations, undefined, Boolean(values.json));
+      // `null`, not `undefined`: `up` has no target version, but the key
+      // must still be emitted (see `writeDryRunPlan`).
+      writeDryRunPlan('up', plan, null, Boolean(values.json));
 
       // Pending migrations are the expected dry-run result, never an
       // error — contrast with `status`, which exits non-zero on pending.
@@ -1052,11 +1107,15 @@ export async function handleTo(
 
     // Reached exactly once: both re-exec checkpoints above exit the
     // process whenever they trigger, so only the process that actually
-    // proceeds past both of them ever reaches this line. Skipped entirely
-    // during a dry-run — its literal "will run WITHOUT a transaction" text
-    // would be false when nothing is about to run; the topology gate
-    // inside `planMigrations` still honors `config.allowNoTransaction`.
-    if (!values['dry-run']) warnAllowNoTransaction(config.allowNoTransaction);
+    // proceeds past both of them ever reaches this line. A dry-run gets the
+    // preview-worded variant rather than no warning at all — the topology
+    // gate inside `planMigrations` honors `config.allowNoTransaction` either
+    // way, and the operator must hear about it either way.
+    if (values['dry-run']) {
+      warnDryRunAllowNoTransaction(config.allowNoTransaction);
+    } else {
+      warnAllowNoTransaction(config.allowNoTransaction);
+    }
 
     if (values['dry-run']) {
       // Shaped like `handleStatus`, NOT the mutating path below: a single
@@ -1065,7 +1124,7 @@ export async function handleTo(
         planMigrations(database, config, version)
       );
 
-      writeDryRunPlan('to', plan.migrations, version, Boolean(values.json));
+      writeDryRunPlan('to', plan, version, Boolean(values.json));
 
       // Pending migrations are the expected dry-run result, never an
       // error — contrast with `status`, which exits non-zero on pending.

@@ -133,7 +133,7 @@ describe('mongoat up/to --dry-run', () => {
     expect(stderr()).toContain('MIGRATION_CHECKSUM_MISMATCH');
   });
 
-  it('up --dry-run --allow-no-transaction never writes the "will run WITHOUT" warning, but still threads allowNoTransaction into planMigrations', async () => {
+  it('up --dry-run --allow-no-transaction warns on stderr that a real run would skip the transaction, and threads allowNoTransaction into planMigrations', async () => {
     vi.mocked(planMigrations).mockResolvedValue({
       migrations: [],
       hasReplicaSet: false,
@@ -145,11 +145,52 @@ describe('mongoat up/to --dry-run', () => {
     );
 
     expect(exitCode).toBe(0);
+    expect(stderr()).toContain(
+      'a real run of this plan would execute WITHOUT a MongoDB transaction'
+    );
+    // The preview wording replaces the mutating path's "will run WITHOUT"
+    // text — a dry run applies nothing, so that sibling phrasing would be a
+    // false statement here.
     expect(stderr()).not.toContain('will run WITHOUT');
     expect(planMigrations).toHaveBeenCalledWith(
       fakeDatabase,
       expect.objectContaining({ allowNoTransaction: true })
     );
+  });
+
+  it('up --dry-run reports the topology as bypassed, never OK, when the gate was only waived', async () => {
+    vi.mocked(planMigrations).mockResolvedValue({
+      migrations: [{ version: '20260101090000', name: 'first' }],
+      hasReplicaSet: false,
+    });
+
+    await handleUp(['--dry-run', '--allow-no-transaction'], deps);
+
+    expect(stdout()).toContain('topology BYPASSED (--allow-no-transaction)');
+    expect(stdout()).not.toContain('topology OK');
+  });
+
+  it('up --dry-run reports topology OK when the gate was genuinely satisfied', async () => {
+    vi.mocked(planMigrations).mockResolvedValue({
+      migrations: [{ version: '20260101090000', name: 'first' }],
+      hasReplicaSet: true,
+    });
+
+    await handleUp(['--dry-run'], deps);
+
+    expect(stdout()).toContain('checksum OK, topology OK');
+  });
+
+  it('up --dry-run --json carries transactional: false when the topology gate was bypassed', async () => {
+    vi.mocked(planMigrations).mockResolvedValue({
+      migrations: [],
+      hasReplicaSet: false,
+    });
+
+    await handleUp(['--dry-run', '--json', '--allow-no-transaction'], deps);
+
+    const parsed = JSON.parse(stdout()) as MigrationPlanJson;
+    expect(parsed.transactional).toBe(false);
   });
 
   it('up --dry-run --json emits exactly one stdout write parsing to a schemaVersion 1 "up" envelope', async () => {
@@ -170,6 +211,11 @@ describe('mongoat up/to --dry-run', () => {
       { version: '20260101090000', name: 'first' },
     ]);
     expect(parsed.summary).toEqual({ count: 1 });
+    expect(parsed.transactional).toBe(true);
+    // Always present, never omitted: `up` has no target, but a consumer
+    // must not have to special-case a missing key.
+    expect(Object.hasOwn(parsed, 'targetVersion')).toBe(true);
+    expect(parsed.targetVersion).toBeNull();
   });
 
   it('to <v> --dry-run --json carries command "to" and the requested targetVersion', async () => {

@@ -191,7 +191,17 @@ export interface MigrationPlanJson {
   migrations: { name: string; version: string }[];
   schemaVersion: 1;
   summary: { count: number };
-  targetVersion?: string;
+  /** `null` for `up` (which has no target) rather than omitted, so the key
+   * is ALWAYS emitted — same always-present-key rule
+   * `MigrationStatusJsonRow` follows, and what lets `jq -e .targetVersion`
+   * yield `null` instead of failing on the `up` payload. */
+  targetVersion: string | null;
+  /** Whether a real run of this plan would execute inside a MongoDB
+   * transaction. `false` means the topology gate was BYPASSED via
+   * `allowNoTransaction` against a standalone — the plan is still viable,
+   * but without atomicity — so a pipeline can gate on it instead of having
+   * to infer it from the absence of an error. */
+  transactional: boolean;
 }
 
 /**
