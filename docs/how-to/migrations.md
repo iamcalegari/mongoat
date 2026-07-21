@@ -135,6 +135,12 @@ Applies every pending migration in ascending version order and prints
 `Migrations applied.`. It's safe to re-run: a migration whose version is
 already recorded as applied is never re-run.
 
+Before running for real, `--dry-run` previews the same pending set without
+applying anything, without acquiring the run lock, and without opening a
+session — see [Dry-run](/cli/#_5-dry-run) in the [CLI reference](/cli/) for
+exactly what it checks and what it deliberately skips. For every other flag
+`up` accepts, see [`mongoat up`](/cli/#mongoat-up).
+
 ## Check status
 
 ```bash
@@ -158,18 +164,14 @@ Each row shows one of four labels:
 - **`failed`** — the most recent attempt to apply it failed; it is never
   reported as applied.
 
-`mongoat status` exits `0` when everything is applied, `2` when something is
-pending, and `3` when anything is failed or drifted.
-
-That exit code reflects **migration state only** — it says nothing about the
-run lock. A repository that is fully applied but whose lock is still held by
-a crashed runner exits `0`, and the very next `mongoat up` fails with
-`MIGRATION_LOCK_HELD`. If your pipeline needs to know that the next command
-can actually run, read the lock as well:
-
-```bash
-mongoat status --json | jq -e '.lock.held == false'
-```
+The exit code reflects **migration state only** — it never reflects the run
+lock, so a fully applied repository whose lock is still held by a crashed
+runner can still exit successfully, and the very next `mongoat up` can still
+fail with `MIGRATION_LOCK_HELD`. See
+[`mongoat status`](/cli/#mongoat-status) and
+[Exit codes](/cli/#_6-exit-codes) in the [CLI reference](/cli/) for the
+exact codes and the `--json` payload shape, including how to read the lock
+separately from the exit code.
 
 ## Revert a migration
 
@@ -178,7 +180,9 @@ mongoat down 20260101090000
 ```
 
 Runs the migration's `down(ctx)` and, on success, removes its record and
-prints `Reverted migration 20260101090000.`.
+prints `Reverted migration 20260101090000.`. There is no dry-run for
+reverting — see [`mongoat down <version>`](/cli/#mongoat-down-version) in
+the [CLI reference](/cli/) for the full set of flags it accepts.
 
 ## Migrate to a specific version
 
@@ -187,21 +191,20 @@ mongoat to 20260101090000
 ```
 
 Applies every pending migration up to and including the given version, in
-order, and prints `Migrated to 20260101090000.`.
+order, and prints `Migrated to 20260101090000.`. It accepts the same flags
+as `up`, including `--dry-run` — see
+[`mongoat to <version>`](/cli/#mongoat-to-version) in the
+[CLI reference](/cli/) for the full list.
 
 ## Configuration
 
-| Setting | Flag | Env var | Default |
-|---|---|---|---|
-| Migrations directory | `--dir` | `MONGOAT_MIGRATIONS_DIR` | `migrations` |
-| Control collection | `--collection` | `MONGOAT_MIGRATIONS_COLLECTION` | `_migrations` |
-| Connection | — | `MONGODB_URI`, `MONGODB_DB_NAME` | — |
-
-`create`, `up`, `down`, `to` and `status` all accept `--dir`; `up`, `down`,
-`to` and `status` also accept `--collection`. `up`, `down` and `to` accept
-`--allow-no-transaction` (see [No replica set](#no-replica-set)). Resolution
-follows the same precedence everywhere: CLI flag, then environment variable,
-then default.
+`mongoat` can be configured through a CLI flag, an environment variable, or
+a config file — each setting resolves independently, and exactly one
+source wins when more than one supplies a value. See
+[Environment variables](/cli/#_2-environment-variables) and
+[Config file](/cli/#_3-config-file) in the [CLI reference](/cli/) for every
+flag, variable, and key, and the [CLI reference](/cli/) itself for the
+exact order sources are checked in.
 
 ## Run migrations programmatically
 
@@ -300,6 +303,27 @@ rollback — the migration is recorded with status `failed` and the run stops.
 underlying cause, then re-run `mongoat up` (only pending migrations run) or
 revert it once it's safe to do so.
 
+### The migration lock is already held
+
+**Symptom:**
+
+```
+Error [MIGRATION_LOCK_HELD]: Migration lock is held by <host> (pid <pid>, <operation>) since <timestamp>, expires <timestamp>. Wait for it to expire, or if the owning process died, run `mongoat unlock`.
+```
+
+**Cause:** another `mongoat up`, `down`, or `to` — a concurrent CI job, a
+second instance of a rolling deploy, or a crashed run whose lease hasn't
+expired yet — already holds the exclusive run lock every one of those
+commands acquires before touching migration state. See
+[Why the migration lock exists](/explanation/migration-lock) for what the
+lock guarantees and why a crashed holder recovers on its own once its lease
+lapses.
+
+**Fix:** wait for the lease to expire, or — once you're certain nothing is
+actually running — release it with `mongoat unlock --force`. See
+[`mongoat unlock`](/cli/#mongoat-unlock) in the [CLI reference](/cli/) for
+its flags and exit codes.
+
 ### Version and name validation errors
 
 - `mongoat to <version>` and `mongoat down <version>` require a 14-digit
@@ -318,5 +342,11 @@ Every CLI error prints as `Error [CODE]: message` to stderr.
   `.code` values.
 - [Use transactions & sessions](/how-to/transactions) — more on sessions and
   `{ session }` threading, which the migration runner uses internally.
+- [CLI reference](/cli/) — every flag, environment variable, config file
+  key, and exit code for `create`, `up`, `down`, `to`, `status`, and
+  `unlock`.
+- [Why the migration lock exists](/explanation/migration-lock) — the
+  concurrency model behind `MIGRATION_LOCK_HELD` and the lock's state
+  machine.
 - [Reference](/api/) — `MigrationContext`, `MigrationModule`, `runMigrations`,
   `runTo`, `revertMigration`, `getStatus`, `defineMigration`.
