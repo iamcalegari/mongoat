@@ -97,6 +97,13 @@ const minis = [
       'Generic models, typed hooks, and typed validation schemas throughout the public API.',
     link: '/tutorials/getting-started',
   },
+  {
+    icon: 'transactions',
+    title: 'Transactions',
+    details:
+      'Pass <code>{ session }</code> to any write — server-side validation, hooks, and method gating all run inside the transaction.',
+    link: '/how-to/transactions',
+  },
 ];
 </script>
 

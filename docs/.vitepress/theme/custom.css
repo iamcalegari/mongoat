@@ -1,16 +1,6 @@
 /* Hero da home: nome com gradiente da marca e glow verde atrás da arte
-   (hero.image em docs/index.md). A arte é o ícone oficial com fundo creme —
-   a ilustração sangra pros quatro lados do quadro, então recortá-la do fundo
-   deixaria bordas duras flutuando; em vez disso o quadro inteiro vira um tile
-   arredondado estilo app-icon, e o corte passa a ler como enquadramento. */
-.VPHero .image-container .VPImage {
-  border-radius: 26%;
-  box-shadow: 0 4px 24px rgba(0, 24, 0, 0.18);
-}
-.dark .VPHero .image-container .VPImage {
-  box-shadow: 0 4px 32px rgba(0, 0, 0, 0.5);
-}
-
+   (hero.image em docs/index.md — mongoat-icon.png, ilustração completa com
+   fundo transparente, exibida direto sobre o glow). */
 :root {
   --vp-home-hero-name-color: transparent;
   --vp-home-hero-name-background: linear-gradient(120deg, #2e7d32 30%, #55b85c);
