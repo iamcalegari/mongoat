@@ -11,6 +11,7 @@ flags it accepts, and what it deliberately never does.
 2. [Environment variables](#2-environment-variables)
 3. [Config file](#3-config-file)
 4. [Configuration precedence](#4-configuration-precedence)
+5. [Dry-run](#5-dry-run)
 
 ---
 
@@ -292,3 +293,91 @@ delay the surprise.
 The two connection variables from the previous section — `MONGODB_URI` and
 `MONGODB_DB_NAME` — are not part of this chain: they have no `--flag` or
 config-file equivalent.
+
+## 5. Dry-run
+
+`--dry-run` (accepted by `up` and `to`) previews what a real run would do,
+without applying anything. It runs the same internal, read-only entry
+point either command's real run calls first — not a separate simulation
+path re-implemented on the side.
+
+**What it actually runs**, in order:
+
+1. The same replica-set topology precondition a real run checks before
+   anything else.
+2. The same pending-migration collection a real run would apply, including
+   a checksum-drift check across every migration already applied and still
+   present on disk — not just the next pending one.
+
+**What it never runs:** it never acquires the run lock, never opens a
+session or a transaction, never executes a migration's `up()`/`down()`
+body — and it never even imports a migration module. The list of pending
+migrations comes entirely from scanning file names on disk and computing a
+byte checksum for each; no migration code is ever loaded into the process.
+
+**What it still does:** it connects for real to MongoDB and reads the
+control collection. A dry run does not *mutate* the database — but it is
+not an offline simulation, and it fails if the database is unreachable
+exactly like a real run would. Treat "no pending migrations" as the
+normal, successful outcome of a dry run, never an error; only a genuine
+failure (no replica set without the bypass flag, or a checksum mismatch) is
+reported as one.
+
+**Topology reporting.** The plan reports exactly one of two states:
+
+- `topology OK` (`"transactional": true` in JSON) — a replica set was
+  found; a real run of this plan would execute inside a transaction.
+- `topology BYPASSED (--allow-no-transaction)` (`"transactional": false` in
+  JSON) — no replica set was found, and `--allow-no-transaction` let the
+  check through anyway. This means the gate was **circumvented, not
+  satisfied** — it is not a synonym for "OK". A successful dry run under
+  this state carries **no atomicity guarantee** for the real run that
+  would follow it; never read a clean dry run as a promise that the real
+  run will be atomic, or even that it will succeed.
+
+**`--json` requires `--dry-run`.** Passing `--json` on a real run fails
+immediately with `Error [JSON_REQUIRES_DRY_RUN]: ...`, checked right after
+argument parsing — before any config file is resolved — so a real,
+database-mutating run can never hand back a machine-readable payload.
+
+**Plan envelope** (`up`/`to --dry-run --json`):
+
+```json
+{
+  "schemaVersion": 1,
+  "command": "up",
+  "targetVersion": null,
+  "migrations": [{ "version": "20260102103000", "name": "add-loyalty-tier" }],
+  "transactional": true,
+  "summary": { "count": 1 }
+}
+```
+
+`targetVersion` is the 14-digit version string for `to`, and `null` — never
+omitted — for `up`, which has no target version.
+
+**Status envelope** (`status --json`, shown here for comparison — it is
+not itself a dry run, but the other machine-readable envelope this
+reference covers):
+
+```json
+{
+  "schemaVersion": 1,
+  "migrations": [
+    {
+      "version": "20260101090000",
+      "name": "backfill-user-status",
+      "state": "applied",
+      "drifted": false,
+      "appliedAt": "2026-01-01T09:00:00.000Z"
+    }
+  ],
+  "summary": { "applied": 1, "drifted": 0, "failed": 0, "pending": 0, "total": 1 },
+  "lock": { "held": false }
+}
+```
+
+Both envelopes are documented here **by shape, from concrete examples** —
+neither is an importable TypeScript type today: the types behind them, and
+the read-only entry point that produces the plan envelope, are internal
+and are not part of the published package surface.
