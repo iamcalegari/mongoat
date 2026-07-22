@@ -323,3 +323,11 @@
     line-height: 1.35;
   }
 }
+
+/* Mermaid edge labels: the site's prose line-height stretches multi-line
+   labels until they spill over their own edge lines; keep them compact. */
+.vp-doc .mermaid .edgeLabel,
+.vp-doc .mermaid .edgeLabel p {
+  line-height: 1.3;
+  margin: 0;
+}

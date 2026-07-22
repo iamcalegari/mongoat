@@ -95,11 +95,9 @@ stateDiagram-v2
     FREE --> HELD: acquireLock() succeeds
     HELD --> HELD_REFUSED: concurrent attempt
     HELD_REFUSED --> HELD
-    HELD --> FREE: releaseIfOwner()
+    HELD --> FREE: releaseIfOwner()<br/>unlock --force (deletes)<br/>stale expiresAt
     HELD --> HELD: lease lapses
-    HELD --> FREE: stale expiresAt
     FREE --> FREE: unlock --force (no-op)
-    HELD --> FREE: unlock --force (deletes)
 ```
 
 Each transition maps to something observable at the CLI. A successful
@@ -110,11 +108,12 @@ the command finishes. The lease-expiration case never throws — it surfaces
 as a `MongoatLockLeaseExpiredWarning` process warning, worth investigating
 even though the run that emitted it still completed. Staleness resolving on
 the next attempt is what makes a genuinely stuck lock recover on its own,
-with no operator action at all. The last two transitions are both what
-`mongoat unlock --force` does, one from each starting state; plain
-`mongoat unlock` reports the lock's state and never changes it, which is why
-no transition is labelled with it — see the [CLI reference](/cli/) for their
-flags and exit codes.
+with no operator action at all. `mongoat unlock --force` appears twice — as
+the self-loop on FREE, where it is an idempotent no-op, and as one of the
+three triggers collapsing HELD back to FREE, where it deletes the lock
+unconditionally; plain `mongoat unlock` reports the lock's state and never
+changes it, which is why no transition is labelled with it — see the
+[CLI reference](/cli/) for their flags and exit codes.
 
 ## The mixed-deployment limit
 
