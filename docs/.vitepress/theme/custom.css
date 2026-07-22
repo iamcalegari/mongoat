@@ -267,3 +267,59 @@
   font-weight: 500;
   color: var(--vp-c-brand-1);
 }
+
+/* Mobile: os cards empilhados em coluna única viram uma parede de 10 blocos.
+   Destaques ficam mais baixos (ícone na linha do título) e os secundários
+   viram uma grade 2×3 de atalhos — só ícone + título; o parágrafo sai porque
+   cada card já é um link para a página que o explica. */
+@media (max-width: 639px) {
+  .home-diff {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    column-gap: 0.75rem;
+    align-items: center;
+    padding: 1.05rem 1.1rem 0.95rem;
+  }
+  .home-diff .icbox {
+    width: 40px;
+    height: 40px;
+    border-radius: 9px;
+    margin-bottom: 0;
+  }
+  .home-diff .icbox img {
+    width: 22px;
+    height: 22px;
+  }
+  .home-diff h3 {
+    margin: 0;
+    font-size: 1.02rem;
+  }
+  .home-diff p {
+    grid-column: 1 / -1;
+    margin-top: 0.55rem;
+  }
+  .home-diff .more {
+    grid-column: 1 / -1;
+    margin-top: 0.5rem;
+  }
+}
+
+@media (max-width: 559px) {
+  .home-minis {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.6rem;
+  }
+  .home-mini {
+    padding: 0.8rem 0.85rem 0.75rem;
+  }
+  .home-mini p {
+    display: none;
+  }
+  .home-mini img {
+    margin-bottom: 0.45rem;
+  }
+  .home-mini h3 {
+    font-size: 0.85rem;
+    line-height: 1.35;
+  }
+}
