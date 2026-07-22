@@ -90,15 +90,16 @@ deleting a lock it no longer owns.
 
 ```mermaid
 stateDiagram-v2
+    direction LR
     [*] --> FREE
-    FREE --> HELD: acquireLock() succeeds (findOneAndUpdate upsert)
-    HELD --> HELD_REFUSED: concurrent 2nd attempt (E11000 -> MIGRATION_LOCK_HELD)
+    FREE --> HELD: acquireLock() succeeds
+    HELD --> HELD_REFUSED: concurrent attempt
     HELD_REFUSED --> HELD
-    HELD --> FREE: releaseIfOwner() in finally (ownerId still matches)
-    HELD --> HELD: lease lapses, another runner acquires first (warning, never an error)
-    HELD --> FREE: expiresAt < now (staleness re-checked on the next attempt)
-    FREE --> FREE: mongoat unlock --force (idempotent no-op)
-    HELD --> FREE: mongoat unlock --force (deletes unconditionally)
+    HELD --> FREE: releaseIfOwner()
+    HELD --> HELD: lease lapses
+    HELD --> FREE: stale expiresAt
+    FREE --> FREE: unlock --force (no-op)
+    HELD --> FREE: unlock --force (deletes)
 ```
 
 Each transition maps to something observable at the CLI. A successful
