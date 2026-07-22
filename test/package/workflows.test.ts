@@ -136,6 +136,17 @@ describe('release workflow job separation', () => {
     expect(Object.keys(jobs)).toEqual(['verify', 'release']);
   });
 
+  it('reads a non-empty body for both the verification and the publishing job', () => {
+    expect(
+      jobs.verify,
+      'expected a non-empty body for the "verify" job'
+    ).toBeTruthy();
+    expect(
+      jobs.release,
+      'expected a non-empty body for the "release" job'
+    ).toBeTruthy();
+  });
+
   it('the publishing job depends on the verification job', () => {
     expect(jobs.release).toMatch(/^\s*needs:\s*verify\s*$/m);
   });
@@ -227,6 +238,11 @@ describe('release workflow install and gate integrity', () => {
 
   it('carries no conditional or failure-tolerance marker ahead of the publish step', () => {
     const publishIndex = jobs.release.indexOf('changesets/action');
+    expect(
+      publishIndex,
+      'expected to find a "changesets/action" step inside the publishing job'
+    ).toBeGreaterThan(0);
+
     const preamble = jobs.release.slice(0, publishIndex);
 
     expect(preamble).not.toMatch(/^\s*if\s*:/m);
