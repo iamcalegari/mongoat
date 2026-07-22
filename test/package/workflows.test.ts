@@ -59,6 +59,23 @@ function readPreJobsSection(text: string): string {
 }
 
 /**
+ * Matches `pattern` against `text`, anchored at the start of a line, and
+ * returns the index of the match, or `-1` if there is none. A loose
+ * substring index would also match inside a comment or a nested job key, and
+ * an unchecked `-1` silently turns the region a caller slices from either
+ * empty or the whole remaining text — this helper forces the caller to
+ * confirm the anchor exists before trusting the slice.
+ */
+function findLineAnchor(text: string, pattern: RegExp): number {
+  const anchored = new RegExp(
+    pattern.source,
+    pattern.flags.includes('m') ? pattern.flags : `${pattern.flags}m`
+  );
+  const match = anchored.exec(text);
+  return match ? match.index : -1;
+}
+
+/**
  * Static invariants over the raw workflow text.
  *
  * What this proves: every third-party action reference, in every workflow
@@ -75,6 +92,11 @@ function readPreJobsSection(text: string): string {
  * scheduled — both are documented platform behavior, exercised daily by
  * every push, not something this suite can re-demonstrate from inside the
  * repository.
+ *
+ * Every negative assertion here first proves the region it inspects exists —
+ * via `findLineAnchor` where the region is sliced from a line anchor —
+ * because an anchor that silently fails to match turns that region into an
+ * empty (or unbounded) slice instead of failing the check outright.
  */
 describe('workflow action pins', () => {
   const workflowFiles = discoverWorkflowFiles();
@@ -161,12 +183,19 @@ describe('release workflow job separation', () => {
     expect(jobs.release).toMatch(/^\s*environment:/m);
   });
 
-  it('grants the identity-token permission only on the publishing job, never at workflow scope', () => {
+  it('grants the identity-token permission on the publishing job', () => {
     expect(jobs.release).toMatch(/^\s*id-token:\s*write/m);
+  });
 
-    const permissionsIndex = preJobsSection.indexOf('permissions:');
-    const topLevelPermissions =
-      permissionsIndex === -1 ? '' : preJobsSection.slice(permissionsIndex);
+  it('declares a read-only permission floor at workflow scope', () => {
+    const permissionsIndex = findLineAnchor(preJobsSection, /^permissions:$/);
+    expect(
+      permissionsIndex,
+      'release.yml must declare an explicit workflow-scope `permissions:` block — without it, the unprivileged verify job falls back to the repository default token scope'
+    ).toBeGreaterThanOrEqual(0);
+
+    const topLevelPermissions = preJobsSection.slice(permissionsIndex);
+    expect(topLevelPermissions).toMatch(/^permissions:\n {2}contents: read$/m);
 
     expect(topLevelPermissions).not.toContain('id-token');
     expect(topLevelPermissions).not.toContain('write');
