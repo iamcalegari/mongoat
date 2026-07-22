@@ -46,7 +46,11 @@ describe('runTo — applies pending migrations up to and including the target ve
     dir = await mkdtemp(path.join(tmpdir(), 'mongoat-run-to-'));
     config = { dir, collection: '_migrations_run_to_test' };
 
-    for (const version of ['20260301090000', '20260301100000', '20260301110000']) {
+    for (const version of [
+      '20260301090000',
+      '20260301100000',
+      '20260301110000',
+    ]) {
       await writeFile(
         path.join(dir, `${version}_step_${version}.ts`),
         `import type { MigrationContext } from '@/types/migrate';

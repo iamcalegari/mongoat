@@ -18,7 +18,11 @@
  * a varredura genérica já desce em `$expr` e encontra `$function` lá
  * dentro).
  */
-const CODE_EXECUTION_OPERATORS = new Set(['$where', '$function', '$accumulator']);
+const CODE_EXECUTION_OPERATORS = new Set([
+  '$where',
+  '$function',
+  '$accumulator',
+]);
 
 /**
  * Allowlist de chaves `$` VÁLIDAS NO NÍVEL DE TOPO de um filtro MongoDB —
@@ -51,7 +55,9 @@ const TOP_LEVEL_QUERY_OPERATORS = new Set([
  * objects por este critério, então o scanner/clone abaixo nunca recursa
  * nelas nem destrói seu protótipo.
  */
-export function isPlainObject(value: unknown): value is Record<string, unknown> {
+export function isPlainObject(
+  value: unknown
+): value is Record<string, unknown> {
   return (
     !!value &&
     typeof value === 'object' &&

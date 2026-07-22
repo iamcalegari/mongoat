@@ -39,7 +39,7 @@ to bypass, just raw driver objects:
 
 ```ts
 const client = db.getClient(); // MongoClient | undefined — native driver object
-const rawDb = db.getDb();      // Db | undefined — native driver object
+const rawDb = db.getDb(); // Db | undefined — native driver object
 
 const session = client?.startSession();
 ```
@@ -63,7 +63,7 @@ Legitimate reasons to reach for the escape hatch:
   `distinct`, bulk operations with driver-specific options).
 
 If you find yourself reaching for it to bypass a hook or the method gating
-on a *typed* Mongoat method just to get past a restriction, that's usually a
+on a _typed_ Mongoat method just to get past a restriction, that's usually a
 sign to reconsider the model's `allowedMethods` configuration instead of
 reaching for the raw driver object every time.
 

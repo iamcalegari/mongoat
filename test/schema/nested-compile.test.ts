@@ -208,8 +208,7 @@ describe('Compile recursivo de schemas aninhados/arrays', () => {
       },
     });
     expect(
-      (compiled.properties?.tags as { items?: Record<string, unknown> })
-        ?.items
+      (compiled.properties?.tags as { items?: Record<string, unknown> })?.items
     ).not.toHaveProperty('required');
   });
 

@@ -358,7 +358,9 @@ function handleReleaseFailureAlongsidePrimaryError(
 }
 
 function warnIfLeaseExpiredDuringRun(
-  releaseResult: { ok: true; released: boolean } | { ok: false; error: unknown },
+  releaseResult:
+    | { ok: true; released: boolean }
+    | { ok: false; error: unknown },
   operation: 'run' | 'revert'
 ): void {
   if (!releaseResult.ok || releaseResult.released) return;

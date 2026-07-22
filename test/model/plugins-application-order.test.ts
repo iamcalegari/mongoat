@@ -89,9 +89,7 @@ describe('Model — plugins locais aplicados no construtor, ANTES do wrap', () =
     const modelWithStatic = model as unknown as { paginate: () => string };
 
     expect(typeof modelWithStatic.paginate).toBe('function');
-    expect(modelWithStatic.paginate()).toBe(
-      'plugins_application_order_static'
-    );
+    expect(modelWithStatic.paginate()).toBe('plugins_application_order_static');
   });
 
   it('ordem: pre de plugin executa ANTES do hook declarado em props.hooks, e AMBOS antes do encadeável (.pre())', async () => {

@@ -69,9 +69,9 @@ describe('Model — escape hatch getCollection()', () => {
 
     // Chamando model.insert() diretamente lançaria MongoatError (gating
     // normal do Proxy) — mas a Collection crua não passa pelo Proxy.
-    expect(() => (model as unknown as Model<Doc>).insert({ name: 'x' })).toThrow(
-      /not allowed/
-    );
+    expect(() =>
+      (model as unknown as Model<Doc>).insert({ name: 'x' })
+    ).toThrow(/not allowed/);
 
     const { insertedId } = await model.getCollection().insertOne({
       name: 'via-escape-hatch',

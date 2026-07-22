@@ -142,9 +142,7 @@ function compileProperty(fragment: PropFragment): ModelValidationSchema {
  * recompilação, só clonado para preservar a disciplina de "nunca devolver
  * uma referência mutável do dev").
  */
-function resolveNestedSchema(
-  value: NestedSchemaValue
-): ModelValidationSchema {
+function resolveNestedSchema(value: NestedSchemaValue): ModelValidationSchema {
   return typeof value === 'function'
     ? compile(value)
     : (structuredClone(value) as ModelValidationSchema);

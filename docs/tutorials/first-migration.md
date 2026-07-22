@@ -57,11 +57,13 @@ yet — a small, concrete change against a collection you can picture. Pass
 ```ts
 export const { up, down } = defineMigration({
   async up(ctx: MigrationContext): Promise<void> {
-    await ctx.db.collection('users').updateMany(
-      { status: { $exists: false } },
-      { $set: { status: 'active' } },
-      { session: ctx.session }
-    );
+    await ctx.db
+      .collection('users')
+      .updateMany(
+        { status: { $exists: false } },
+        { $set: { status: 'active' } },
+        { session: ctx.session }
+      );
   },
 
   // ...
@@ -77,11 +79,9 @@ export const { up, down } = defineMigration({
   // ...
 
   async down(ctx: MigrationContext): Promise<void> {
-    await ctx.db.collection('users').updateMany(
-      {},
-      { $unset: { status: '' } },
-      { session: ctx.session }
-    );
+    await ctx.db
+      .collection('users')
+      .updateMany({}, { $unset: { status: '' } }, { session: ctx.session });
   },
 });
 ```

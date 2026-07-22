@@ -56,7 +56,10 @@ import { MongoatValidationError } from '@iamcalegari/mongoat';
 try {
   await User.findMany({ $where: 'this.password.length > 0' });
 } catch (err) {
-  if (err instanceof MongoatValidationError && err.code === 'FORBIDDEN_OPERATOR') {
+  if (
+    err instanceof MongoatValidationError &&
+    err.code === 'FORBIDDEN_OPERATOR'
+  ) {
     // $where is rejected unconditionally — this can't be turned off
   }
 }

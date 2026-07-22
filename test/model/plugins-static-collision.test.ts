@@ -89,9 +89,7 @@ describe('Model — colisão de statics de plugin contra nativo/privado e plugin
     expectStaticCollision(
       () =>
         new Model<Doc>({
-          collectionName: uniqueCollectionName(
-            'plugins_static_collision_find'
-          ),
+          collectionName: uniqueCollectionName('plugins_static_collision_find'),
           allowedMethods: [METHODS.FIND],
           schema,
           plugins: [plugin],

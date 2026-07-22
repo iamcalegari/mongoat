@@ -84,9 +84,9 @@ describe('Guard incondicional de $where nos 7 métodos com filter', () => {
     ['find', whereAtTop],
     ['find (aninhado em $and)', whereNested],
   ])('find rejeita $where — %s', async (_label, filter) => {
-    await expect(
-      model.find(filter as Doc)
-    ).rejects.toMatchObject({ code: 'FORBIDDEN_OPERATOR' });
+    await expect(model.find(filter as Doc)).rejects.toMatchObject({
+      code: 'FORBIDDEN_OPERATOR',
+    });
   });
 
   it('findMany rejeita $where de topo e aninhado', async () => {
@@ -141,7 +141,9 @@ describe('Guard incondicional de $where nos 7 métodos com filter', () => {
   });
 
   it('filtro legítimo com $gt passa normalmente (não é falso positivo)', async () => {
-    const results = await model.findMany({ age: { $gt: 20 } } as unknown as Doc);
+    const results = await model.findMany({
+      age: { $gt: 20 },
+    } as unknown as Doc);
     expect(results).toHaveLength(2);
   });
 

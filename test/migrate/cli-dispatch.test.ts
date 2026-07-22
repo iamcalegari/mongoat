@@ -54,7 +54,13 @@ describe('mongoat CLI dispatch', () => {
     expect(stderrOutput).toContain('status');
   });
 
-  it.each(['__proto__', 'toString', 'constructor', 'valueOf', 'hasOwnProperty'])(
+  it.each([
+    '__proto__',
+    'toString',
+    'constructor',
+    'valueOf',
+    'hasOwnProperty',
+  ])(
     'a prototype-chain property name ("%s") is treated as an unknown command, not invoked',
     async (subcommand) => {
       const exitCode = await dispatch([subcommand]);

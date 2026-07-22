@@ -204,4 +204,6 @@ run('node', [consumerOut]);
 rmSync(tmpDir, { recursive: true, force: true });
 rmSync(outDir, { recursive: true, force: true });
 
-log('ALL GREEN — production chain lowers TC39 decorators and runs in real node');
+log(
+  'ALL GREEN — production chain lowers TC39 decorators and runs in real node'
+);

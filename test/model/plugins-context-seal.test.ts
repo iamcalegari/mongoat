@@ -116,7 +116,14 @@ describe('Model — selo read-only do PluginContext', () => {
     // read-only) + pre/post/static (os 3 canais de efeito). Nada de
     // `validator`/`hooks`/uma referência ao model inteiro.
     expect(ctxKeysSeen).toEqual(
-      ['allowedMethods', 'collectionName', 'post', 'pre', 'schema', 'static'].sort()
+      [
+        'allowedMethods',
+        'collectionName',
+        'post',
+        'pre',
+        'schema',
+        'static',
+      ].sort()
     );
   });
 });

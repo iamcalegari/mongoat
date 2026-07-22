@@ -574,7 +574,11 @@ describe('mongoat config loader', () => {
     it('quotes the caller-supplied var name and code on an invalid value', () => {
       let caught: unknown;
       try {
-        parseBooleanEnv('perhaps', 'SOME_OTHER_FLAG', 'INVALID_SOME_OTHER_FLAG');
+        parseBooleanEnv(
+          'perhaps',
+          'SOME_OTHER_FLAG',
+          'INVALID_SOME_OTHER_FLAG'
+        );
       } catch (err) {
         caught = err;
       }

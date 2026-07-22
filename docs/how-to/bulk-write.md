@@ -21,8 +21,13 @@ const User = new Model<UserSchema>({
 });
 
 const result = await User.bulkWrite([
-  { insertOne: { document: { username: 'a', mail: 'a@x.com', /* … */ } } },
-  { updateOne: { filter: { username: 'b' }, update: { $set: { active: true } } } },
+  { insertOne: { document: { username: 'a', mail: 'a@x.com' /* … */ } } },
+  {
+    updateOne: {
+      filter: { username: 'b' },
+      update: { $set: { active: true } },
+    },
+  },
   { deleteOne: { filter: { username: 'c' } } },
 ]);
 

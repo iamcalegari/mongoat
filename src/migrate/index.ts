@@ -1,7 +1,4 @@
-import type {
-  MigrationModule,
-  MongoatMigrationsConfig,
-} from '@/types/migrate';
+import type { MigrationModule, MongoatMigrationsConfig } from '@/types/migrate';
 
 export { forceUnlock, getLockStatus } from './lock';
 export {

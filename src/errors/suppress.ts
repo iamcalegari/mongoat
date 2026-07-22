@@ -41,7 +41,10 @@ function describeSuppressed(secondary: unknown): string {
  * stable, filterable `type`. Never throws, even if `secondary` is not an
  * `Error` instance and even if stringifying it throws.
  */
-export function attachSuppressed(primary: MongoatError, secondary: unknown): void {
+export function attachSuppressed(
+  primary: MongoatError,
+  secondary: unknown
+): void {
   (primary.suppressed ??= []).push(secondary);
 
   process.emitWarning(

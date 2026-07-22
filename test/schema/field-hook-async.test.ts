@@ -59,7 +59,9 @@ describe('extractDecoratorHooks — @Pre de campo aguarda transform assíncrono'
       const { pre } = extractDecoratorHooks(UserSchema);
       const fieldHook = pre.find((entry) => entry.method === METHODS.INSERT);
 
-      const ctx = { document: { username: 'alice' } as Record<string, unknown> };
+      const ctx = {
+        document: { username: 'alice' } as Record<string, unknown>,
+      };
 
       await fieldHook?.fn(ctx);
 

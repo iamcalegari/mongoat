@@ -85,7 +85,10 @@ describe('resolvePluginList', () => {
   it('mesma referência repetida 2x no mesmo array é resolvida 1x', () => {
     const shared = vi.fn();
 
-    const resolved = resolvePluginList([], [shared as Plugin, shared as Plugin]);
+    const resolved = resolvePluginList(
+      [],
+      [shared as Plugin, shared as Plugin]
+    );
 
     expect(resolved).toHaveLength(1);
   });
@@ -300,9 +303,7 @@ describe('applyPlugins', () => {
     }
 
     expect(caught).toBeInstanceOf(MongoatValidationError);
-    expect((caught as MongoatValidationError).code).toBe(
-      'PLUGIN_SETUP_FAILED'
-    );
+    expect((caught as MongoatValidationError).code).toBe('PLUGIN_SETUP_FAILED');
     expect((caught as MongoatValidationError).message).toContain(
       'failing-plugin'
     );

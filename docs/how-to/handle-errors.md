@@ -11,12 +11,12 @@ its three subclasses — but a method-gating violation throws the base
 `MongoatError` itself. Every one carries a stable `.code` string and
 preserves the original error (if any) via `.cause`:
 
-| Class | `.code` examples | Raised when |
-|-------|-------------------|-------------|
-| `MongoatError` (base) | `METHOD_NOT_ALLOWED` | a method blocked by `allowedMethods`/`validity` was called — see [Why Proxy gating](/explanation/proxy-gating) |
+| Class                    | `.code` examples                                                   | Raised when                                                                                                                    |
+| ------------------------ | ------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------ |
+| `MongoatError` (base)    | `METHOD_NOT_ALLOWED`                                               | a method blocked by `allowedMethods`/`validity` was called — see [Why Proxy gating](/explanation/proxy-gating)                 |
 | `MongoatValidationError` | `INVALID_OBJECT_ID`, `FORBIDDEN_OPERATOR`, `MODEL_CONFIG_CONFLICT` | invalid input (bad `ObjectId`), a forbidden query operator (`$where`), or a model re-registered with a different configuration |
-| `MongoatConnectionError` | `NOT_CONNECTED`, `MISSING_DB_NAME` | an operation was attempted before `db.connect()`, or no database name is configured |
-| `MongoatDriverError` | `DUPLICATE_KEY`, `DRIVER_ERROR` | wraps an error re-thrown by the native `mongodb` driver |
+| `MongoatConnectionError` | `NOT_CONNECTED`, `MISSING_DB_NAME`                                 | an operation was attempted before `db.connect()`, or no database name is configured                                            |
+| `MongoatDriverError`     | `DUPLICATE_KEY`, `DRIVER_ERROR`                                    | wraps an error re-thrown by the native `mongodb` driver                                                                        |
 
 Because the base class sits at the top of the hierarchy, an
 `instanceof MongoatError` check catches **every** error above — subclasses
@@ -29,7 +29,10 @@ Import the subclass you care about and check it with `instanceof`; use
 subclass — `.code` is stable across releases, `.message` is not:
 
 ```ts
-import { MongoatDriverError, MongoatValidationError } from '@iamcalegari/mongoat';
+import {
+  MongoatDriverError,
+  MongoatValidationError,
+} from '@iamcalegari/mongoat';
 
 try {
   await User.insert(doc);
@@ -37,7 +40,10 @@ try {
   if (err instanceof MongoatDriverError && err.code === 'DUPLICATE_KEY') {
     // err.message is sanitized — no stack trace, no duplicated value
     // err.cause holds the original driver error, if you need to inspect it
-  } else if (err instanceof MongoatValidationError && err.code === 'INVALID_OBJECT_ID') {
+  } else if (
+    err instanceof MongoatValidationError &&
+    err.code === 'INVALID_OBJECT_ID'
+  ) {
     // malformed id passed to toObjectId()/findById()
   }
 }
@@ -79,8 +85,8 @@ driver error (including the duplicated value, when present), read
 
 ```ts
 if (err instanceof MongoatDriverError) {
-  console.error(err.message);      // safe to log as-is
-  console.error(err.cause);        // original driver error, for debugging only
+  console.error(err.message); // safe to log as-is
+  console.error(err.cause); // original driver error, for debugging only
 }
 ```
 

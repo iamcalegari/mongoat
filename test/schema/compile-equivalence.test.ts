@@ -126,14 +126,16 @@ describe('Schema.compile — equivalência com a API de objetos', () => {
     }
 
     const first = Schema.compile(ClonedSchema);
-    (first.properties as unknown as Record<string, Record<string, unknown>>).name.mutated =
-      true;
+    (
+      first.properties as unknown as Record<string, Record<string, unknown>>
+    ).name.mutated = true;
     first.required?.push('injected' as never);
 
     const second = Schema.compile(ClonedSchema);
 
     expect(
-      (second.properties as unknown as Record<string, Record<string, unknown>>).name
+      (second.properties as unknown as Record<string, Record<string, unknown>>)
+        .name
     ).toEqual({ bsonType: 'string' });
     expect(second.required).toEqual(['name']);
   });

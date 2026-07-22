@@ -76,7 +76,7 @@ and you opt out with `@Optional()`. The example above produces
 `required: ['username', 'mail']` either way.
 
 **The collection name has a default.** `@Schema('users')` supplies a
-*default* collection name, which is why the decorator example omits
+_default_ collection name, which is why the decorator example omits
 `collectionName`. An explicit `collectionName` in the model config always
 wins over the decorator's. Supply neither and the constructor throws
 `MongoatValidationError` with code `VALIDATION_FAILED`.
@@ -86,13 +86,13 @@ wins over the decorator's. Supply neither and the constructor throws
 `@Prop` takes a schema fragment — any `$jsonSchema` keyword, plus `bsonType`.
 For the common keywords there are shorter equivalents:
 
-| Sugar | Equivalent `@Prop` fragment |
-|---|---|
-| `@BsonType('string')` | `@Prop({ bsonType: 'string' })` |
-| `@Description('...')` | `@Prop({ description: '...' })` |
-| `@Pattern('^a')` | `@Prop({ pattern: '^a' })` |
-| `@Enum(['a', 'b'])` | `@Prop({ enum: ['a', 'b'] })` |
-| `@Min(0)` / `@Max(10)` | `@Prop({ minimum: 0 })` / `@Prop({ maximum: 10 })` |
+| Sugar                              | Equivalent `@Prop` fragment                            |
+| ---------------------------------- | ------------------------------------------------------ |
+| `@BsonType('string')`              | `@Prop({ bsonType: 'string' })`                        |
+| `@Description('...')`              | `@Prop({ description: '...' })`                        |
+| `@Pattern('^a')`                   | `@Prop({ pattern: '^a' })`                             |
+| `@Enum(['a', 'b'])`                | `@Prop({ enum: ['a', 'b'] })`                          |
+| `@Min(0)` / `@Max(10)`             | `@Prop({ minimum: 0 })` / `@Prop({ maximum: 10 })`     |
 | `@MinLength(1)` / `@MaxLength(80)` | `@Prop({ minLength: 1 })` / `@Prop({ maxLength: 80 })` |
 
 They stack, and they merge into one fragment per field:

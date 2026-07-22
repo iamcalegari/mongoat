@@ -9,7 +9,7 @@ means for it, and how release candidates and deprecated lines are handled.
 
 Before the stable line, Mongoat was published under the `1.0.x-alpha`
 pre-release identifier — dozens of iterations while the API was still being
-shaped. A plain `1.0.0` would have been numerically *smaller* than the last
+shaped. A plain `1.0.0` would have been numerically _smaller_ than the last
 alpha (`1.0.x-alpha` is a pre-release of `1.0.x`, and pre-releases sort below
 their release), which would have forced package managers to keep resolving
 `latest` to the old alpha instead of the new stable build. Starting the
@@ -43,7 +43,7 @@ The one deliberate exception is the [native escape
 hatch](/how-to/escape-hatch) (`Model.getCollection()`,
 `Database.getClient()`, `Database.getDb()`): it hands back the underlying
 driver's own `Collection`, `MongoClient`, and `Db` objects. Mongoat's semver
-promise covers the shape of *those getters* (their names and return types),
+promise covers the shape of _those getters_ (their names and return types),
 not the behavior of the driver objects they return — that surface is
 governed by the `mongodb` driver's own versioning, which Mongoat pins as a
 direct dependency.

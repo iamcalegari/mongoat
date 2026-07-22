@@ -68,7 +68,7 @@ pinned version, and all four drive the same MongoDB running in Docker.
 Two of those figures are where Mongoat pulls clearly ahead: zero added
 dependencies, and the only default block on `$where` injection. The third — tying
 the native driver on every operation — looks like a non-result until you recall
-what a thin ODM is for. Zero measurable overhead *is* the goal, and the benchmark
+what a thin ODM is for. Zero measurable overhead _is_ the goal, and the benchmark
 confirms you don't pay for the ergonomics at runtime. What the numbers can't do
 is rank the thin libraries against each other on speed, because their gaps fall
 below the noise floor of anything that talks to a database over a socket. So this
@@ -190,12 +190,12 @@ This is the one section with no noise caveat: the numbers are static and exact.
 What matters is how much each library adds on top of the mongodb driver, since
 every one of them pulls the driver in anyway.
 
-| Library | Total deps | Added over driver | Own size |
-|---|--:|--:|--:|
-| mongodb (native) | 18 | — (baseline) | 3.27 MB |
-| **mongoat** | 19 | **+0** | 0.15 MB |
-| papr | 19 | +0 | 0.12 MB |
-| mongoose | 25 | **+8** | 7.42 MB |
+| Library          | Total deps | Added over driver | Own size |
+| ---------------- | ---------: | ----------------: | -------: |
+| mongodb (native) |         18 |      — (baseline) |  3.27 MB |
+| **mongoat**      |         19 |            **+0** |  0.15 MB |
+| papr             |         19 |                +0 |  0.12 MB |
+| mongoose         |         25 |            **+8** |  7.42 MB |
 
 Mongoat and Papr add nothing beyond the driver. Mongoat hard-depends on
 `mongodb`, Papr peer-depends on it, and neither carries anything else. Mongoose
@@ -267,18 +267,18 @@ Mongoat holds native-level throughput while Mongoose pays document by document.
 
 Full numbers, each with its own spread and verdict:
 
-| Operation | native (ops/s) | mongoat | papr | mongoose | Verdict |
-|---|--:|--:|--:|--:|---|
-| insertOne | 245 | 97% | 98% | 85% | tie |
-| insertMany(1000) | 30 | 87% | 93% | **31%** | **Mongoose ≈3× slower** |
-| findOne (indexed) | 1093 | 82% | 96% | 96% | tie |
-| findMany(100, indexed) | 485 | 99% | 98% | **51%** | **Mongoose ≈2× slower** |
-| findOneAndUpdate | 235 | 96% | 103% | 92% | tie |
-| updateMany | 500 | 98% | 97% | 91% | tie |
-| aggregate (group+sort) | 81 | 119% | 105% | 97% | tie |
-| count (indexed) | 916 | 104% | 100% | 98% | tie |
-| findOneAndDelete | 231 | 101% | 97% | 93% | tie |
-| transaction (commit, 10 docs) | 176 | 99% | 97% | 82% | tie |
+| Operation                     | native (ops/s) | mongoat | papr | mongoose | Verdict                 |
+| ----------------------------- | -------------: | ------: | ---: | -------: | ----------------------- |
+| insertOne                     |            245 |     97% |  98% |      85% | tie                     |
+| insertMany(1000)              |             30 |     87% |  93% |  **31%** | **Mongoose ≈3× slower** |
+| findOne (indexed)             |           1093 |     82% |  96% |      96% | tie                     |
+| findMany(100, indexed)        |            485 |     99% |  98% |  **51%** | **Mongoose ≈2× slower** |
+| findOneAndUpdate              |            235 |     96% | 103% |      92% | tie                     |
+| updateMany                    |            500 |     98% |  97% |      91% | tie                     |
+| aggregate (group+sort)        |             81 |    119% | 105% |      97% | tie                     |
+| count (indexed)               |            916 |    104% | 100% |      98% | tie                     |
+| findOneAndDelete              |            231 |    101% |  97% |      93% | tie                     |
+| transaction (commit, 10 docs) |            176 |     99% |  97% |      82% | tie                     |
 
 Those two Mongoose results reproduce across every run so far — insertMany came in
 at 26%, 37%, and 31% on three separate runs — so they are quoted as "≈3×" rather
@@ -286,7 +286,7 @@ than a single figure: the direction holds, the exact magnitude drifts. Everythin
 else is a tie. On all ten operations, neither mongoat nor Papr can be told apart
 from the driver they sit on.
 
-::: tip Why does an ODM sometimes read *above* 100%?
+::: tip Why does an ODM sometimes read _above_ 100%?
 Mongoat's `aggregate` shows 119% and its `count` 104%. An ODM calls the native
 driver, so it cannot really outrun it; those are the noise band doing its job,
 and both sit well inside the tie zone. An earlier, biased version of this harness
@@ -302,12 +302,12 @@ All four libraries commit at the same speed — the `transaction` row above is a
 transaction was verified to leave zero documents behind and to surface the error
 to the caller, every time:
 
-| Library | Aborted transaction | Error propagated |
-|---|---|---|
-| native | clean rollback (0 survived) | yes |
-| mongoat | clean rollback (0 survived) | yes |
-| mongoose | clean rollback (0 survived) | yes |
-| papr | clean rollback (0 survived) | yes |
+| Library  | Aborted transaction         | Error propagated |
+| -------- | --------------------------- | ---------------- |
+| native   | clean rollback (0 survived) | yes              |
+| mongoat  | clean rollback (0 survived) | yes              |
+| mongoose | clean rollback (0 survived) | yes              |
+| papr     | clean rollback (0 survived) | yes              |
 
 Rollback is pass/fail, not a stopwatch. A fast transaction that keeps its writes
 after an abort is worse than a slow correct one, so correctness settles before
@@ -333,26 +333,26 @@ the biases below.
 This run was executed on the setup below. Absolute throughput will differ on
 other hardware; the percentages and the footprint numbers are what travel.
 
-| | |
-|---|---|
-| Date | 2026-07-17 |
-| Node.js | v22.22.2 |
-| CPU | AMD Ryzen 9 4900HS · 16 threads |
-| Memory | 16 GB |
-| MongoDB | `mongo:7` (single-node replica set, via `@testcontainers/mongodb`) |
-| Sampling | 5 rounds × 3s per case, medians reported |
+|          |                                                                    |
+| -------- | ------------------------------------------------------------------ |
+| Date     | 2026-07-17                                                         |
+| Node.js  | v22.22.2                                                           |
+| CPU      | AMD Ryzen 9 4900HS · 16 threads                                    |
+| Memory   | 16 GB                                                              |
+| MongoDB  | `mongo:7` (single-node replica set, via `@testcontainers/mongodb`) |
+| Sampling | 5 rounds × 3s per case, medians reported                           |
 
 ### Versions under test
 
 Every library is the published npm release, never a local build:
 
-| Package | Version |
-|---|---|
-| `@iamcalegari/mongoat` | 1.1.0 |
-| `mongodb` (shared driver) | 7.0.0 |
-| `mongoose` | 9.7.4 |
-| `mongodb` bundled *inside* mongoose | 7.2.0 |
-| `papr` | 17.1.0 |
+| Package                             | Version |
+| ----------------------------------- | ------- |
+| `@iamcalegari/mongoat`              | 1.1.0   |
+| `mongodb` (shared driver)           | 7.0.0   |
+| `mongoose`                          | 9.7.4   |
+| `mongodb` bundled _inside_ mongoose | 7.2.0   |
+| `papr`                              | 17.1.0  |
 
 ### How fairness is kept
 

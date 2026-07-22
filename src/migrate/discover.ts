@@ -59,8 +59,7 @@ export async function discoverMigrations(
   const resolvedDir = path.resolve(dir);
   const dirEntries = await readdir(resolvedDir, { withFileTypes: true });
 
-  const migrations: { filePath: string; name: string; version: string }[] =
-    [];
+  const migrations: { filePath: string; name: string; version: string }[] = [];
 
   for (const dirEntry of dirEntries) {
     if (!dirEntry.isFile()) continue;
@@ -73,7 +72,10 @@ export async function discoverMigrations(
     // Prefix-containment assertion: even though
     // parseMigrationFilename already rejects a malformed version, this
     // guards against any resolved path escaping the migrations directory.
-    if (filePath !== resolvedDir && !filePath.startsWith(resolvedDir + path.sep)) {
+    if (
+      filePath !== resolvedDir &&
+      !filePath.startsWith(resolvedDir + path.sep)
+    ) {
       continue;
     }
 

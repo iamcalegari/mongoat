@@ -86,10 +86,7 @@ describe('discoverMigrations', () => {
         'export async function up() {}\n'
       );
       await writeFile(path.join(dir, 'README.md'), '# not a migration\n');
-      await writeFile(
-        path.join(dir, 'not_a_migration.ts'),
-        'export {};\n'
-      );
+      await writeFile(path.join(dir, 'not_a_migration.ts'), 'export {};\n');
 
       const entries = await discoverMigrations(dir);
 

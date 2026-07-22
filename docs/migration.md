@@ -108,11 +108,11 @@ subclasses, each with a stable `.code` string and a preserved `.cause`. Previous
 errors were re-thrown as the driver's `MongoError` with a `JSON.stringify(err)`
 message (which lost the stack and, for generic errors, produced `"{}"`).
 
-| Subclass | `.code` examples | Raised when |
-|----------|------------------|-------------|
+| Subclass                 | `.code` examples                          | Raised when                              |
+| ------------------------ | ----------------------------------------- | ---------------------------------------- |
 | `MongoatValidationError` | `INVALID_OBJECT_ID`, `FORBIDDEN_OPERATOR` | invalid input / forbidden query operator |
-| `MongoatConnectionError` | `NOT_CONNECTED` | operation before `db.connect()` |
-| `MongoatDriverError` | `DUPLICATE_KEY`, `DRIVER_ERROR` | wraps an error from the native driver |
+| `MongoatConnectionError` | `NOT_CONNECTED`                           | operation before `db.connect()`          |
+| `MongoatDriverError`     | `DUPLICATE_KEY`, `DRIVER_ERROR`           | wraps an error from the native driver    |
 
 **Before:**
 
@@ -120,15 +120,20 @@ message (which lost the stack and, for generic errors, produced `"{}"`).
 try {
   await User.insert(doc);
 } catch (err) {
-  if (err.name === 'MongoError') { /* … */ }      // brittle
-  console.error(JSON.parse(err.message));          // message was JSON
+  if (err.name === 'MongoError') {
+    /* … */
+  } // brittle
+  console.error(JSON.parse(err.message)); // message was JSON
 }
 ```
 
 **After:**
 
 ```ts
-import { MongoatDriverError, MongoatValidationError } from '@iamcalegari/mongoat';
+import {
+  MongoatDriverError,
+  MongoatValidationError,
+} from '@iamcalegari/mongoat';
 
 try {
   await User.insert(doc);

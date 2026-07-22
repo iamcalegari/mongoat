@@ -88,12 +88,8 @@ describe('Model — registro atômico com detecção de config divergente', () =
     expect((caughtError as Error).message).toContain(
       'registry_config_divergent'
     );
-    expect((caughtError as Error).message).toContain(
-      'different configuration'
-    );
-    expect((caughtError as Error).message).not.toContain(
-      'extraDivergentField'
-    );
+    expect((caughtError as Error).message).toContain('different configuration');
+    expect((caughtError as Error).message).not.toContain('extraDivergentField');
   });
 
   // Regressão: a comparação usava

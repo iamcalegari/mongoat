@@ -73,7 +73,11 @@ await database.connect();
 
 ```ts
 import { Model, METHODS } from '@iamcalegari/mongoat';
-import type { CreateIndexProps, ModelValidationSchema, SchemaWithDefaults } from '@iamcalegari/mongoat';
+import type {
+  CreateIndexProps,
+  ModelValidationSchema,
+  SchemaWithDefaults,
+} from '@iamcalegari/mongoat';
 
 interface UserSchema {
   username: string;
@@ -96,7 +100,10 @@ const schema: ModelValidationSchema<SchemaWithDefaults<UserSchema>> = {
     firstName: { bsonType: 'string', description: 'First name of the user' },
     lastName: { bsonType: 'string', description: 'Last name of the user' },
     insertedAt: { bsonType: 'date', description: 'Date of the user creation' },
-    updatedAt: { bsonType: 'date', description: 'Date of last update of the user' },
+    updatedAt: {
+      bsonType: 'date',
+      description: 'Date of last update of the user',
+    },
   },
   required: ['firstName', 'lastName', 'mail', 'password', 'username'],
 };

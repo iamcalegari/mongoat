@@ -69,7 +69,7 @@ session to every operation that must participate.
 Reaching for a session is not the same as reaching past Mongoat. Unlike
 [`getCollection()`](/how-to/escape-hatch), which hands you the raw collection,
 here you still call `Model` methods — so your `pre`/`post` hooks, the `$where`
-guard, and `allowedMethods` gating all run normally. Only the *session* comes
+guard, and `allowedMethods` gating all run normally. Only the _session_ comes
 from the driver; the operations themselves stay on the typed, guarded surface.
 
 ## See also

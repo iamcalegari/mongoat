@@ -81,12 +81,13 @@ Applies every pending migration, in order, inside a MongoDB transaction
   TypeScript type — the entry point behind it is internal, not part of the
   published package. For the programmatic API instead of the CLI, see
   [Reference](/api/) and [Write and run migrations](/how-to/migrations).
+
 - **Without `--dry-run`:** applies the pending migrations for real and
   prints `Migrations applied.` to stdout on success. Interrupting it
   (`Ctrl-C`, or a termination signal from an orchestrator) is reported as an
   interruption, distinct from an application error.
 - **`--allow-no-transaction`:** whenever set, prints a warning to stderr on
-  *every* invocation — worded for a preview during `--dry-run`, worded for a
+  _every_ invocation — worded for a preview during `--dry-run`, worded for a
   real run otherwise. The warning cannot be suppressed.
 - **Re-exec under `tsx`:** two independent checkpoints can trigger it — one
   if the resolved config file itself is `.ts`, another if any discovered
@@ -146,7 +147,13 @@ Reports the state of every migration, without changing anything.
         "appliedAt": null
       }
     ],
-    "summary": { "applied": 0, "drifted": 0, "failed": 0, "pending": 1, "total": 1 },
+    "summary": {
+      "applied": 0,
+      "drifted": 0,
+      "failed": 0,
+      "pending": 1,
+      "total": 1
+    },
     "lock": { "held": false }
   }
   ```
@@ -201,14 +208,14 @@ connection, and four that resolve the migrations config fields covered in
 [Configuration precedence](#_4-configuration-precedence) below — each of
 those four also has a corresponding flag and a config-file key.
 
-| Env var | Affects | Empty-string handling |
-|---|---|---|
-| `MONGODB_URI` | Connection string used to build the MongoDB client | Passed through as-is to the driver; not specially handled here |
-| `MONGODB_DB_NAME` | Database name the client connects to | idem |
-| `MONGOAT_MIGRATIONS_DIR` | `dir` — where migration files are discovered | Empty counts as unset, falls through to the next precedence tier |
-| `MONGOAT_MIGRATIONS_COLLECTION` | `collection` — the collection tracking applied migration state | idem |
-| `MONGOAT_MIGRATIONS_LOCK_TTL` | `lockTtlMs` — how long an acquired run lock stays valid before it's treated as stale | Empty counts as unset; a non-empty value that isn't a positive integer fails loud with `Error [INVALID_LOCK_TTL]` |
-| `MONGOAT_MIGRATIONS_ALLOW_NO_TRANSACTION` | `allowNoTransaction` — whether migrations may run outside a transaction | Empty counts as unset; accepts `true`, `1`, `yes`, `on` and `false`, `0`, `no`, `off` (case-insensitive, surrounding whitespace trimmed) — anything else fails loud with `Error [INVALID_ALLOW_NO_TRANSACTION]` |
+| Env var                                   | Affects                                                                              | Empty-string handling                                                                                                                                                                                           |
+| ----------------------------------------- | ------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `MONGODB_URI`                             | Connection string used to build the MongoDB client                                   | Passed through as-is to the driver; not specially handled here                                                                                                                                                  |
+| `MONGODB_DB_NAME`                         | Database name the client connects to                                                 | idem                                                                                                                                                                                                            |
+| `MONGOAT_MIGRATIONS_DIR`                  | `dir` — where migration files are discovered                                         | Empty counts as unset, falls through to the next precedence tier                                                                                                                                                |
+| `MONGOAT_MIGRATIONS_COLLECTION`           | `collection` — the collection tracking applied migration state                       | idem                                                                                                                                                                                                            |
+| `MONGOAT_MIGRATIONS_LOCK_TTL`             | `lockTtlMs` — how long an acquired run lock stays valid before it's treated as stale | Empty counts as unset; a non-empty value that isn't a positive integer fails loud with `Error [INVALID_LOCK_TTL]`                                                                                               |
+| `MONGOAT_MIGRATIONS_ALLOW_NO_TRANSACTION` | `allowNoTransaction` — whether migrations may run outside a transaction              | Empty counts as unset; accepts `true`, `1`, `yes`, `on` and `false`, `0`, `no`, `off` (case-insensitive, surrounding whitespace trimmed) — anything else fails loud with `Error [INVALID_ALLOW_NO_TRANSACTION]` |
 
 `MONGOAT_MIGRATIONS_LOCK_TTL` must be decimal digits only — no hex, no
 scientific notation — and the parsed number must be a positive integer.
@@ -277,12 +284,12 @@ field**. This is not "the flag wins for everything, or the config file wins
 for everything": a single invocation can set `dir` and `collection` from a
 config file while overriding just `lockTtlMs` with a flag.
 
-| Flag | Env var | Config key | Default |
-|---|---|---|---|
-| `--dir` | `MONGOAT_MIGRATIONS_DIR` | `dir` | `"migrations"` |
-| `--collection` | `MONGOAT_MIGRATIONS_COLLECTION` | `collection` | `"_migrations"` |
-| `--lock-ttl` | `MONGOAT_MIGRATIONS_LOCK_TTL` | `lockTtlMs` | `1800000` (30 minutes) |
-| `--allow-no-transaction` | `MONGOAT_MIGRATIONS_ALLOW_NO_TRANSACTION` | `allowNoTransaction` | `false` |
+| Flag                     | Env var                                   | Config key           | Default                |
+| ------------------------ | ----------------------------------------- | -------------------- | ---------------------- |
+| `--dir`                  | `MONGOAT_MIGRATIONS_DIR`                  | `dir`                | `"migrations"`         |
+| `--collection`           | `MONGOAT_MIGRATIONS_COLLECTION`           | `collection`         | `"_migrations"`        |
+| `--lock-ttl`             | `MONGOAT_MIGRATIONS_LOCK_TTL`             | `lockTtlMs`          | `1800000` (30 minutes) |
+| `--allow-no-transaction` | `MONGOAT_MIGRATIONS_ALLOW_NO_TRANSACTION` | `allowNoTransaction` | `false`                |
 
 For each field, the first tier that supplies a value wins, in this order:
 CLI flag, then environment variable, then config file, then the built-in
@@ -330,7 +337,7 @@ migrations comes entirely from scanning file names on disk and computing a
 byte checksum for each; no migration code is ever loaded into the process.
 
 **What it still does:** it connects for real to MongoDB and reads the
-control collection. A dry run does not *mutate* the database — but it is
+control collection. A dry run does not _mutate_ the database — but it is
 not an offline simulation, and it fails if the database is unreachable
 exactly like a real run would. Treat "no pending migrations" as the
 normal, successful outcome of a dry run, never an error; only a genuine
@@ -386,7 +393,13 @@ reference covers):
       "appliedAt": "2026-01-01T09:00:00.000Z"
     }
   ],
-  "summary": { "applied": 1, "drifted": 0, "failed": 0, "pending": 0, "total": 1 },
+  "summary": {
+    "applied": 1,
+    "drifted": 0,
+    "failed": 0,
+    "pending": 0,
+    "total": 1
+  },
   "lock": { "held": false }
 }
 ```
@@ -402,25 +415,25 @@ Every exit code below comes directly from `computeStatusExitCode`,
 `runWithSignalHandling`'s interrupt mapping, and each handler's own return
 path in `src/bin/mongoat.ts` — none of it is a number chosen by convention.
 
-| Command | Exit code | Condition |
-|---|---|---|
-| `create` | `0` | The migration file was written successfully. |
-| `create` | `1` | Any error — an invalid name, a missing/ambiguous/malformed config file, `tsx` unavailable or failing to re-exec, or the defensive path-escape guard. |
-| `up`, `to` | `0` | A real run applied every targeted migration; or `--dry-run` completed — with or without pending migrations. Pending migrations are the expected, successful result of a dry run, never an error. |
-| `up`, `to` | `130` | The process received `SIGINT` during a real (non-`--dry-run`) run; the in-flight migration finished before the process stopped. |
-| `up`, `to` | `143` | The process received `SIGTERM` during a real run — same graceful-stop behavior as `SIGINT`, a different signal. |
-| `up`, `to` | `1` | Any other error, on a real run or a `--dry-run` alike: no replica set without `--allow-no-transaction`, a checksum-drift failure, a held run lock, a migration failure, or `--json` passed without `--dry-run` (`JSON_REQUIRES_DRY_RUN`). |
-| `down` | `0` | The migration was reverted successfully. |
-| `down` | `130` | `SIGINT` during the revert. |
-| `down` | `143` | `SIGTERM` during the revert. |
-| `down` | `1` | Any other error — an unknown version, an irreversible migration, a held lock, or a revert failure. There is no `--dry-run` for `down`. |
-| `status` | `0` | Every migration is applied — nothing pending, failed, or drifted. |
-| `status` | `2` | At least one migration is pending, and nothing is failed or drifted. |
-| `status` | `3` | At least one migration is failed or drifted — this outranks any number of pending migrations. |
-| `status` | `1` | An error before a status could even be computed, for example a connection failure. |
-| `unlock` | `0` | The operation completed, with or without `--force`, whether a lock was found, removed, or merely reported. Idempotent: no lock present is still `0`, never an error. |
-| `unlock` | `1` | Any error. |
-| *(unrecognized or missing subcommand)* | `1` | — |
+| Command                                | Exit code | Condition                                                                                                                                                                                                                                 |
+| -------------------------------------- | --------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `create`                               | `0`       | The migration file was written successfully.                                                                                                                                                                                              |
+| `create`                               | `1`       | Any error — an invalid name, a missing/ambiguous/malformed config file, `tsx` unavailable or failing to re-exec, or the defensive path-escape guard.                                                                                      |
+| `up`, `to`                             | `0`       | A real run applied every targeted migration; or `--dry-run` completed — with or without pending migrations. Pending migrations are the expected, successful result of a dry run, never an error.                                          |
+| `up`, `to`                             | `130`     | The process received `SIGINT` during a real (non-`--dry-run`) run; the in-flight migration finished before the process stopped.                                                                                                           |
+| `up`, `to`                             | `143`     | The process received `SIGTERM` during a real run — same graceful-stop behavior as `SIGINT`, a different signal.                                                                                                                           |
+| `up`, `to`                             | `1`       | Any other error, on a real run or a `--dry-run` alike: no replica set without `--allow-no-transaction`, a checksum-drift failure, a held run lock, a migration failure, or `--json` passed without `--dry-run` (`JSON_REQUIRES_DRY_RUN`). |
+| `down`                                 | `0`       | The migration was reverted successfully.                                                                                                                                                                                                  |
+| `down`                                 | `130`     | `SIGINT` during the revert.                                                                                                                                                                                                               |
+| `down`                                 | `143`     | `SIGTERM` during the revert.                                                                                                                                                                                                              |
+| `down`                                 | `1`       | Any other error — an unknown version, an irreversible migration, a held lock, or a revert failure. There is no `--dry-run` for `down`.                                                                                                    |
+| `status`                               | `0`       | Every migration is applied — nothing pending, failed, or drifted.                                                                                                                                                                         |
+| `status`                               | `2`       | At least one migration is pending, and nothing is failed or drifted.                                                                                                                                                                      |
+| `status`                               | `3`       | At least one migration is failed or drifted — this outranks any number of pending migrations.                                                                                                                                             |
+| `status`                               | `1`       | An error before a status could even be computed, for example a connection failure.                                                                                                                                                        |
+| `unlock`                               | `0`       | The operation completed, with or without `--force`, whether a lock was found, removed, or merely reported. Idempotent: no lock present is still `0`, never an error.                                                                      |
+| `unlock`                               | `1`       | Any error.                                                                                                                                                                                                                                |
+| _(unrecognized or missing subcommand)_ | `1`       | —                                                                                                                                                                                                                                         |
 
 `130` and `143` follow the Unix `128 + signal number` convention (`SIGINT`
 is signal 2, `SIGTERM` is signal 15) and only ever apply to `up`, `down`,

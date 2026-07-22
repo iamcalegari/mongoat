@@ -68,7 +68,10 @@ export const User = new Model<UserSchema>({
 ```
 
 ```ts [Object]
-import { ModelValidationSchema, SchemaWithDefaults } from '@iamcalegari/mongoat';
+import {
+  ModelValidationSchema,
+  SchemaWithDefaults,
+} from '@iamcalegari/mongoat';
 
 const schema: ModelValidationSchema<SchemaWithDefaults<UserSchema>> = {
   bsonType: 'object',

@@ -56,9 +56,9 @@ describe('package contents', () => {
 
   it('has the correct package description', () => {
     const packageJsonPath = path.join(PROJECT_ROOT, 'package.json');
-    const packageJson = JSON.parse(
-      readFileSync(packageJsonPath, 'utf8')
-    ) as { description: string };
+    const packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf8')) as {
+      description: string;
+    };
 
     expect(packageJson.description).toBe(
       'A lightweight ODM library for MongoDB'

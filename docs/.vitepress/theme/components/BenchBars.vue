@@ -190,7 +190,10 @@ function fmt(v) {
             :class="`bar fill-${bar.key}`"
             :d="barPath(xScale(bar.value) - x0, row.y + bi * (BAR_H + BAR_GAP))"
           >
-            <title>{{ bar.key }} — {{ row.group.label }}: {{ fmt(bar.value) }}{{ bar.note ? ` (${bar.note})` : '' }}</title>
+            <title>
+              {{ bar.key }} — {{ row.group.label }}: {{ fmt(bar.value)
+              }}{{ bar.note ? ` (${bar.note})` : '' }}
+            </title>
           </path>
           <text
             :class="`val-lbl${outOfBand(bar.value) ? ' val-callout' : ''}`"
@@ -230,20 +233,42 @@ function fmt(v) {
   font-family: var(--vp-font-family-base);
 }
 
-.fill-native { fill: var(--lib-native); }
-.fill-mongoat { fill: var(--lib-mongoat); }
-.fill-papr { fill: var(--lib-papr); }
-.fill-mongoose { fill: var(--lib-mongoose); }
+.fill-native {
+  fill: var(--lib-native);
+}
+.fill-mongoat {
+  fill: var(--lib-mongoat);
+}
+.fill-papr {
+  fill: var(--lib-papr);
+}
+.fill-mongoose {
+  fill: var(--lib-mongoose);
+}
 
-.bar { transition: opacity 0.12s; }
-.bar:hover { opacity: 0.82; cursor: default; }
+.bar {
+  transition: opacity 0.12s;
+}
+.bar:hover {
+  opacity: 0.82;
+  cursor: default;
+}
 
 /* Structural guides and every text label ride VitePress's own theme tokens, so
    they are calibrated for light AND dark instead of being hand-mixed greys that
    wash out on the dark surface. Text never wears a series colour. */
-.noise-band { fill: var(--band); }
-.axis { stroke: var(--vp-c-divider); stroke-width: 1; }
-.ref-line { stroke: var(--vp-c-text-3); stroke-width: 1.5; stroke-dasharray: 5 3; }
+.noise-band {
+  fill: var(--band);
+}
+.axis {
+  stroke: var(--vp-c-divider);
+  stroke-width: 1;
+}
+.ref-line {
+  stroke: var(--vp-c-text-3);
+  stroke-width: 1.5;
+  stroke-dasharray: 5 3;
+}
 
 .group-lbl {
   fill: var(--vp-c-text-1);

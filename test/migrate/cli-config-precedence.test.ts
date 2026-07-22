@@ -402,9 +402,7 @@ describe('mergeMigrateConfig — empty values never win the chain', () => {
     expect(caught).toEqual(
       expect.objectContaining({ code: 'INVALID_LOCK_TTL' })
     );
-    expect((caught as Error).message).toContain(
-      'MONGOAT_MIGRATIONS_LOCK_TTL'
-    );
+    expect((caught as Error).message).toContain('MONGOAT_MIGRATIONS_LOCK_TTL');
   });
 
   it('an invalid --lock-ttl flag names the flag, not the env var', () => {

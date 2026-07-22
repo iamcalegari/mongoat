@@ -129,9 +129,7 @@ describe('runner — lock release fail-safe', () => {
     const err = caught as MongoatError;
 
     expect(err.code).toBe('MIGRATION_FAILED');
-    expect((err.cause as Error).message).toBe(
-      'boom — release must still run'
-    );
+    expect((err.cause as Error).message).toBe('boom — release must still run');
     expect(err.message).not.toMatch(/\bD-\d/);
 
     const status = await getLockStatus(db, config);

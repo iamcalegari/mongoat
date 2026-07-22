@@ -59,7 +59,7 @@ the driver — [pre/post hooks](/how-to/hooks),
 and injection-safety guards
 ([`sanitizeFilter`](/how-to/sanitize-filters), the `$where` block, the
 sanitized `MongoatError` hierarchy — see
-[Handle errors](/how-to/handle-errors)). The distinction is *how* that value
+[Handle errors](/how-to/handle-errors)). The distinction is _how_ that value
 is added: as a layer that sits transparently on top of the driver and can
 always be bypassed, never as a wall that replaces it.
 

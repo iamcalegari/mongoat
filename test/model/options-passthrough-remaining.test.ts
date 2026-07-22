@@ -97,7 +97,9 @@ describe('Model — options passthrough remanescente (findById/bulkWrite)', () =
 
     await expect(
       model.bulkWrite([
-        { insertOne: { document: { _id: duplicateId, name: 'dup', tag: 'bw' } } }, // colide, erra
+        {
+          insertOne: { document: { _id: duplicateId, name: 'dup', tag: 'bw' } },
+        }, // colide, erra
         { insertOne: { document: { name: 'after-duplicate', tag: 'bw' } } }, // só sobrevive com ordered:false
       ])
     ).rejects.toThrow();

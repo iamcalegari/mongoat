@@ -13,8 +13,7 @@
  * This file MUST be imported (for its side effect) before any decorator
  * is defined or applied — it is the first import of `src/schema/decorators.ts`.
  */
-(Symbol as unknown as { metadata: symbol }).metadata ??= Symbol(
-  'Symbol.metadata'
-);
+(Symbol as unknown as { metadata: symbol }).metadata ??=
+  Symbol('Symbol.metadata');
 
 export {};

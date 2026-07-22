@@ -1,4 +1,7 @@
-import { MongoDBContainer, StartedMongoDBContainer } from '@testcontainers/mongodb';
+import {
+  MongoDBContainer,
+  StartedMongoDBContainer,
+} from '@testcontainers/mongodb';
 
 /**
  * globalSetup do vitest.

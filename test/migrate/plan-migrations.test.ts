@@ -131,8 +131,7 @@ describe('planMigrations', () => {
 
     await writeFile(
       appliedPath,
-      migrationContent('plan_migrations_marker') +
-        '\n// tampered after apply\n'
+      migrationContent('plan_migrations_marker') + '\n// tampered after apply\n'
     );
 
     await writeFile(

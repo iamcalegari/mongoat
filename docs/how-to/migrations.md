@@ -86,19 +86,19 @@ undoing it:
 ```ts
 export const { up, down } = defineMigration({
   async up(ctx: MigrationContext): Promise<void> {
-    await ctx.db.collection('users').updateMany(
-      { status: { $exists: false } },
-      { $set: { status: 'active' } },
-      { session: ctx.session }
-    );
+    await ctx.db
+      .collection('users')
+      .updateMany(
+        { status: { $exists: false } },
+        { $set: { status: 'active' } },
+        { session: ctx.session }
+      );
   },
 
   async down(ctx: MigrationContext): Promise<void> {
-    await ctx.db.collection('users').updateMany(
-      {},
-      { $unset: { status: '' } },
-      { session: ctx.session }
-    );
+    await ctx.db
+      .collection('users')
+      .updateMany({}, { $unset: { status: '' } }, { session: ctx.session });
   },
 });
 ```
@@ -160,7 +160,7 @@ Each row shows one of four labels:
   what was recorded when it ran.
 - **`applied (DRIFTED)`** — recorded as applied, but the file has been edited
   since — its checksum no longer matches. Drift blocks `mongoat up`/`mongoat
-  to` until resolved.
+to` until resolved.
 - **`failed`** — the most recent attempt to apply it failed; it is never
   reported as applied.
 

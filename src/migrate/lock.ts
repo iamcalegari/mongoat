@@ -252,9 +252,7 @@ export async function releaseIfOwner(
   nativeDb: Db,
   config: MigrateConfig,
   ownerId: string
-): Promise<
-  { ok: true; released: boolean } | { ok: false; error: unknown }
-> {
+): Promise<{ ok: true; released: boolean } | { ok: false; error: unknown }> {
   let released = false;
 
   const result = await runBestEffort(async () => {
