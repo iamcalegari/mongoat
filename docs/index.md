@@ -80,8 +80,15 @@ const minis = [
     icon: 'injection',
     title: 'Injection-safe by default',
     details:
-      'An always-on <code>$where</code> guard, opt-in filter sanitizing, and Proxy-gated method access.',
+      'An always-on <code>$where</code> guard and opt-in filter sanitizing keep hostile query input away from the server.',
     link: '/how-to/sanitize-filters',
+  },
+  {
+    icon: 'gating',
+    title: 'Per-model method gating',
+    details:
+      'Allow only the methods each model should expose — a Proxy blocks everything else before the call even happens.',
+    link: '/explanation/proxy-gating',
   },
   {
     icon: 'escape',
@@ -89,13 +96,6 @@ const minis = [
     details:
       'Drop down to the native <code>Collection</code>/<code>Db</code>/<code>MongoClient</code> any time — full control, no lock-in.',
     link: '/how-to/escape-hatch',
-  },
-  {
-    icon: 'types',
-    title: 'Type-safe end to end',
-    details:
-      'Generic models, typed hooks, and typed validation schemas throughout the public API.',
-    link: '/tutorials/getting-started',
   },
   {
     icon: 'transactions',
