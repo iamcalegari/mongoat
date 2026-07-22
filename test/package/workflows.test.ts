@@ -76,6 +76,27 @@ function findLineAnchor(text: string, pattern: RegExp): number {
 }
 
 /**
+ * The mapping introduced by the line matching `keyPattern` — that line plus
+ * the indented lines under it — or `null` when the key is absent. Slicing to
+ * the end of the enclosing section instead would pull in whatever follows the
+ * block, so an absence assertion over the result would fail on a correct file
+ * the moment someone writes a comment mentioning what the block excludes.
+ */
+function readKeyedBlock(text: string, keyPattern: RegExp): string | null {
+  const start = findLineAnchor(text, keyPattern);
+  if (start === -1) return null;
+
+  const [keyLine, ...rest] = text.slice(start).split('\n');
+  const body = [keyLine];
+  for (const line of rest) {
+    if (line.trim() === '') break;
+    if (!/^\s/.test(line)) break;
+    body.push(line);
+  }
+  return body.join('\n');
+}
+
+/**
  * Static invariants over the raw workflow text.
  *
  * What this proves: every third-party action reference, in every workflow
@@ -199,13 +220,15 @@ describe('release workflow job separation', () => {
   });
 
   it('declares a read-only permission floor at workflow scope', () => {
-    const permissionsIndex = findLineAnchor(preJobsSection, /^permissions:$/);
+    const topLevelPermissions = readKeyedBlock(
+      preJobsSection,
+      /^permissions:$/
+    );
     expect(
-      permissionsIndex,
+      topLevelPermissions,
       'release.yml must declare an explicit workflow-scope `permissions:` block — without it, the unprivileged verify job falls back to the repository default token scope'
-    ).toBeGreaterThanOrEqual(0);
+    ).not.toBeNull();
 
-    const topLevelPermissions = preJobsSection.slice(permissionsIndex);
     expect(topLevelPermissions).toMatch(/^permissions:\n {2}contents: read$/m);
 
     expect(topLevelPermissions).not.toContain('id-token');
@@ -237,11 +260,17 @@ describe('release workflow install and gate integrity', () => {
   });
 
   it('carries no conditional or failure-tolerance marker ahead of the publish step', () => {
-    const publishIndex = jobs.release.indexOf('changesets/action');
+    // Anchored on the step's own `- uses:` line: a bare substring search also
+    // matches a comment naming the action, which would end the preamble early
+    // and hide a marker sitting between that comment and the real step.
+    const publishIndex = findLineAnchor(
+      jobs.release,
+      /^\s*- uses:\s*changesets\/action@/
+    );
     expect(
       publishIndex,
       'expected to find a "changesets/action" step inside the publishing job'
-    ).toBeGreaterThan(0);
+    ).toBeGreaterThanOrEqual(0);
 
     const preamble = jobs.release.slice(0, publishIndex);
 
