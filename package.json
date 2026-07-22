@@ -23,6 +23,8 @@
     "docs:build": "vitepress build docs",
     "docs:preview": "vitepress preview docs",
     "example": "tsx",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
     "lint": "eslint .",
     "prebuild": "rimraf ./lib",
     "predocs:dev": "typedoc",
