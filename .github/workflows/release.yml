@@ -7,11 +7,11 @@
 # changesets). Quando esse PR e mergeado (ou quando ha versoes nao-publicadas),
 # a action roda `npm run release` (= `changeset publish`) e publica.
 #
-# Gate: o job usa o Environment `npm-publish`, que tem um required
-# reviewer (o autor). Isso pausa a PUBLICACAO ate aprovacao humana explicita —
-# a primeira release (1.1.0, irreversivel) exige 1 clique. Para tornar as
-# releases seguintes totalmente zero-clique, basta remover o required reviewer
-# do Environment depois da 1a release.
+# Gate: o job de publicacao usa o Environment `npm-publish`, que tem um
+# required reviewer (o autor). Isso pausa a PUBLICACAO ate aprovacao humana
+# explicita — a primeira release (1.1.0, irreversivel) exige 1 clique. Para
+# tornar as releases seguintes totalmente zero-clique, basta remover o
+# required reviewer do Environment depois da 1a release.
 name: Release
 
 on:
@@ -21,24 +21,18 @@ on:
 concurrency: ${{ github.workflow }}-${{ github.ref }}
 
 permissions:
-  contents: write
-  pull-requests: write
-  id-token: write # habilita `npm publish --provenance` via OIDC
+  contents: read
 
 jobs:
-  release:
+  verify:
     runs-on: ubuntu-latest
-    environment: npm-publish # gate humano (required reviewer)
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
-        with:
-          fetch-depth: 0
 
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 22.x
           cache: npm
-          registry-url: https://registry.npmjs.org
 
       - run: npm ci
 
@@ -51,6 +45,33 @@ jobs:
       - run: npm test
 
       - run: npm run check:package
+
+  release:
+    needs: verify
+    runs-on: ubuntu-latest
+    environment: npm-publish # gate humano (required reviewer)
+    permissions:
+      contents: write
+      pull-requests: write
+      id-token: write # habilita `npm publish --provenance` via OIDC
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22.x
+          cache: npm
+          registry-url: https://registry.npmjs.org
+
+      # Uma instalacao comum executa codigo de terceiro escrito nos hooks de
+      # instalacao das dependencias. Este e o job que segura a credencial de
+      # publicacao no npm e a identidade que assina a proveniencia — codigo de
+      # dependencia nao roda aqui.
+      - run: npm ci --ignore-scripts
+
+      - run: npm run build
 
       # A referencia abaixo aponta para um commit fixo, nao para a tag `v1` —
       # essa tag e um branch mantido pelos autores, entao seu topo pode ser
