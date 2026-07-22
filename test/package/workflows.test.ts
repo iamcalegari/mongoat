@@ -24,16 +24,57 @@ function collectUsesLines(fileText: string): string[] {
 }
 
 /**
- * Two static invariants over the raw workflow text, kept in one file since
- * both scan the same directory and neither is large enough to earn its own.
+ * Splits a workflow's `jobs:` section into a map of job name to that job's
+ * raw body text. A job starts at a line indented exactly two spaces, holding
+ * an identifier followed by a colon at end of line — a job's own steps and
+ * nested keys sit deeper than that, and workflow-level keys sit above the
+ * `jobs:` line entirely, so neither is mistaken for a job boundary.
+ */
+function readJobs(text: string): Record<string, string> {
+  const lines = text.split('\n');
+  const jobsLineIndex = lines.findIndex((line) => line === 'jobs:');
+  if (jobsLineIndex === -1) return {};
+
+  const jobKeyPattern = /^ {2}([\w-]+):$/;
+  const starts: Array<{ name: string; index: number }> = [];
+  for (let i = jobsLineIndex + 1; i < lines.length; i++) {
+    const match = lines[i].match(jobKeyPattern);
+    if (match) starts.push({ name: match[1], index: i });
+  }
+
+  const jobs: Record<string, string> = {};
+  for (let i = 0; i < starts.length; i++) {
+    const end = i + 1 < starts.length ? starts[i + 1].index : lines.length;
+    jobs[starts[i].name] = lines.slice(starts[i].index, end).join('\n');
+  }
+  return jobs;
+}
+
+/** The workflow text preceding its `jobs:` section, for assertions about the
+ * scope declared at workflow level rather than inside any one job. */
+function readPreJobsSection(text: string): string {
+  const lines = text.split('\n');
+  const jobsLineIndex = lines.findIndex((line) => line === 'jobs:');
+  return jobsLineIndex === -1 ? text : lines.slice(0, jobsLineIndex).join('\n');
+}
+
+/**
+ * Static invariants over the raw workflow text.
  *
- * What this proves: every third-party action reference is commit-pinned, and
- * the release job's gate commands are wired in the right order ahead of the
- * publish step. What it does NOT prove: that a failing step actually halts
- * the steps after it — that is documented platform step-failure behavior,
- * exercised daily by the identical sequence already running on every push in
- * the build workflow, not something this suite can re-demonstrate from
- * inside the repository.
+ * What this proves: every third-party action reference, in every workflow
+ * file, is commit-pinned with a readable version, and no file silently
+ * contributes zero references to that check; the release workflow separates
+ * the job that verifies the codebase from the job that publishes it, with
+ * the publish job wired to depend on the verification job rather than just
+ * following it in file order; and neither job carries a bypass marker (a
+ * conditional or a failure-tolerance flag) that would let the gate look
+ * green without actually running.
+ *
+ * What it does NOT prove: that a failing step actually halts the steps
+ * after it, or that a failed job actually blocks a dependent job from being
+ * scheduled — both are documented platform behavior, exercised daily by
+ * every push, not something this suite can re-demonstrate from inside the
+ * repository.
  */
 describe('workflow action pins', () => {
   const workflowFiles = discoverWorkflowFiles();
@@ -49,38 +90,35 @@ describe('workflow action pins', () => {
       const text = readFileSync(path.join(WORKFLOWS_DIR, file), 'utf8');
       const usesLines = collectUsesLines(text);
 
+      expect(
+        usesLines.length,
+        `${file} yielded no "uses:" lines — parser drift?`
+      ).toBeGreaterThan(0);
+
       for (const ref of usesLines) {
         expect(ref).toMatch(PINNED_REF);
       }
     }
   );
-
-  it('collects at least one pinned reference per workflow, so a parsing mistake cannot pass vacuously', () => {
-    const total = workflowFiles.reduce((sum, file) => {
-      const text = readFileSync(path.join(WORKFLOWS_DIR, file), 'utf8');
-      return sum + collectUsesLines(text).length;
-    }, 0);
-
-    expect(total).toBeGreaterThanOrEqual(12);
-  });
 });
 
-describe('release workflow gate order', () => {
+describe('release workflow job separation', () => {
   const releaseText = readFileSync(
     path.join(WORKFLOWS_DIR, 'release.yml'),
     'utf8'
   );
-  const stepLines = releaseText
-    .split('\n')
-    .map((line) => line.trim())
-    .filter(
-      (line) =>
-        line.startsWith('- run:') ||
-        line.startsWith('- uses:') ||
-        line.startsWith('uses:')
-    );
+  const jobs = readJobs(releaseText);
+  const preJobsSection = readPreJobsSection(releaseText);
 
-  it('runs lint, typecheck, build, the suite and the packaging check in order before publishing', () => {
+  it('splits verification from publication into exactly two jobs, in that order', () => {
+    expect(Object.keys(jobs)).toEqual(['verify', 'release']);
+  });
+
+  it('the publishing job depends on the verification job', () => {
+    expect(jobs.release).toMatch(/^\s*needs:\s*verify\s*$/m);
+  });
+
+  it('runs every gate command inside the verification job, in order', () => {
     const gateCommands = [
       'npm ci',
       'npm run lint',
@@ -91,24 +129,78 @@ describe('release workflow gate order', () => {
     ];
 
     const indices = gateCommands.map((command) => {
-      const index = stepLines.findIndex((line) => line.includes(command));
-      expect(index, `expected to find a step containing "${command}"`).toBeGreaterThanOrEqual(0);
+      const index = jobs.verify.indexOf(command);
+      expect(
+        index,
+        `expected to find "${command}" inside the verify job`
+      ).toBeGreaterThanOrEqual(0);
       return index;
     });
 
     for (let i = 1; i < indices.length; i++) {
       expect(indices[i]).toBeGreaterThan(indices[i - 1]);
     }
+  });
 
-    const publishIndices = stepLines
-      .map((line, index) => ({ line, index }))
-      .filter(({ line }) => line.includes('changesets/action'));
+  it('keeps the verification job free of the publishing environment, the token names and the publish action', () => {
+    expect(jobs.verify).not.toMatch(/^\s*environment:/m);
+    expect(jobs.verify).not.toContain('NPM_TOKEN');
+    expect(jobs.verify).not.toContain('NODE_AUTH_TOKEN');
+    expect(jobs.verify).not.toContain('changesets/action');
+  });
 
-    expect(publishIndices).toHaveLength(1);
-    const publishIndex = publishIndices[0].index;
+  it('the publish action reference appears exactly once, inside the publishing job', () => {
+    const occurrences = releaseText.match(/changesets\/action@/g) ?? [];
+    expect(occurrences).toHaveLength(1);
+    expect(jobs.release).toContain('changesets/action@');
+  });
 
-    for (const gateIndex of indices) {
-      expect(publishIndex).toBeGreaterThan(gateIndex);
+  it('the publishing environment key appears exactly once, inside the publishing job', () => {
+    const occurrences = releaseText.match(/^\s*environment:/gm) ?? [];
+    expect(occurrences).toHaveLength(1);
+    expect(jobs.release).toMatch(/^\s*environment:/m);
+  });
+
+  it('grants the identity-token permission only on the publishing job, never at workflow scope', () => {
+    expect(jobs.release).toMatch(/^\s*id-token:\s*write/m);
+
+    const permissionsIndex = preJobsSection.indexOf('permissions:');
+    const topLevelPermissions =
+      permissionsIndex === -1 ? '' : preJobsSection.slice(permissionsIndex);
+
+    expect(topLevelPermissions).not.toContain('id-token');
+    expect(topLevelPermissions).not.toContain('write');
+  });
+});
+
+describe('release workflow install and gate integrity', () => {
+  const releaseText = readFileSync(
+    path.join(WORKFLOWS_DIR, 'release.yml'),
+    'utf8'
+  );
+  const jobs = readJobs(releaseText);
+
+  it('the publishing job installs dependencies without running their lifecycle scripts', () => {
+    const installLines = jobs.release
+      .split('\n')
+      .filter((line) => /^\s*- run:\s*npm ci\b/.test(line));
+
+    expect(installLines.length).toBeGreaterThan(0);
+    for (const line of installLines) {
+      expect(line).toContain('--ignore-scripts');
     }
+  });
+
+  it('carries no conditional or failure-tolerance marker on the verification job', () => {
+    expect(jobs.verify).not.toMatch(/^\s*if\s*:/m);
+    expect(jobs.verify).not.toMatch(/^\s*continue-on-error\s*:/m);
+  });
+
+  it('carries no conditional or failure-tolerance marker ahead of the publish step', () => {
+    const publishIndex = jobs.release.indexOf('changesets/action');
+    const preamble = jobs.release.slice(0, publishIndex);
+
+    expect(preamble).not.toMatch(/^\s*if\s*:/m);
+    expect(preamble).not.toMatch(/^\s*continue-on-error\s*:/m);
   });
 });
