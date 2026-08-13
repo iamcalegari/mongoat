@@ -10,6 +10,17 @@ import {
 import { METHODS } from '@/utils/enums';
 
 /**
+ * Module-private Symbol that holds the registered Proxy of a `Model`
+ * instance, written by the model registry right after wrapping it. Declared
+ * here (not in `src/model/index.ts`) so this module keeps zero runtime
+ * import back to `@/model` — the only `Model` reference in this file is
+ * `import type`, erased at compile time. Declaring the Symbol on `Model`
+ * itself would force this module to import it from `@/model` at runtime,
+ * closing a `model/index.ts` <-> `hooks.ts` cycle that does not exist today.
+ */
+export const kProxySelf = Symbol('kProxySelf');
+
+/**
  * Fallback `onHookError` used when a model is not given one via
  * `CreateModelProps.onHookError` — a `fireAndForget` post-hook error
  * NEVER disappears in total silence. Logs only `err`, never the full
@@ -141,9 +152,21 @@ export function buildContext<ModelType extends Document, M extends METHODS>(
   model: Model<ModelType>,
   fields: Omit<HookContextMap<ModelType>[M], 'method' | 'model'>
 ): HookContextMap<ModelType>[M] {
+  // `ctx.model` hands the hook the REGISTERED Proxy, not the raw
+  // instance — a method called through it that is outside `allowedMethods`
+  // must throw the same `METHOD_NOT_ALLOWED` an external caller would get.
+  // `registerModel` writes the Proxy into `kProxySelf` right after creating
+  // it; plugins run BEFORE `registerModel` (during `new Model(...)`), so a
+  // model under construction has no key yet — that absence is a real,
+  // distinguishable state, not a bug, and handing over the raw instance is
+  // the only honest value at that instant.
+  const proxiedModel =
+    (model as unknown as Record<symbol, Model<ModelType>>)[kProxySelf] ??
+    model;
+
   return {
     method,
-    model,
+    model: proxiedModel,
     ...fields,
   } as HookContextMap<ModelType>[M];
 }

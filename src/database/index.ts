@@ -10,6 +10,7 @@ import {
 
 import { MongoatConnectionError, MongoatError } from '@/errors';
 import { Model } from '@/model';
+import { kProxySelf } from '@/model/hooks';
 import { DatabaseConfig } from '@/types';
 import { METHODS } from '@/utils/enums';
 import {
@@ -215,6 +216,13 @@ export class Database {
   registerModel(model: Model<Document>) {
     const newModel = new Proxy(model, Database[KModelProxyHandler]());
     Database[KModelMap].set(model.collectionName, newModel);
+
+    // Lets `ctx.model` (built by `buildContext`, `@/model/hooks`) hand a
+    // hook the same gated Proxy an external caller gets, instead of the raw
+    // instance — bracket notation over an escape-hatch cast because `Model`
+    // does not declare a Symbol index signature.
+    (model as unknown as Record<symbol, Model<Document>>)[kProxySelf] =
+      newModel;
 
     return newModel;
   }
