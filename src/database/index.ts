@@ -8,8 +8,12 @@ import {
   ServerApiVersion,
 } from 'mongodb';
 
-import { MongoatConnectionError, MongoatError } from '@/errors';
-import { Model } from '@/model';
+import {
+  MongoatConnectionError,
+  MongoatError,
+  MongoatValidationError,
+} from '@/errors';
+import { diffConfig, Model, snapshotConfig } from '@/model';
 import { kProxySelf } from '@/model/hooks';
 import { DatabaseConfig } from '@/types';
 import { METHODS } from '@/utils/enums';
@@ -207,13 +211,77 @@ export class Database {
   /**
    * Registers a model in the database model map.
    *
-   * This method is used internally by the `Model` class constructor to register a model
-   * in the database. If you want to register a model manually, you can use this
-   * method.
+   * This method is used internally by the `Model` class constructor to
+   * register a model. If you want to register a model manually, you can use
+   * this method too — but a `collectionName` that is already occupied is no
+   * longer replaced unconditionally:
+   *
+   * - Passing back the SAME reference already stored for that
+   *   `collectionName` is idempotent — it is returned as-is, no check runs.
+   * - A model carrying any hook (`pre` or `post`, of any origin — declared,
+   *   decorated, or added by a plugin) throws `MongoatValidationError` with
+   *   `code: 'MODEL_CONFIG_CONFLICT'`.
+   * - Otherwise, the candidate's config is compared field-by-field against
+   *   the registered one (the same comparison the `Model` constructor runs
+   *   on re-registration): identical → the existing instance is returned
+   *   unchanged; divergent → throws `MongoatValidationError` with
+   *   `code: 'MODEL_CONFIG_CONFLICT'`, naming the divergent fields.
+   *
+   * A free `collectionName` is unaffected — it still creates the Proxy,
+   * stores it, and returns it, exactly as before.
    *
    * @param model - The model to be registered.
    */
   registerModel(model: Model<Document>) {
+    const existing = Database[KModelMap].get(model.collectionName);
+
+    // Re-registering the EXACT reference already in the registry is
+    // idempotence, not conflict — passing back what `getModel()` just
+    // handed you is the most natural reading of "register manually", and
+    // without this short-circuit the hooks guard below would throw for any
+    // model that declares a hook, even on a harmless repeat call.
+    if (existing === model) {
+      return existing;
+    }
+
+    if (existing) {
+      // A model with hooks from ANY origin never silently replaces an
+      // occupied collectionName — checked BEFORE the config comparison,
+      // mirroring the constructor's guard order. Unlike the constructor
+      // (where "has hooks" means "declared in THIS construction", still a
+      // props object), here it means "the received instance carries hooks
+      // of any origin — declared, decorated, or plugin-registered",
+      // because what arrives is an already-built instance with no
+      // provenance left to distinguish.
+      const candidateHasHooks = Object.values(model.hooks).some(
+        ({ pre, post }) => pre.length > 0 || post.length > 0
+      );
+
+      if (candidateHasHooks) {
+        throw new MongoatValidationError(
+          `Model "${model.collectionName}" already registered — hooks declared on a re-registration are never silently discarded`,
+          { code: 'MODEL_CONFIG_CONFLICT' }
+        );
+      }
+
+      // Same comparison the constructor runs — not a copy — so the two
+      // registration paths cannot drift apart when a property is added.
+      const divergentFields = diffConfig(existing, snapshotConfig(model));
+
+      if (divergentFields.length === 0) {
+        // Identical config: reuse the already-registered instance. No new
+        // Proxy is created, the registry entry is untouched, and the
+        // received (unregistered) model is never written into — writing
+        // `kProxySelf` onto it would lie about its registration state.
+        return existing;
+      }
+
+      throw new MongoatValidationError(
+        `Model "${model.collectionName}" already registered with a different configuration (${divergentFields.join(', ')})`,
+        { code: 'MODEL_CONFIG_CONFLICT' }
+      );
+    }
+
     const newModel = new Proxy(model, Database[KModelProxyHandler]());
     Database[KModelMap].set(model.collectionName, newModel);
 

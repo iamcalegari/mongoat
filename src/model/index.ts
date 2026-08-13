@@ -329,6 +329,8 @@ interface ConfigSnapshot {
 }
 
 /**
+ * @internal
+ *
  * Compara a config candidata contra a config já registrada em `existing` e
  * devolve os NOMES de propriedade de `CreateModelProps` que divergem (lista
  * vazia = idênticas). Dirigida pelas chaves de `PROP_TREATMENT`, com
@@ -354,8 +356,13 @@ interface ConfigSnapshot {
  * (`lodash.isequal`/`fast-deep-equal`): a superfície comparada é pequena e
  * conhecida, e uma lib genérica violaria a restrição de dependências
  * mínimas do projeto.
+ *
+ * Exportada `@internal` (não faz parte do barrel público) para que
+ * `Database#registerModel` rode a MESMA comparação do construtor em vez de
+ * uma cópia — as duas vias de registro precisam divergir por definição
+ * própria, nunca por um bug de sincronização entre duas implementações.
  */
-function diffConfig(
+export function diffConfig(
   existing: Model<Document>,
   candidate: ConfigSnapshot
 ): string[] {
