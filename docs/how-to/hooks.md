@@ -10,7 +10,10 @@ Hooks receive a single `ctx` object — they are **not** bound to the document
 via `this`. `ctx` exposes different fields depending on the method being
 hooked (`ctx.document` for `insert`, `ctx.filter`/`ctx.update` for `update`,
 `ctx.result` for post-hooks, plus `ctx.options`, `ctx.model` and `ctx.method`
-on every call).
+on every call). `ctx.model` is the same gated object an external caller
+gets — a call made through it that falls outside `allowedMethods` throws the
+same error an external call would. See [Why Proxy gating](/explanation/proxy-gating#hook-calls-go-through-the-same-gate)
+for the full picture, including its one declared limit.
 
 There are two equivalent ways to register a hook: call `.pre()`/`.post()` on
 the model, or — when the schema is a decorated class — declare it next to
