@@ -593,11 +593,37 @@ export class Model<ModelType extends Document = Document> {
 
   /**
    * Fallback destination for `fireAndForget` post-hook rejections —
-   * resolved once in the constructor from `props.onHookError`, falling back
-   * to `console.error` so an error never disappears in total silence.
-   * Applied consistently across all CRUD methods, never per-method.
+   * falls back to `console.error` (`defaultOnHookError`) so an error never
+   * disappears in total silence. Applied consistently across all CRUD
+   * methods, never per-method.
+   *
+   * Declared as an accessor (not a plain field) over the live
+   * `kConfigRefs.onHookError` slot, instead of a separately-resolved value
+   * set once in the constructor: a plain field would have let a direct
+   * post-construction reassignment (`model.onHookError = newHandler` —
+   * nothing prevents it, this is a public writable member) desync from the
+   * `kConfigRefs` identity snapshot compared on re-registration, causing a
+   * later, genuinely-matching re-registration to falsely throw
+   * `MODEL_CONFIG_CONFLICT`. Reading and writing through the same slot
+   * `diffConfig` compares means there is nothing left to desync — a
+   * reassignment IS the value re-registration compares against.
    */
-  onHookError!: OnHookError<HookContextMap<ModelType>[METHODS]>;
+  get onHookError(): OnHookError<HookContextMap<ModelType>[METHODS]> {
+    return (
+      (this[kConfigRefs]?.onHookError as unknown as
+        | OnHookError<HookContextMap<ModelType>[METHODS]>
+        | undefined) ??
+      (defaultOnHookError as unknown as OnHookError<
+        HookContextMap<ModelType>[METHODS]
+      >)
+    );
+  }
+
+  set onHookError(fn: OnHookError<HookContextMap<ModelType>[METHODS]>) {
+    this[kConfigRefs].onHookError = fn as unknown as
+      | OnHookError<HookContextMap<Document>[METHODS]>
+      | undefined;
+  }
 
   /**
    * @internal
@@ -878,12 +904,15 @@ export class Model<ModelType extends Document = Document> {
     this.validationAction = validationAction;
     this.validationLevel = validationLevel;
     this.methods = Object.values(METHODS);
-    this.onHookError = props.onHookError ?? defaultOnHookError;
 
     // Guarda a referência CRUA de `props.onHookError` (podendo ser
-    // `undefined`) — NÃO a resolvida acima — porque duas omissões (as duas
-    // caem no fallback `defaultOnHookError`) precisam comparar iguais numa
-    // futura re-registração. Cópia rasa de `plugins` para que uma mutação
+    // `undefined`) — o getter de `onHookError` (declarado acima, no topo da
+    // classe) resolve o fallback `defaultOnHookError` na leitura, então este
+    // slot é a ÚNICA fonte de verdade: tanto para quem lê `model.onHookError`
+    // quanto para a comparação de identidade que `diffConfig` roda numa
+    // futura re-registração. Duas omissões (as duas caem no fallback)
+    // precisam comparar iguais — preservado, porque as duas armazenam o
+    // mesmo `undefined` aqui. Cópia rasa de `plugins` para que uma mutação
     // posterior do array do chamador não vaze para o snapshot.
     this[kConfigRefs] = {
       onHookError: props.onHookError as unknown as

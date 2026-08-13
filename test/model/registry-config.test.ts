@@ -311,6 +311,54 @@ describe('Model — registro atômico com detecção de config divergente', () =
     expect(second).toBe(first);
   });
 
+  // `onHookError` é um campo público gravável — nada impede
+  // `model.onHookError = novoHandler` depois da construção. Antes desta
+  // correção, a identidade comparada numa re-registração ficava presa no
+  // valor recebido na construção original (capturado uma única vez), então
+  // reatribuir o campo e depois re-registrar com o handler JÁ ATIVO no
+  // campo lançava `MODEL_CONFIG_CONFLICT` por engano — a comparação corria
+  // contra um valor que não era mais o handler vigente.
+  it('new Model() com onHookError reatribuído diretamente após a construção reusa a instância na re-registração com o handler ATUAL, mas ainda lança para um handler genuinamente diferente', () => {
+    const handlerA = () => {};
+    const handlerB = () => {};
+    const handlerC = () => {};
+
+    const first = new Model<Doc>({
+      collectionName: 'registry_config_hookerror_reassigned',
+      allowedMethods: [METHODS.FIND],
+      schema,
+      onHookError: handlerA,
+    });
+
+    (first as unknown as { onHookError: unknown }).onHookError = handlerB;
+
+    const second = new Model<Doc>({
+      collectionName: 'registry_config_hookerror_reassigned',
+      allowedMethods: [METHODS.FIND],
+      schema,
+      onHookError: handlerB,
+    });
+
+    expect(second).toBe(first);
+
+    let caughtError: unknown;
+
+    try {
+      new Model<Doc>({
+        collectionName: 'registry_config_hookerror_reassigned',
+        allowedMethods: [METHODS.FIND],
+        schema,
+        onHookError: handlerC,
+      });
+    } catch (err) {
+      caughtError = err;
+    }
+
+    expect(caughtError).toBeInstanceOf(MongoatError);
+    expect((caughtError as MongoatError).code).toBe('MODEL_CONFIG_CONFLICT');
+    expect((caughtError as Error).message).toContain('onHookError');
+  });
+
   // A classe de schema decorada também escapava por completo da
   // comparação — apenas o `validator` já compilado era comparado
   // estruturalmente, então duas classes decoradas DIFERENTES que produzem
