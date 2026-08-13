@@ -126,9 +126,7 @@ describe('Model — gating de allowedMethods em ctx.model dentro de um hook', ()
 
     expect(errorFromCtxModel).toBeInstanceOf(MongoatError);
     expect(errorFromDirectModel).toBeInstanceOf(MongoatError);
-    expect((errorFromCtxModel as MongoatError).code).toBe(
-      'METHOD_NOT_ALLOWED'
-    );
+    expect((errorFromCtxModel as MongoatError).code).toBe('METHOD_NOT_ALLOWED');
     expect((errorFromDirectModel as MongoatError).code).toBe(
       'METHOD_NOT_ALLOWED'
     );

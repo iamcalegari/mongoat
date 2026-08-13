@@ -161,8 +161,7 @@ export function buildContext<ModelType extends Document, M extends METHODS>(
   // distinguishable state, not a bug, and handing over the raw instance is
   // the only honest value at that instant.
   const proxiedModel =
-    (model as unknown as Record<symbol, Model<ModelType>>)[kProxySelf] ??
-    model;
+    (model as unknown as Record<symbol, Model<ModelType>>)[kProxySelf] ?? model;
 
   return {
     method,
