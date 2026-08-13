@@ -68,6 +68,21 @@ const kGlobalPlugins = Symbol('kGlobalPlugins');
 const kPluginsLocked = Symbol('kPluginsLocked');
 
 /**
+ * Symbol module-private que guarda as referências de identidade
+ * (`onHookError` recebido, classe de schema decorada, cópia da lista de
+ * plugins) de uma instância registrada. Existe porque o `get` trap do Proxy
+ * de gating (`KModelProxyHandler`, `src/database/index.ts`) devolve
+ * `value.bind(target)` para QUALQUER propriedade cujo valor seja uma
+ * função — uma propriedade de instância como `onHookError` (uma função) ou
+ * `schemaClass` (uma classe, que é `typeof === 'function'`) perde
+ * identidade de referência quando lida através do registro, porque cada
+ * leitura devolve uma função religada NOVA. Um objeto simples atravessa o
+ * trap intacto (não é função), então a identidade dos seus MEMBROS
+ * sobrevive.
+ */
+const kConfigRefs = Symbol('kConfigRefs');
+
+/**
  * @internal
  *
  * Symbol module-private — NÃO re-exportado do barrel público
@@ -232,50 +247,251 @@ function ownDefinedProperties(instance: object): Record<string, unknown> {
 }
 
 /**
- * Lightweight structural comparison used by the `Model` constructor to
- * detect a divergent re-registration of an already-registered
- * `collectionName`. Compares the fields that define a model's
- * behavior — `allowedMethods` (order-independent), the fully-built
- * `validator` (which already embeds the schema + validationQueryExpressions),
- * `documentDefaults` and `indexes` — via `JSON.stringify`.
- * Deliberately hand-rolled instead of pulling in a deep-equal dependency
- * (`lodash.isequal`/`fast-deep-equal`): the surface being compared is small
- * and known, and a generic deep-equal lib would violate the project's
- * "minimum runtime dependencies" constraint.
+ * Classificação de tratamento de cada propriedade de `CreateModelProps` no
+ * fluxo de re-registro:
+ * - `'compared'`: entra na comparação estrutural de `diffConfig`.
+ * - `'refIdentity'`: comparada por identidade de referência (`===`), nunca
+ *   por conteúdo serializado.
+ * - `'failLoud'`: nunca comparada — a presença do campo na re-registração já
+ *   basta para lançar (tratado ANTES de `diffConfig` ser chamado).
+ * - `'derived'`: não existe como campo comparável próprio; ou é a chave do
+ *   lookup, ou vira outro campo já classificado.
  */
-function isSameConfig(
+type Treatment = 'compared' | 'refIdentity' | 'failLoud' | 'derived';
+
+/**
+ * Fonte única de classificação das 10 propriedades de `CreateModelProps` no
+ * fluxo de re-registro. O `Record` sobre `keyof CreateModelProps<Document>`
+ * é o portão de compile-time: adicionar uma propriedade nova à interface
+ * sem classificá-la aqui quebra `npx tsc --noEmit`.
+ */
+const PROP_TREATMENT: Record<keyof CreateModelProps<Document>, Treatment> = {
+  // Comparado via `_allowedMethods` já resolvido (ordenado antes de
+  // comparar) — uma divergência causada por `validity` também é reportada
+  // aqui, porque `validity` só existe como caminho alternativo para o
+  // mesmo campo.
+  allowedMethods: 'compared',
+  // É a CHAVE do lookup de `existing` — a igualdade dela é a precondição de
+  // `existing` existir, nunca é comparada dentro de `diffConfig`.
+  collectionName: 'derived',
+  documentDefaults: 'compared',
+  // Fail-loud incondicional tratado ANTES de `diffConfig` ser chamado —
+  // ver `candidateHasHooks` no construtor.
+  hooks: 'failLoud',
+  // `JSON.stringify` puro e sem ordenação — a ordem de chaves de um índice
+  // composto é semântica no MongoDB.
+  indexes: 'compared',
+  // Comparado por identidade de referência via `kConfigRefs` — o `get`
+  // trap do Proxy religaria a função a cada acesso, então o lado
+  // `existing` nunca é lido de `existing.onHookError`.
+  onHookError: 'refIdentity',
+  // Comparado por lista ordenada de referências no guard de re-registro
+  // (`candidateHasPlugins`), não dentro de `diffConfig` — a classificação
+  // aqui registra COMO é comparado, o comentário do guard registra ONDE.
+  plugins: 'refIdentity',
+  // Comparado de duas formas complementares: estruturalmente pelo
+  // `validator` já compilado, e por identidade de referência quando é uma
+  // classe decorada.
+  schema: 'compared',
+  // Embutida no MESMO `validator` compilado que `schema` — não tem
+  // comparação própria.
+  validationQueryExpressions: 'compared',
+  // Vira `_allowedMethods` antes de chegar aqui, comparada como
+  // `allowedMethods`.
+  validity: 'derived',
+};
+
+/**
+ * Referências de identidade preservadas sob `kConfigRefs` — ver o
+ * comentário da declaração do Symbol para o porquê de existirem como um
+ * objeto simples em vez de propriedades de instância comuns.
+ */
+interface ConfigRefs {
+  onHookError: OnHookError<HookContextMap<Document>[METHODS]> | undefined;
+  plugins: Plugin<Document>[];
+  schemaClass: SchemaClass<Document> | undefined;
+}
+
+/**
+ * Config candidata (ou snapshot da config registrada) usada por
+ * `diffConfig`. Os 4 campos estruturais vêm das propriedades públicas de
+ * `Model`; os 2 campos de identidade vêm de `kConfigRefs`.
+ */
+interface ConfigSnapshot {
+  allowedMethods: METHODS[];
+  documentDefaults: DocumentDefaults<Document>;
+  indexes: CreateIndexProps[];
+  onHookError: OnHookError<HookContextMap<Document>[METHODS]> | undefined;
+  schemaClass: SchemaClass<Document> | undefined;
+  validator: { $jsonSchema: ModelValidationSchema };
+}
+
+/**
+ * Compara a config candidata contra a config já registrada em `existing` e
+ * devolve os NOMES de propriedade de `CreateModelProps` que divergem (lista
+ * vazia = idênticas). Dirigida pelas chaves de `PROP_TREATMENT`, com
+ * despacho explícito por propriedade dentro do `switch` — o `default`
+ * atribui a propriedade restante a uma variável tipada `never`, de modo que
+ * uma propriedade nova em `CreateModelProps` (ou um ramo removido deste
+ * `switch`) também quebra a compilação aqui, e não só no mapa.
+ *
+ * Mapeamento de cada comparação interna para o nome reportado (fixo, porque
+ * nem toda comparação tem uma propriedade única de origem):
+ * - `allowedMethods` divergente (já resolvido em `_allowedMethods`, cobre
+ *   também uma divergência causada por `validity`) → reporta `allowedMethods`.
+ * - `documentDefaults` divergente → reporta `documentDefaults`.
+ * - `indexes` divergente → reporta `indexes`.
+ * - Referência de `onHookError` divergente → reporta `onHookError`.
+ * - Referência da classe de schema decorada divergente → reporta `schema`.
+ * - `validator` compilado divergente → reporta `schema` E
+ *   `validationQueryExpressions`, os dois: o validador embute as duas
+ *   propriedades e não dá para atribuir a divergência a uma só sem
+ *   recompilar, então nomear apenas uma seria enganoso.
+ *
+ * Hand-rolled em vez de puxar uma dependência de deep-equal
+ * (`lodash.isequal`/`fast-deep-equal`): a superfície comparada é pequena e
+ * conhecida, e uma lib genérica violaria a restrição de dependências
+ * mínimas do projeto.
+ */
+function diffConfig(
   existing: Model<Document>,
-  candidate: {
-    allowedMethods: METHODS[];
-    documentDefaults: DocumentDefaults<Document>;
-    indexes: CreateIndexProps[];
-    validator: { $jsonSchema: ModelValidationSchema };
+  candidate: ConfigSnapshot
+): string[] {
+  const diverged = new Set<string>();
+
+  const existingRefs = (existing as unknown as Record<symbol, ConfigRefs>)[
+    kConfigRefs
+  ];
+
+  for (const prop of Object.keys(
+    PROP_TREATMENT
+  ) as (keyof CreateModelProps<Document>)[]) {
+    switch (prop) {
+      case 'allowedMethods': {
+        const sameAllowedMethods =
+          JSON.stringify([...existing.allowedMethods].sort()) ===
+          JSON.stringify([...candidate.allowedMethods].sort());
+
+        if (!sameAllowedMethods) {
+          diverged.add('allowedMethods');
+        }
+
+        break;
+      }
+
+      case 'documentDefaults': {
+        const sameDocumentDefaults =
+          stableStringify(existing.documentDefaults) ===
+          stableStringify(candidate.documentDefaults);
+
+        if (!sameDocumentDefaults) {
+          diverged.add('documentDefaults');
+        }
+
+        break;
+      }
+
+      case 'indexes': {
+        // JSON.stringify puro e sem ordenação — a ordem de chaves de um
+        // índice composto (`{ a: 1, b: 1 }` vs `{ b: 1, a: 1 }`) é
+        // SEMÂNTICA no MongoDB — ordená-la equipararia índices
+        // genuinamente diferentes.
+        const sameIndexes =
+          JSON.stringify(existing.indexes) ===
+          JSON.stringify(candidate.indexes);
+
+        if (!sameIndexes) {
+          diverged.add('indexes');
+        }
+
+        break;
+      }
+
+      case 'schema': {
+        const sameValidator =
+          stableStringify(existing.validator) ===
+          stableStringify(candidate.validator);
+
+        if (!sameValidator) {
+          diverged.add('schema');
+          diverged.add('validationQueryExpressions');
+        }
+
+        // Identidade de referência da classe decorada — comparação
+        // SEPARADA da estrutural acima, porque duas classes distintas
+        // podem compilar para o MESMO validador. Campos de função/classe
+        // usam `===`, nunca `stableStringify` (uma função serializa para
+        // `undefined`, o que equipararia handlers/classes diferentes).
+        if (existingRefs?.schemaClass !== candidate.schemaClass) {
+          diverged.add('schema');
+        }
+
+        break;
+      }
+
+      case 'onHookError': {
+        if (existingRefs?.onHookError !== candidate.onHookError) {
+          diverged.add('onHookError');
+        }
+
+        break;
+      }
+
+      case 'hooks':
+        // Fail-loud incondicional, tratado ANTES de `diffConfig` ser
+        // chamado — nunca comparado aqui.
+        break;
+
+      case 'plugins':
+        // Comparado no guard de re-registro (`candidateHasPlugins`), não
+        // dentro de `diffConfig`.
+        break;
+
+      case 'validationQueryExpressions':
+        // Embutida no MESMO `validator` comparado pelo case `'schema'`
+        // acima — sem comparação própria.
+        break;
+
+      case 'collectionName':
+      case 'validity':
+        // Derivadas: `collectionName` é a chave do lookup (a igualdade
+        // dela é a precondição de `existing` existir); `validity` vira
+        // `_allowedMethods`, já comparado pelo case `'allowedMethods'`.
+        break;
+
+      default: {
+        const exhaustiveCheck: never = prop;
+
+        throw new Error(
+          `diffConfig: unhandled CreateModelProps key "${String(exhaustiveCheck)}"`
+        );
+      }
+    }
   }
-): boolean {
-  const sameAllowedMethods =
-    JSON.stringify([...existing.allowedMethods].sort()) ===
-    JSON.stringify([...candidate.allowedMethods].sort());
 
-  const sameValidator =
-    stableStringify(existing.validator) ===
-    stableStringify(candidate.validator);
+  return [...diverged];
+}
 
-  // `documentDefaults` e `indexes` afetam materialmente o comportamento do
-  // model — uma re-registração com defaults/índices diferentes também deve
-  // falhar alto em vez de ser descartada em silêncio.
-  const sameDocumentDefaults =
-    stableStringify(existing.documentDefaults) ===
-    stableStringify(candidate.documentDefaults);
+/**
+ * @internal
+ *
+ * Monta o `ConfigSnapshot` de uma instância JÁ construída, lendo os 4
+ * campos estruturais das propriedades públicas de `Model` e os 2 campos de
+ * identidade de `model[kConfigRefs]`. Existe porque `schemaClass` é
+ * `private` — um módulo externo (`Database#registerModel`) não consegue
+ * lê-la, então a montagem do snapshot precisa acontecer aqui dentro.
+ */
+export function snapshotConfig(model: Model<Document>): ConfigSnapshot {
+  const refs = (model as unknown as Record<symbol, ConfigRefs>)[kConfigRefs];
 
-  // Indexes usam JSON.stringify puro de propósito: a ordem das chaves em um
-  // índice composto (`{ a: 1, b: 1 }` vs `{ b: 1, a: 1 }`) é SEMÂNTICA no
-  // MongoDB — ordená-las equipararia índices genuinamente diferentes.
-  const sameIndexes =
-    JSON.stringify(existing.indexes) === JSON.stringify(candidate.indexes);
-
-  return (
-    sameAllowedMethods && sameValidator && sameDocumentDefaults && sameIndexes
-  );
+  return {
+    allowedMethods: model.allowedMethods,
+    documentDefaults: model.documentDefaults,
+    indexes: model.indexes,
+    onHookError: refs?.onHookError,
+    schemaClass: refs?.schemaClass,
+    validator: model.validator,
+  };
 }
 
 /**
@@ -380,6 +596,14 @@ export class Model<ModelType extends Document = Document> {
    */
   private [kHookContext] = new AsyncLocalStorage<{ raw: true }>();
 
+  /**
+   * Snapshot de referências de identidade desta instância — ver o
+   * comentário na declaração de `kConfigRefs` (topo do módulo) para o
+   * porquê de existir como um objeto simples em vez de propriedades de
+   * instância comuns.
+   */
+  private [kConfigRefs]!: ConfigRefs;
+
   constructor(props: CreateModelProps<ModelType>) {
     if (!Model[kDatabase]) {
       throw new MongoatConnectionError(
@@ -441,7 +665,7 @@ export class Model<ModelType extends Document = Document> {
 
     // Built before the existing-registration check (still fully
     // synchronous — no `await` between this and `registerModel()` below)
-    // so `isSameConfig` has the fully-resolved validator to compare
+    // so `diffConfig` has the fully-resolved validator to compare
     // against when the collection is already registered.
     const { validationAction, validationLevel, validator } =
       buildJsonSchemaValidator({
@@ -466,8 +690,9 @@ export class Model<ModelType extends Document = Document> {
       : { pre: [], post: [] };
 
     // Functions are not structurally comparable via
-    // `stableStringify` — `isSameConfig` never compared `hooks`, so a
-    // re-registration of an already-registered `collectionName` that
+    // `stableStringify` — `diffConfig` never compares `hooks` (see
+    // `PROP_TREATMENT`), so a re-registration of an already-registered
+    // `collectionName` that
     // declared hooks used to fall through the "identical config"
     // early-return (allowedMethods/validator/documentDefaults/indexes
     // matching) and the hook was silently discarded. `candidateHasHooks`
@@ -508,14 +733,23 @@ export class Model<ModelType extends Document = Document> {
         );
       }
 
-      if (
-        isSameConfig(existing as unknown as Model<Document>, {
+      const divergentFields = diffConfig(
+        existing as unknown as Model<Document>,
+        {
           allowedMethods: _allowedMethods,
           documentDefaults: documentDefaults as DocumentDefaults<Document>,
           indexes,
+          onHookError: props.onHookError as unknown as
+            | OnHookError<HookContextMap<Document>[METHODS]>
+            | undefined,
+          schemaClass: isDecoratedSchemaClass
+            ? (schema as unknown as SchemaClass<Document>)
+            : undefined,
           validator,
-        })
-      ) {
+        }
+      );
+
+      if (divergentFields.length === 0) {
         // A trava de ordem é setada mesmo neste early-return —
         // a PRIMEIRA construção bem-sucedida (mesmo reusando config
         // idêntica) já fixa a ordem de aplicação de plugins.
@@ -524,10 +758,13 @@ export class Model<ModelType extends Document = Document> {
         return existing as unknown as Model<ModelType>;
       }
 
-      // Only the collectionName + the fact of divergence — never the
-      // schema content itself (avoids information disclosure).
+      // Nomes de propriedade de `CreateModelProps` são API pública
+      // documentada — nomeá-los na mensagem não é information disclosure.
+      // Valores, conteúdo de schema, document defaults e conteúdo de
+      // filtro continuam FORA da mensagem: só o NOME da propriedade
+      // divergente, nunca o que ela continha.
       throw new MongoatValidationError(
-        `Model "${resolvedCollectionName}" already registered with a different configuration`,
+        `Model "${resolvedCollectionName}" already registered with a different configuration (${divergentFields.join(', ')})`,
         { code: 'MODEL_CONFIG_CONFLICT' }
       );
     }
@@ -546,6 +783,21 @@ export class Model<ModelType extends Document = Document> {
     this.validationLevel = validationLevel;
     this.methods = Object.values(METHODS);
     this.onHookError = props.onHookError ?? defaultOnHookError;
+
+    // Guarda a referência CRUA de `props.onHookError` (podendo ser
+    // `undefined`) — NÃO a resolvida acima — porque duas omissões (as duas
+    // caem no fallback `defaultOnHookError`) precisam comparar iguais numa
+    // futura re-registração. Cópia rasa de `plugins` para que uma mutação
+    // posterior do array do chamador não vaze para o snapshot.
+    this[kConfigRefs] = {
+      onHookError: props.onHookError as unknown as
+        | OnHookError<HookContextMap<Document>[METHODS]>
+        | undefined,
+      plugins: [...(props.plugins ?? [])] as unknown as Plugin<Document>[],
+      schemaClass: isDecoratedSchemaClass
+        ? (schema as unknown as SchemaClass<Document>)
+        : undefined,
+    };
 
     // Hooks decorados (`@Pre`/`@Post`) registrados ANTES de `props.hooks`
     // (abaixo) — que por sua vez roda antes de qualquer `.pre()`/`.post()`
