@@ -4,7 +4,8 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { Database } from '@/database';
 import { MongoatError } from '@/errors';
 import { Model } from '@/model';
-import { ModelValidationSchema } from '@/types';
+import { Prop, Schema } from '@/schema';
+import { CreateModelProps, ModelValidationSchema } from '@/types';
 import { METHODS } from '@/utils/enums';
 
 /**
@@ -229,5 +230,166 @@ describe('Model — registro atômico com detecção de config divergente', () =
     expect(second).toBe(first);
     // O hook declarado na primeira registração continua intacto.
     expect(first.hooks[METHODS.FIND].pre).toHaveLength(1);
+  });
+
+  // `onHookError` escapava por completo da comparação de re-registro: o
+  // `get` trap do Proxy de gating religa a função a cada acesso, então
+  // comparar `existing.onHookError` diretamente contra a referência
+  // recebida sempre daria `false` — um handler trocado silenciosamente
+  // nunca era detectado.
+  it('new Model() com referência de onHookError DIVERGENTE na re-registração lança MongoatError/MODEL_CONFIG_CONFLICT nomeando o campo', () => {
+    const handlerA = () => {};
+    const handlerB = () => {};
+
+    new Model<Doc>({
+      collectionName: 'registry_config_hookerror_divergent',
+      allowedMethods: [METHODS.FIND],
+      schema,
+      onHookError: handlerA,
+    });
+
+    let caughtError: unknown;
+
+    try {
+      new Model<Doc>({
+        collectionName: 'registry_config_hookerror_divergent',
+        allowedMethods: [METHODS.FIND],
+        schema,
+        onHookError: handlerB,
+      });
+    } catch (err) {
+      caughtError = err;
+    }
+
+    expect(caughtError).toBeInstanceOf(MongoatError);
+    expect((caughtError as MongoatError).code).toBe('MODEL_CONFIG_CONFLICT');
+    expect((caughtError as Error).message).toContain('onHookError');
+  });
+
+  // Caminho feliz que prova que a comparação por identidade não introduz um
+  // falso positivo: a MESMA referência de handler nas duas construções
+  // continua reusando a instância existente.
+  it('new Model() com a MESMA referência de onHookError nas duas construções reusa a instância existente', () => {
+    const handler = () => {};
+
+    const first = new Model<Doc>({
+      collectionName: 'registry_config_hookerror_reuse_same_ref',
+      allowedMethods: [METHODS.FIND],
+      schema,
+      onHookError: handler,
+    });
+
+    const second = new Model<Doc>({
+      collectionName: 'registry_config_hookerror_reuse_same_ref',
+      allowedMethods: [METHODS.FIND],
+      schema,
+      onHookError: handler,
+    });
+
+    expect(second).toBe(first);
+  });
+
+  // Protege contra a regressão de comparar o handler JÁ RESOLVIDO
+  // (`defaultOnHookError`) em vez do recebido — se a comparação lesse
+  // `this.onHookError` (sempre preenchido pelo fallback), duas omissões
+  // comparariam a MESMA referência resolvida por coincidência; o teste
+  // continuaria passando mesmo com o bug. O caminho feliz mais comum
+  // (nenhuma das duas construções passa `onHookError`) não pode regredir.
+  it('new Model() com onHookError OMITIDO nas duas construções continua reusando a instância existente', () => {
+    const first = new Model<Doc>({
+      collectionName: 'registry_config_hookerror_reuse_omitted',
+      allowedMethods: [METHODS.FIND],
+      schema,
+    });
+
+    const second = new Model<Doc>({
+      collectionName: 'registry_config_hookerror_reuse_omitted',
+      allowedMethods: [METHODS.FIND],
+      schema,
+    });
+
+    expect(second).toBe(first);
+  });
+
+  // A classe de schema decorada também escapava por completo da
+  // comparação — apenas o `validator` já compilado era comparado
+  // estruturalmente, então duas classes decoradas DIFERENTES que produzem
+  // o MESMO validador (mesmas propriedades, mesmos tipos) passavam pela
+  // comparação sem serem notadas. Isola a identidade da classe do
+  // conteúdo do schema: as duas classes abaixo compilam para validadores
+  // estruturalmente idênticos, então só a comparação por referência
+  // detecta a divergência.
+  it('new Model() com classe de schema decorada DIVERGENTE (mesmo validador compilado) na re-registração lança MongoatError/MODEL_CONFIG_CONFLICT nomeando o campo', () => {
+    @Schema()
+    class SchemaA {
+      @Prop({ bsonType: 'string' })
+      name?: string;
+    }
+
+    @Schema()
+    class SchemaB {
+      @Prop({ bsonType: 'string' })
+      name?: string;
+    }
+
+    new Model<Doc>({
+      collectionName: 'registry_config_schema_class_divergent',
+      allowedMethods: [METHODS.FIND],
+      schema: SchemaA,
+    } as unknown as CreateModelProps<Doc>);
+
+    let caughtError: unknown;
+
+    try {
+      new Model<Doc>({
+        collectionName: 'registry_config_schema_class_divergent',
+        allowedMethods: [METHODS.FIND],
+        schema: SchemaB,
+      } as unknown as CreateModelProps<Doc>);
+    } catch (err) {
+      caughtError = err;
+    }
+
+    expect(caughtError).toBeInstanceOf(MongoatError);
+    expect((caughtError as MongoatError).code).toBe('MODEL_CONFIG_CONFLICT');
+    expect((caughtError as Error).message).toContain('schema');
+  });
+
+  // A mensagem de divergência nomeia TODOS os campos que divergiram
+  // simultaneamente, e nunca o valor que cada um carregava — só o NOME de
+  // propriedade de `CreateModelProps`, nunca o conteúdo.
+  it('mensagem de divergência nomeia os dois campos divergentes e não vaza os valores', () => {
+    new Model<Doc>({
+      collectionName: 'registry_config_message_two_fields',
+      allowedMethods: [METHODS.FIND],
+      documentDefaults: { name: 'valor-marcador-original' },
+      indexes: [{ key: { name: 1 } }],
+      schema,
+    });
+
+    let caughtError: unknown;
+
+    try {
+      new Model<Doc>({
+        collectionName: 'registry_config_message_two_fields',
+        allowedMethods: [METHODS.FIND],
+        documentDefaults: { name: 'valor-marcador-divergente' },
+        indexes: [{ key: { name: 1 }, unique: true }],
+        schema,
+      });
+    } catch (err) {
+      caughtError = err;
+    }
+
+    expect(caughtError).toBeInstanceOf(MongoatError);
+    expect((caughtError as MongoatError).code).toBe('MODEL_CONFIG_CONFLICT');
+    expect((caughtError as Error).message).toContain('documentDefaults');
+    expect((caughtError as Error).message).toContain('indexes');
+    expect((caughtError as Error).message).not.toContain(
+      'valor-marcador-original'
+    );
+    expect((caughtError as Error).message).not.toContain(
+      'valor-marcador-divergente'
+    );
   });
 });

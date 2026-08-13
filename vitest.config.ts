@@ -27,8 +27,15 @@ export default defineConfig({
     // Usa a MESMA cadeia babel do build de produção (tsdown.config.mjs):
     // @babel/plugin-proposal-decorators version '2023-11' — semântica de
     // lowering idêntica entre suíte e bundle publicado.
+    //
+    // `test/model/registry-config.test.ts` também casa esta alternativa:
+    // esse arquivo mora fora de `schema/`, mas precisa declarar uma classe
+    // decorada dentro de um `it()` para provar que a identidade da classe
+    // (não só o validador compilado) entra na comparação de re-registro do
+    // model.
     babel({
-      include: /(?:src|test)[\\/]schema[\\/].*\.ts$/,
+      include:
+        /(?:src|test)[\\/]schema[\\/].*\.ts$|test[\\/]model[\\/]registry-config\.test\.ts$/,
       plugins: [['@babel/plugin-proposal-decorators', { version: '2023-11' }]],
     }),
   ],
