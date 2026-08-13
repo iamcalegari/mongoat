@@ -134,5 +134,112 @@ describe('Erros de decoração de hooks', () => {
       expect(caughtError).toBeInstanceOf(MongoatError);
       expect((caughtError as MongoatError).code).toBe('MODEL_CONFIG_CONFLICT');
     });
+
+    it('re-registrar a MESMA referência de classe decorada com @Pre, resto idêntico, devolve a instância existente sem duplicar o hook', () => {
+      @Schema()
+      class DecoratedWithHookReused {
+        @Pre(METHODS.INSERT, () => {})
+        @Prop({ bsonType: 'string' })
+        name?: string;
+      }
+
+      const first = new Model<Doc>({
+        collectionName: 'hook_decoration_errors_reuse_same_class',
+        allowedMethods: [METHODS.FIND],
+        schema: DecoratedWithHookReused,
+      } as unknown as CreateModelProps<Doc>);
+
+      const hookCountAfterFirstConstruction =
+        first.hooks[METHODS.INSERT].pre.length;
+
+      const second = new Model<Doc>({
+        collectionName: 'hook_decoration_errors_reuse_same_class',
+        allowedMethods: [METHODS.FIND],
+        schema: DecoratedWithHookReused,
+      } as unknown as CreateModelProps<Doc>);
+
+      expect(second).toBe(first);
+      // O hook decorado não foi re-registrado numa segunda passagem pelo
+      // construtor — o comprimento do array continua o mesmo de depois da
+      // primeira construção.
+      expect(second.hooks[METHODS.INSERT].pre).toHaveLength(
+        hookCountAfterFirstConstruction
+      );
+    });
+
+    it('re-registrar com uma classe decorada DIFERENTE (mesmo corpo de hook, mesmo shape de schema) continua lançando MODEL_CONFIG_CONFLICT', () => {
+      @Schema()
+      class DecoratedWithHookA {
+        @Pre(METHODS.INSERT, () => {})
+        @Prop({ bsonType: 'string' })
+        name?: string;
+      }
+
+      @Schema()
+      class DecoratedWithHookB {
+        @Pre(METHODS.INSERT, () => {})
+        @Prop({ bsonType: 'string' })
+        name?: string;
+      }
+
+      new Model<Doc>({
+        collectionName: 'hook_decoration_errors_distinct_classes',
+        allowedMethods: [METHODS.FIND],
+        schema: DecoratedWithHookA,
+      } as unknown as CreateModelProps<Doc>);
+
+      let caughtError: unknown;
+
+      try {
+        new Model<Doc>({
+          collectionName: 'hook_decoration_errors_distinct_classes',
+          allowedMethods: [METHODS.FIND],
+          schema: DecoratedWithHookB,
+        } as unknown as CreateModelProps<Doc>);
+      } catch (err) {
+        caughtError = err;
+      }
+
+      expect(caughtError).toBeInstanceOf(MongoatError);
+      expect((caughtError as MongoatError).code).toBe('MODEL_CONFIG_CONFLICT');
+    });
+
+    it('re-registrar a MESMA classe decorada, mas com props.hooks também declarado na segunda construção, continua lançando MODEL_CONFIG_CONFLICT', () => {
+      @Schema()
+      class DecoratedWithHookAndPropsHooks {
+        @Pre(METHODS.INSERT, () => {})
+        @Prop({ bsonType: 'string' })
+        name?: string;
+      }
+
+      new Model<Doc>({
+        collectionName: 'hook_decoration_errors_props_hooks_asymmetry',
+        allowedMethods: [METHODS.FIND],
+        schema: DecoratedWithHookAndPropsHooks,
+      } as unknown as CreateModelProps<Doc>);
+
+      let caughtError: unknown;
+
+      try {
+        new Model<Doc>({
+          collectionName: 'hook_decoration_errors_props_hooks_asymmetry',
+          allowedMethods: [METHODS.FIND],
+          schema: DecoratedWithHookAndPropsHooks,
+          hooks: {
+            [METHODS.FIND]: {
+              pre: [() => {}],
+            },
+          },
+        } as unknown as CreateModelProps<Doc>);
+      } catch (err) {
+        caughtError = err;
+      }
+
+      // A liberação por identidade de classe (caso anterior) não alcança
+      // `props.hooks` — a mesma referência de classe decorada não basta
+      // quando o candidato TAMBÉM declara hooks pela via de config.
+      expect(caughtError).toBeInstanceOf(MongoatError);
+      expect((caughtError as MongoatError).code).toBe('MODEL_CONFIG_CONFLICT');
+    });
   });
 });
