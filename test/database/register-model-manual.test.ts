@@ -216,4 +216,51 @@ describe('Database — registerModel() manual', () => {
     expect((caught as MongoatError).code).toBe('MODEL_CONFIG_CONFLICT');
     expect(db.getModel('register_model_manual_hooks_plugin')).toBe(first);
   });
+
+  // O guard de hooks acima cobre um plugin que registra `pre`/`post`, mas
+  // um plugin pode contribuir SÓ um `static` (nenhum hook) — esse caso não
+  // tem cobertura própria e passava batido por qualquer guard de hooks
+  // (não há hook nenhum para detectar), então a lista de plugins do
+  // candidato era descartada em silêncio na re-registração manual.
+  it('model com plugin SEM hook (só static) num nome ocupado também lança MODEL_CONFIG_CONFLICT em vez de descartar o plugin em silêncio', () => {
+    const first = new Model<Doc>({
+      collectionName: 'register_model_manual_plugin_static_only',
+      allowedMethods: [METHODS.FIND],
+      schema,
+    });
+
+    const pluginWithStaticOnly: Plugin<Doc> = {
+      name: 'register-model-manual-static-only-plugin',
+      setup: (ctx) => {
+        ctx.static('fooStatic', () => 'foo');
+      },
+    };
+
+    const candidate = new Model<Doc>({
+      collectionName: 'register_model_manual_plugin_static_only_source',
+      allowedMethods: [METHODS.FIND],
+      schema,
+      plugins: [pluginWithStaticOnly],
+    }) as unknown as Model<Document>;
+
+    candidate.collectionName = 'register_model_manual_plugin_static_only';
+
+    let caught: unknown;
+
+    try {
+      db.registerModel(candidate);
+    } catch (err) {
+      caught = err;
+    }
+
+    expect(caught).toBeInstanceOf(MongoatError);
+    expect((caught as MongoatError).code).toBe('MODEL_CONFIG_CONFLICT');
+    expect((caught as MongoatError).message).toContain('plugins');
+    expect(db.getModel('register_model_manual_plugin_static_only')).toBe(first);
+    // O `static` do plugin candidato nunca deve grudar silenciosamente na
+    // instância já registrada.
+    expect(
+      (first as unknown as Record<string, unknown>).fooStatic
+    ).toBeUndefined();
+  });
 });

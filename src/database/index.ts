@@ -13,7 +13,13 @@ import {
   MongoatError,
   MongoatValidationError,
 } from '@/errors';
-import { diffConfig, Model, snapshotConfig } from '@/model';
+import {
+  diffConfig,
+  getConfigPlugins,
+  Model,
+  samePluginList,
+  snapshotConfig,
+} from '@/model';
 import { kProxySelf } from '@/model/hooks';
 import { DatabaseConfig } from '@/types';
 import { METHODS } from '@/utils/enums';
@@ -221,6 +227,12 @@ export class Database {
    * - A model carrying any hook (`pre` or `post`, of any origin — declared,
    *   decorated, or added by a plugin) throws `MongoatValidationError` with
    *   `code: 'MODEL_CONFIG_CONFLICT'`.
+   * - A model carrying a `plugins` list that diverges (by reference or
+   *   order) from the one already registered also throws
+   *   `MongoatValidationError` with `code: 'MODEL_CONFIG_CONFLICT'` — the
+   *   same plugins comparison the `Model` constructor runs on
+   *   re-registration, including for a plugin that registers only a
+   *   `static` (no hook at all).
    * - Otherwise, the candidate's config is compared field-by-field against
    *   the registered one (the same comparison the `Model` constructor runs
    *   on re-registration): identical → the existing instance is returned
@@ -260,6 +272,24 @@ export class Database {
       if (candidateHasHooks) {
         throw new MongoatValidationError(
           `Model "${model.collectionName}" already registered — hooks declared on a re-registration are never silently discarded`,
+          { code: 'MODEL_CONFIG_CONFLICT' }
+        );
+      }
+
+      // Same "plugins never silently discarded" guarantee the constructor
+      // enforces, and the same `samePluginList` comparison — `diffConfig`
+      // deliberately never compares `plugins` (see its `case 'plugins'`),
+      // so without this the candidate's plugin list had zero comparison of
+      // any kind here, and a plugin contributing only a `static` (no hook,
+      // so invisible to the guard above) was silently discarded.
+      const candidatePlugins = getConfigPlugins(model);
+
+      if (
+        candidatePlugins.length > 0 &&
+        !samePluginList(existing, candidatePlugins)
+      ) {
+        throw new MongoatValidationError(
+          `Model "${model.collectionName}" already registered — plugins declared on a re-registration are never silently discarded`,
           { code: 'MODEL_CONFIG_CONFLICT' }
         );
       }

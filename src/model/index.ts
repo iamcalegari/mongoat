@@ -504,6 +504,45 @@ export function snapshotConfig(model: Model<Document>): ConfigSnapshot {
 }
 
 /**
+ * @internal
+ *
+ * Reads the plugin list captured under `kConfigRefs` for an
+ * ALREADY-BUILT `Model` instance — the same array the constructor's own
+ * re-registration guard reads via `existingRefs.plugins` below. Exists so
+ * `Database#registerModel` (which only ever receives a built instance, not
+ * a `CreateModelProps` object to read `props.plugins` from) can run the
+ * identical plugins comparison without `kConfigRefs` itself ever leaving
+ * this module.
+ */
+export function getConfigPlugins(model: Model<Document>): Plugin<Document>[] {
+  return (
+    (model as unknown as Record<symbol, ConfigRefs>)[kConfigRefs]?.plugins ?? []
+  );
+}
+
+/**
+ * @internal
+ *
+ * True when `candidate` has EXACTLY the same plugin references, in the same
+ * order, as the ones already registered on `existing` — the ref/order
+ * comparison the constructor's re-registration guard runs before allowing
+ * the early-return. Pulled out here so it is the ONE comparison shared by
+ * both registration paths (constructor and `Database#registerModel`)
+ * instead of two copies that could silently drift apart.
+ */
+export function samePluginList(
+  existing: Model<Document>,
+  candidate: Plugin<Document>[]
+): boolean {
+  const existingPlugins = getConfigPlugins(existing);
+
+  return (
+    existingPlugins.length === candidate.length &&
+    existingPlugins.every((plugin, index) => plugin === candidate[index])
+  );
+}
+
+/**
  * Reads the default `collectionName` written on a decorated
  * schema class by `@Schema('name')` (`kMongoatSchemaClass` marker). Returns
  * `undefined` when the class carries no marker (never happens for a class
@@ -770,29 +809,26 @@ export class Model<ModelType extends Document = Document> {
         );
       }
 
-      if (candidateHasPlugins) {
+      if (
+        candidateHasPlugins &&
+        !samePluginList(
+          existing as unknown as Model<Document>,
+          (props.plugins ?? []) as unknown as Plugin<Document>[]
+        )
+      ) {
         // Libera o early-return apenas quando a lista candidata tem
         // EXATAMENTE as mesmas referências, na mesma ordem, da lista já
         // registrada — `applyPlugins` não roda no early-return, então a
         // instância existente já carrega os plugins da primeira
         // construção; nada é re-aplicado, nenhum hook nem static é
-        // duplicado.
-        const existingPlugins = existingRefs?.plugins ?? [];
-        const candidatePlugins = (props.plugins ??
-          []) as unknown as Plugin<Document>[];
-
-        const samePluginList =
-          existingPlugins.length === candidatePlugins.length &&
-          existingPlugins.every(
-            (plugin, index) => plugin === candidatePlugins[index]
-          );
-
-        if (!samePluginList) {
-          throw new MongoatValidationError(
-            `Model "${resolvedCollectionName}" already registered — plugins declared on a re-registration are never silently discarded`,
-            { code: 'MODEL_CONFIG_CONFLICT' }
-          );
-        }
+        // duplicado. `samePluginList` é a MESMA comparação que
+        // `Database#registerModel` roda na via manual — as duas não podem
+        // mais divergir por um bug de sincronização entre duas
+        // implementações.
+        throw new MongoatValidationError(
+          `Model "${resolvedCollectionName}" already registered — plugins declared on a re-registration are never silently discarded`,
+          { code: 'MODEL_CONFIG_CONFLICT' }
+        );
       }
 
       const divergentFields = diffConfig(
