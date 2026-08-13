@@ -276,7 +276,9 @@ const PROP_TREATMENT: Record<keyof CreateModelProps<Document>, Treatment> = {
   collectionName: 'derived',
   documentDefaults: 'compared',
   // Fail-loud incondicional tratado ANTES de `diffConfig` ser chamado —
-  // ver `candidateHasHooks` no construtor.
+  // ver `candidateHasPropsHooks` no construtor. Hooks decorados
+  // (`@Pre`/`@Post` na classe) não são um campo de `CreateModelProps` — são
+  // tratados por um guard separado, condicional à identidade da classe.
   hooks: 'failLoud',
   // `JSON.stringify` puro e sem ordenação — a ordem de chaves de um índice
   // composto é semântica no MongoDB.
@@ -689,37 +691,72 @@ export class Model<ModelType extends Document = Document> {
       ? extractDecoratorHooks(schema as SchemaClass<ModelType>)
       : { pre: [], post: [] };
 
-    // Functions are not structurally comparable via
-    // `stableStringify` — `diffConfig` never compares `hooks` (see
-    // `PROP_TREATMENT`), so a re-registration of an already-registered
-    // `collectionName` that
-    // declared hooks used to fall through the "identical config"
-    // early-return (allowedMethods/validator/documentDefaults/indexes
-    // matching) and the hook was silently discarded. `candidateHasHooks`
-    // now ALSO covers hooks declared via `@Pre`/`@Post` on a decorated
-    // schema class, not just `props.hooks`.
-    const candidateHasHooks = Boolean(
-      decoratedHooks.pre.length > 0 ||
-      decoratedHooks.post.length > 0 ||
-      (props.hooks &&
-        Object.values(props.hooks).some(
-          (config) =>
-            (config?.pre?.length ?? 0) > 0 || (config?.post?.length ?? 0) > 0
-        ))
+    // Referência da classe de schema decorada candidata (`undefined` para
+    // um `schema` plano) — usada no guard de re-registro de hooks
+    // decorados abaixo, no snapshot de `kConfigRefs` e em `diffConfig`,
+    // sempre a MESMA expressão, para os três usos nunca divergirem por
+    // engano.
+    const candidateSchemaClassRef = isDecoratedSchemaClass
+      ? (schema as unknown as SchemaClass<Document>)
+      : undefined;
+
+    // Duas origens de hooks candidatas, tratadas de forma ASSIMÉTRICA numa
+    // re-registração: hooks decorados podem liberar o early-return por
+    // identidade de classe (guard abaixo); `props.hooks` nunca libera,
+    // incondicionalmente.
+    const candidateHasDecoratedHooks = Boolean(
+      decoratedHooks.pre.length > 0 || decoratedHooks.post.length > 0
     );
 
-    // Mesma classe de mascaramento que `candidateHasHooks` fecha para
-    // hooks — um `plugins[]` declarado numa re-registração do
-    // mesmo `collectionName` nunca é descartado em silêncio. Plugins não
-    // são estruturalmente comparáveis (são funções/objetos com `setup`),
-    // então o único comportamento seguro é falhar alto.
+    const candidateHasPropsHooks = Boolean(
+      props.hooks &&
+      Object.values(props.hooks).some(
+        (config) =>
+          (config?.pre?.length ?? 0) > 0 || (config?.post?.length ?? 0) > 0
+      )
+    );
+
+    // Mesma classe de mascaramento que os guards de hooks fecham — um
+    // `plugins[]` declarado numa re-registração do mesmo `collectionName`
+    // nunca é descartado em silêncio. Este booleano só decide se o guard de
+    // plugins entra em cena (a comparação por identidade de referência
+    // acontece dentro dele); um candidato sem plugins nunca entrou nesse
+    // guard e continua não entrando, exatamente como antes desta mudança.
     const candidateHasPlugins = Boolean(props.plugins?.length);
 
     if (existing) {
-      if (candidateHasHooks) {
-        // Fail loud instead of comparing (functions have no structural
-        // equality worth trusting) — a hook re-declared on an existing
-        // collectionName is NEVER silently dropped.
+      const existingRefs = (existing as unknown as Record<symbol, ConfigRefs>)[
+        kConfigRefs
+      ];
+
+      // `props.hooks` numa re-registração continua lançando
+      // INCONDICIONALMENTE, mesmo quando a classe de schema decorada é a
+      // MESMA referência liberada pelo guard seguinte — `this.hooks` da
+      // instância existente é a união já mesclada de hooks decorados,
+      // `props.hooks` e hooks registrados por plugin, sem proveniência para
+      // dizer de qual origem veio cada função. Sem proveniência não há
+      // comparação honesta a fazer, então a única alternativa segura é
+      // falhar sempre.
+      if (candidateHasPropsHooks) {
+        throw new MongoatValidationError(
+          `Model "${resolvedCollectionName}" already registered — hooks declared on a re-registration are never silently discarded`,
+          { code: 'MODEL_CONFIG_CONFLICT' }
+        );
+      }
+
+      // Hooks decorados (`@Pre`/`@Post`) só liberam o early-return quando a
+      // referência da classe candidata é IDÊNTICA à classe já registrada —
+      // sendo a mesma referência, os hooks decorados são literalmente as
+      // mesmas funções, e identidade de referência PROVA essa igualdade em
+      // vez de apenas estimá-la por semelhança estrutural. Alcance
+      // declarado: conserta o caso de módulo já carregado (a classe é a
+      // mesma referência); NÃO conserta o caso de módulo reavaliado, em que
+      // uma classe nova é gerada com o mesmo corpo de hook — essa continua
+      // lançando, porque a referência é outra.
+      if (
+        candidateHasDecoratedHooks &&
+        existingRefs?.schemaClass !== candidateSchemaClassRef
+      ) {
         throw new MongoatValidationError(
           `Model "${resolvedCollectionName}" already registered — hooks declared on a re-registration are never silently discarded`,
           { code: 'MODEL_CONFIG_CONFLICT' }
@@ -727,10 +764,28 @@ export class Model<ModelType extends Document = Document> {
       }
 
       if (candidateHasPlugins) {
-        throw new MongoatValidationError(
-          `Model "${resolvedCollectionName}" already registered — plugins declared on a re-registration are never silently discarded`,
-          { code: 'MODEL_CONFIG_CONFLICT' }
-        );
+        // Libera o early-return apenas quando a lista candidata tem
+        // EXATAMENTE as mesmas referências, na mesma ordem, da lista já
+        // registrada — `applyPlugins` não roda no early-return, então a
+        // instância existente já carrega os plugins da primeira
+        // construção; nada é re-aplicado, nenhum hook nem static é
+        // duplicado.
+        const existingPlugins = existingRefs?.plugins ?? [];
+        const candidatePlugins = (props.plugins ??
+          []) as unknown as Plugin<Document>[];
+
+        const samePluginList =
+          existingPlugins.length === candidatePlugins.length &&
+          existingPlugins.every(
+            (plugin, index) => plugin === candidatePlugins[index]
+          );
+
+        if (!samePluginList) {
+          throw new MongoatValidationError(
+            `Model "${resolvedCollectionName}" already registered — plugins declared on a re-registration are never silently discarded`,
+            { code: 'MODEL_CONFIG_CONFLICT' }
+          );
+        }
       }
 
       const divergentFields = diffConfig(
@@ -742,9 +797,7 @@ export class Model<ModelType extends Document = Document> {
           onHookError: props.onHookError as unknown as
             | OnHookError<HookContextMap<Document>[METHODS]>
             | undefined,
-          schemaClass: isDecoratedSchemaClass
-            ? (schema as unknown as SchemaClass<Document>)
-            : undefined,
+          schemaClass: candidateSchemaClassRef,
           validator,
         }
       );
@@ -794,9 +847,7 @@ export class Model<ModelType extends Document = Document> {
         | OnHookError<HookContextMap<Document>[METHODS]>
         | undefined,
       plugins: [...(props.plugins ?? [])] as unknown as Plugin<Document>[],
-      schemaClass: isDecoratedSchemaClass
-        ? (schema as unknown as SchemaClass<Document>)
-        : undefined,
+      schemaClass: candidateSchemaClassRef,
     };
 
     // Hooks decorados (`@Pre`/`@Post`) registrados ANTES de `props.hooks`
