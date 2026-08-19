@@ -51,6 +51,15 @@ export type {
   ValidationQueryExpressions,
 } from './types';
 
+/**
+ * Re-exported straight from the `mongodb` driver so that opting into
+ * MongoDB's Stable API (`new Database({ serverApi: { version:
+ * ServerApiVersion.v1 } })`) does not force a direct `mongodb` install on the
+ * consumer — Mongoat already depends on it.
+ */
+export { ServerApiVersion } from 'mongodb';
+export type { ServerApi } from 'mongodb';
+
 export {
   CUSTOM_VALIDATION,
   METHODS,

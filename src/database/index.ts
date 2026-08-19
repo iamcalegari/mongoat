@@ -4,8 +4,8 @@ import {
   Db,
   Document,
   MongoClient,
+  MongoClientOptions,
   ObjectId,
-  ServerApiVersion,
 } from 'mongodb';
 
 import {
@@ -37,6 +37,51 @@ const kGetUrlAndDbName = Symbol('kGetUrlAndDbName');
 const kGetDbName = Symbol('kGetDbName');
 const KModelProxyHandler = Symbol('KModelProxyHandler');
 const KModelMap = Symbol('KModelMap');
+
+/**
+ * @internal
+ *
+ * The `DatabaseConfig` fields that belong to Mongoat and are NOT driver
+ * options. They have to be stripped before the rest of the config reaches
+ * `MongoClient`, because the driver refuses keys it does not know:
+ * `new MongoClient(url, { uri })` throws
+ * `MongoParseError: option uri is not supported`. Forwarding the config
+ * verbatim would therefore break every consumer that passes a `uri` — which
+ * is the documented way to configure the connection.
+ *
+ * `satisfies Record<MongoatOnlyConfigKey, true>` is a compile-time
+ * exhaustiveness gate rather than a hand-kept list: adding a Mongoat-specific
+ * field to `DatabaseConfig` without listing it here fails the build, instead
+ * of silently leaking that field to the driver at runtime.
+ */
+type MongoatOnlyConfigKey = keyof Omit<
+  DatabaseConfig,
+  keyof MongoClientOptions
+>;
+
+const MONGOAT_ONLY_CONFIG_KEYS = {
+  dbName: true,
+  password: true,
+  uri: true,
+  username: true,
+} satisfies Record<MongoatOnlyConfigKey, true>;
+
+/**
+ * @internal
+ *
+ * Narrows a `DatabaseConfig` down to the options `MongoClient` accepts, by
+ * dropping the Mongoat-only fields listed in `MONGOAT_ONLY_CONFIG_KEYS`.
+ * Never mutates the caller's config object.
+ */
+function toMongoClientOptions(config: DatabaseConfig): MongoClientOptions {
+  const clientOptions: Record<string, unknown> = { ...config };
+
+  for (const key of Object.keys(MONGOAT_ONLY_CONFIG_KEYS)) {
+    delete clientOptions[key];
+  }
+
+  return clientOptions as MongoClientOptions;
+}
 
 export type ObjectID = ObjectId;
 
@@ -70,6 +115,11 @@ export class Database {
    *
    * Only when neither `MONGODB_URI` nor `config.uri` is provided does the
    * connection url fall back to the default 'mongodb://127.0.0.1:27017/'.
+   *
+   * Beyond those four fields, `DatabaseConfig` extends `MongoClientOptions`:
+   * anything else set here is forwarded to `MongoClient` by `connect()`,
+   * overriding Mongoat's own defaults. That is where `serverApi` is opted
+   * into — see `connect()`.
    *
    * If the client and db parameters are not provided, the instances of the
    * MongoClient and Db classes will be created automatically.
@@ -120,9 +170,28 @@ export class Database {
    * established, the method returns a promise that resolves to a string
    * containing the connection name.
    *
-   * If the NODE_ENV environment variable is set to 'production', the
-   * connection is established with the server API version 1, strict mode
-   * enabled, and deprecation errors enabled.
+   * Every driver option given to the constructor is forwarded to
+   * `MongoClient` here — `DatabaseConfig` extends `MongoClientOptions`, so
+   * the whole driver surface is configurable there — minus the four
+   * Mongoat-specific fields (`uri`, `dbName`, `username`, `password`), which
+   * Mongoat consumes itself. Precedence is explicit: Mongoat supplies
+   * DEFAULTS and the constructor's config overrides them, key by key. The
+   * only default is `ignoreUndefined: true`, which a caller can now switch
+   * off by passing `ignoreUndefined: false`.
+   *
+   * No `serverApi` is configured. Declaring MongoDB's Stable API is the
+   * application's decision, never the ODM's, and it is expressed with the
+   * driver's own option:
+   *
+   * ```ts
+   * new Database({ uri, dbName, serverApi: { version: ServerApiVersion.v1 } });
+   * ```
+   *
+   * Adding `strict: true` there makes the server reject every command outside
+   * Stable API v1 — `$vectorSearch`, `createSearchIndex` and
+   * `listSearchIndexes` among them, each failing with
+   * `code: 323 (APIStrictError)`. Opt into it only when the application knows
+   * it uses nothing outside the API.
    *
    * @returns A promise that resolves to a string containing the connection name,
    * or nothing if the connection is already established.
@@ -141,15 +210,15 @@ export class Database {
       return this[kConnecting];
     }
 
+    // O config do construtor era montado e descartado: `connect()` construía
+    // o objeto de opções do zero, então qualquer `MongoClientOptions` passada
+    // ao construtor nunca chegava ao driver (`ignoreUndefined` só parecia
+    // funcionar porque o valor hardcoded aqui coincidia com o que as
+    // aplicações passavam). Defaults do Mongoat vêm PRIMEIRO para que o
+    // config do chamador vença em toda chave.
     this[kConnecting] = this[kCreateClientConnection]({
       ignoreUndefined: true,
-      ...(process.env.NODE_ENV === 'production' && {
-        serverApi: {
-          version: ServerApiVersion.v1,
-          strict: true,
-          deprecationErrors: true,
-        },
-      }),
+      ...toMongoClientOptions(this.config),
     }).finally(() => {
       this[kConnecting] = undefined;
     });
@@ -510,7 +579,9 @@ export class Database {
     );
   }
 
-  async [kCreateClientConnection](options?: DatabaseConfig): Promise<string> {
+  async [kCreateClientConnection](
+    options?: MongoClientOptions
+  ): Promise<string> {
     const { mongoDbName, mongoUrl } = this[kGetUrlAndDbName]();
 
     this[kClient] = await MongoClient.connect(mongoUrl, options);
