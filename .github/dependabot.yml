@@ -7,3 +7,12 @@ updates:
     directory: '/'
     schedule:
       interval: 'weekly'
+    # Patch e minor seguem automáticos; major de `changesets/action` não.
+    # A v2 dessa action exige a CLI do changesets na v3, que por sua vez exige
+    # Node `^22.11 || ^24 || >=26` — acima do piso `^20.19.0` deste pacote. O
+    # bump foi mesclado uma vez e quebrou o job de release na hora
+    # ("Changesets CLI v2 is not supported"), sem nada para publicar. Reabrir
+    # esse major só faz sentido junto com a decisão de subir o piso de Node.
+    ignore:
+      - dependency-name: 'changesets/action'
+        update-types: ['version-update:semver-major']

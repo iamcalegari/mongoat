@@ -77,7 +77,16 @@ jobs:
       # essa tag e um branch mantido pelos autores, entao seu topo pode ser
       # reescrito sem nenhum aviso de versao. E a unica action deste arquivo
       # que roda dentro do job que segura a credencial de publicacao no npm.
-      - uses: changesets/action@198f833dd7d863100ea6e28967bc9a9fdefadb0a # v2.1.0
+      #
+      # PRESA NA LINHA v1 DE PROPOSITO — nao aceite bump automatico para v2+.
+      # A v2 da action exige a CLI do changesets na v3 e recusa a v2 de saida
+      # ("Changesets CLI v2 is not supported"), alem de ter renomeado os
+      # inputs (`publish` virou `publish-script`). E a CLI v3 declara
+      # `engines.node: ^22.11 || ^24 || >=26`, acima do piso `^20.19.0` que
+      # este pacote suporta e que a matriz do ci.yml exercita. Enquanto esse
+      # piso existir, a dupla compativel e action v1 + CLI v2; o bump so faz
+      # sentido junto com a decisao de subir o piso de Node.
+      - uses: changesets/action@a45c4d594aa4e2c509dc14a9f2b3b67ba3780d0d # v1.9.0
         with:
           publish: npm run release
         env:
