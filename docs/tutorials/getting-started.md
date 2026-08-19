@@ -37,6 +37,33 @@ If neither `MONGODB_URI` nor `config.uri` is set, Mongoat falls back to
 `mongodb://127.0.0.1:27017/` — handy for local development, but make sure a
 real connection string is configured before you touch a shared environment.
 
+`DatabaseConfig` extends the driver's `MongoClientOptions`, so any client
+option belongs in this same object and is forwarded when `connect()` runs.
+Mongoat only fills gaps: it supplies defaults (`ignoreUndefined: true` is the
+only one) and your config wins on every key.
+
+Mongoat sets no `serverApi` of its own. Declaring MongoDB's [Stable
+API](https://www.mongodb.com/docs/manual/reference/stable-api/) is the
+application's decision, and it is made explicitly:
+
+```ts
+import { Database, ServerApiVersion } from '@iamcalegari/mongoat';
+
+export const database = new Database({
+  dbName: 'mongoat-example',
+  serverApi: { version: ServerApiVersion.v1, strict: true },
+});
+```
+
+Reach for `strict: true` only when you know the application uses nothing
+outside Stable API v1. The server rejects everything else, including
+`$vectorSearch`, `createSearchIndex` and `listSearchIndexes`:
+
+```
+MongoServerError: $vectorSearch is not allowed with 'apiStrict: true' in API Version 1
+code: 323, codeName: APIStrictError
+```
+
 ## 3. Define a model
 
 A `Model` is a typed wrapper around a MongoDB collection. It takes the

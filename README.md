@@ -69,6 +69,33 @@ export const database = new Database({
 await database.connect();
 ```
 
+`DatabaseConfig` extends the driver's own `MongoClientOptions`, so anything the
+`MongoClient` accepts can be set here and is forwarded on `connect()`. Mongoat
+supplies defaults and your config overrides them; the only default is
+`ignoreUndefined: true`.
+
+Mongoat does **not** configure MongoDB's [Stable
+API](https://www.mongodb.com/docs/manual/reference/stable-api/) for you — that
+is the application's call, made explicitly:
+
+```ts
+import { Database, ServerApiVersion } from '@iamcalegari/mongoat';
+
+export const database = new Database({
+  dbName: 'mongoat-example',
+  serverApi: { version: ServerApiVersion.v1, strict: true },
+});
+```
+
+`strict: true` makes the server reject every command outside Stable API v1.
+`$vectorSearch`, `createSearchIndex` and `listSearchIndexes` are all outside it,
+so an application using Atlas Vector Search must leave `strict` off:
+
+```
+MongoServerError: $vectorSearch is not allowed with 'apiStrict: true' in API Version 1
+code: 323, codeName: APIStrictError
+```
+
 ### Defining a Model
 
 ```ts

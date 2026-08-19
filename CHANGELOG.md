@@ -8,6 +8,64 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Breaking changes are marked **BREAKING**. For step-by-step upgrade instructions
 see [MIGRATION.md](./MIGRATION.md).
 
+## [Unreleased]
+
+### Changed
+
+- **`Database` no longer configures MongoDB's Stable API on its own.** `connect()`
+  used to inject `serverApi: { version: v1, strict: true, deprecationErrors: true }`
+  whenever `process.env.NODE_ENV === 'production'`. `strict: true` makes the server
+  reject every command outside Stable API v1, so any application using Atlas Vector
+  Search failed with the exact value production is expected to carry:
+
+  ```
+  MongoServerError: $vectorSearch is not allowed with 'apiStrict: true' in API Version 1
+  code: 323, codeName: APIStrictError
+  ```
+
+  `createSearchIndex` and `listSearchIndexes` are outside the Stable API too, so
+  index-provisioning scripts broke the same way. Declaring the Stable API is the
+  application's decision, not the ODM's — and tying it to an environment variable
+  made it invisible: nothing in the application's own code revealed that `NODE_ENV`
+  changed the driver's API contract. Mongoat now sets no `serverApi` at all; opt in
+  explicitly through the constructor:
+
+  ```ts
+  import { Database, ServerApiVersion } from '@iamcalegari/mongoat';
+
+  new Database({
+    dbName: 'my-db',
+    serverApi: { version: ServerApiVersion.v1, strict: true },
+  });
+  ```
+
+  If you were relying on strict mode under `NODE_ENV=production`, add that option
+  back explicitly. No default pins the version either: declaring `apiVersion: 1`
+  unconditionally would change the wire contract for consumers that work today and
+  would require server 5.0+.
+
+### Fixed
+
+- **`MongoClientOptions` passed to the `Database` constructor now reach the
+  driver.** The constructor stored `config`, but `connect()` built the driver's
+  options object from scratch and discarded it — only `uri`, `username` and
+  `password` were read, elsewhere. Every other option (`maxPoolSize`, `appName`,
+  `tls`, `compressors`, …) was silently dropped; `ignoreUndefined` only appeared to
+  work because the value hardcoded in `connect()` matched what applications were
+  passing. Precedence is now explicit and documented: **Mongoat supplies defaults,
+  the constructor's config overrides them.** `ignoreUndefined: true` remains the
+  only default and can now be turned off. The four Mongoat-specific fields (`uri`,
+  `dbName`, `username`, `password`) are stripped before the rest is handed over —
+  the driver rejects keys it does not know (`MongoParseError: option uri is not
+supported`), and a compile-time exhaustiveness gate keeps that list in sync with
+  `DatabaseConfig`.
+
+### Added
+
+- `ServerApiVersion` (value) and `ServerApi` (type) are re-exported from the
+  package root, so opting into the Stable API does not require installing the
+  `mongodb` driver directly.
+
 ## [1.1.0] - 2026-07-10
 
 > Work toward the first stable **1.1.0**. Current published version: `1.0.34-alpha`.
